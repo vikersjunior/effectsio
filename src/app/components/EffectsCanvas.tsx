@@ -9,20 +9,31 @@ export function EffectsCanvas(): React.JSX.Element {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const values = useToolcraftSelector((state) => state.values);
   const mediaAssets = useToolcraftSelector((state) => state.mediaAssets);
+  const selectedLayerId = useToolcraftSelector((state) => state.selectedLayerId);
 
   // Filter images uploaded to source.image target
   const sourceAssets = React.useMemo(() => {
     return mediaAssets.filter((asset) => asset.sourceTarget === "source.image");
   }, [mediaAssets]);
 
-  // Derive active image ID from runtime state values, falling back to primary asset
-  const activeImageId = (values["source.activeImage"] as string) || (sourceAssets[0]?.id ?? null);
+  const rawActiveId = (values["source.image"] as string) || "";
 
-  // Active asset derived strictly from active image ID
+  // Active asset derived from rawActiveId, selectedLayerId, or primary sourceAsset
   const activeAsset = React.useMemo(() => {
     if (sourceAssets.length === 0) return null;
-    return sourceAssets.find((asset) => asset.id === activeImageId) ?? sourceAssets[0] ?? null;
-  }, [activeImageId, sourceAssets]);
+
+    if (rawActiveId) {
+      const match = sourceAssets.find((asset) => asset.id === rawActiveId);
+      if (match) return match;
+    }
+
+    if (selectedLayerId) {
+      const match = sourceAssets.find((asset) => asset.layerId === selectedLayerId);
+      if (match) return match;
+    }
+
+    return sourceAssets[0];
+  }, [rawActiveId, selectedLayerId, sourceAssets]);
 
   const activeAssetsList = React.useMemo(() => {
     return activeAsset ? [activeAsset] : [];

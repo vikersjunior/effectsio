@@ -21,8 +21,8 @@ const exportRenderer: ToolcraftProductExportRenderer = {
 export const appComposition: ToolcraftAppComposition = {
   canvasContent: <EffectsCanvas />,
   controlRenderers: {
-    select: (props) => {
-      if (props.control.target === "source.activeImage") {
+    fileDrop: (props) => {
+      if (props.control.target === "source.image") {
         return <ImageLibraryRenderer {...props} />;
       }
       return null;
