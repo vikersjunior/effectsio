@@ -38,6 +38,23 @@ export const appSchema = defineToolcraft({
           },
         },
         {
+          id: "active-selection",
+          title: "Active Selection",
+          controls: {
+            "source.activeImage": {
+              type: "select",
+              target: "source.activeImage",
+              label: "Active Image",
+              description: "Currently selected active image in workspace.",
+              defaultValue: "",
+              options: [],
+              applicability: { mode: "always" },
+              performanceRole: "responsiveness",
+              performanceReason: "Switches active image displayed on canvas.",
+            },
+          },
+        },
+        {
           id: "background-section",
           title: "Background",
           controls: {

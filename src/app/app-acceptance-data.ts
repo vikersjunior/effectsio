@@ -101,6 +101,21 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   },
   {
     automated: true,
+    automatedTestName: "switches active image in workstation canvas",
+    browser: true,
+    browserTestName: "browser: user selects active image thumbnail",
+    componentType: "select",
+    evidence: "rendered-pixels",
+    expectedObservable: "Canvas updates immediately to show selected active image.",
+    fixture: "active image selection thumbnail grid",
+    id: "control.source-active-image",
+    kind: "control",
+    optionCoverage: [],
+    target: "source.activeImage",
+    userAction: "Click an image thumbnail in the Image Library to set the active canvas image.",
+  },
+  {
+    automated: true,
     automatedTestName: "toggles background inclusion in export",
     backgroundOutputCoverage: [
       "preview-hidden-when-excluded",
@@ -188,6 +203,14 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
     entityId: "source-material",
     groupingReason: "Upload and manage source images in your image library.",
     targets: ["source.image"],
+  },
+  {
+    id: "active-selection",
+    title: "Active Selection",
+    entity: "Active Selection",
+    entityId: "active-selection",
+    groupingReason: "Select active image in image library.",
+    targets: ["source.activeImage"],
   },
   {
     id: "background-section",

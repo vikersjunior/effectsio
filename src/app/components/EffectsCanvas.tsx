@@ -15,11 +15,14 @@ export function EffectsCanvas(): React.JSX.Element {
     return mediaAssets.filter((asset) => asset.sourceTarget === "source.image");
   }, [mediaAssets]);
 
-  // Active asset is the primary uploaded asset in the library
+  // Derive active image ID from runtime state values, falling back to primary asset
+  const activeImageId = (values["source.activeImage"] as string) || (sourceAssets[0]?.id ?? null);
+
+  // Active asset derived strictly from active image ID
   const activeAsset = React.useMemo(() => {
     if (sourceAssets.length === 0) return null;
-    return sourceAssets[0];
-  }, [sourceAssets]);
+    return sourceAssets.find((asset) => asset.id === activeImageId) ?? sourceAssets[0] ?? null;
+  }, [activeImageId, sourceAssets]);
 
   const activeAssetsList = React.useMemo(() => {
     return activeAsset ? [activeAsset] : [];

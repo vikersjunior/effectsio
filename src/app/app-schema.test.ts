@@ -18,9 +18,10 @@ describe("appSchema", () => {
         (section) => !section.id.startsWith("runtime."),
       ) ?? [];
 
-    expect(productSections.length).toBe(2);
+    expect(productSections.length).toBe(3);
     expect(productSections.map((s) => s.id)).toEqual([
       "source-material",
+      "active-selection",
       "image-export.part-export-image-format-1k2loow",
     ]);
   });
