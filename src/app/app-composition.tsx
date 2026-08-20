@@ -23,4 +23,14 @@ export const appComposition: ToolcraftAppComposition = {
   modelPresentation: { mode: "runtime" },
   renderDefaultCanvasMedia: false,
   schema: appSchema,
+  onPanelAction: ({ action, dispatch, state }) => {
+    const actionValue = typeof action === "string" ? action : action.value;
+    const sourceAssets = state.mediaAssets.filter((a) => a.sourceTarget === "source.image");
+
+    if (actionValue === "clearAll") {
+      sourceAssets.forEach((asset) => {
+        dispatch({ mediaId: asset.id, type: "media.delete" });
+      });
+    }
+  },
 };

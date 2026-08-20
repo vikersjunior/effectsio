@@ -26,7 +26,7 @@ export const appProductReadiness: ToolcraftProductReadiness = {
   productName: "EffectsIO",
   productSummary: "A personal image effects and visual-style workstation for applying repeatable creative treatments to images.",
   requestedBehavior:
-    "Upload and manage source images in an image library, preview image on the canvas with zoom, pan, center, undo, redo, and reset, and export images using standard export infrastructure.",
+    "Upload single or multiple images into the Image Library, select active or batch image sets, reorder, rotate, flip, preview active image on canvas with zoom/pan/center/undo/redo, and export images.",
   viewInteraction: {
     mode: "non-spatial",
     reason: "EffectsIO is a 2D image workstation without 3D scene geometry.",
@@ -86,18 +86,18 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   },
   {
     automated: true,
-    automatedTestName: "renders source image upload dropzone",
+    automatedTestName: "renders multi-image library file dropzone",
     browser: true,
-    browserTestName: "browser: user uploads source image to image library",
+    browserTestName: "browser: user uploads multiple source images into image library",
     componentType: "fileDrop",
     evidence: "media-lifecycle",
-    expectedObservable: "Uploaded image is processed and rendered onto canvas.",
-    fixture: "source image file upload",
+    expectedObservable: "Uploaded images render in sortable thumbnail library grid.",
+    fixture: "multi-image file upload",
     id: "control.source-image",
     kind: "control",
-    mediaLifecycleCoverage: ["upload", "remove", "reset", "rotate", "flip", "transform-output"],
+    mediaLifecycleCoverage: ["upload", "remove", "reset", "reorder", "order-output", "rotate", "flip", "transform-output"],
     target: "source.image",
-    userAction: "Upload a JPEG or PNG image into the Source Images file drop zone.",
+    userAction: "Upload single or multiple JPEG, PNG, or WEBP images into the Image Library file drop zone.",
   },
   {
     automated: true,

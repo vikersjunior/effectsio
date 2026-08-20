@@ -4,30 +4,41 @@ import {
   useToolcraftProductSceneFrame,
   useToolcraftSelector,
 } from "@/toolcraft/runtime/react";
-import type { ToolcraftMediaAsset } from "@/toolcraft/runtime";
 
 export function EffectsCanvas(): React.JSX.Element {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const values = useToolcraftSelector((state) => state.values);
+  const mediaAssets = useToolcraftSelector((state) => state.mediaAssets);
 
+  // Filter images uploaded to source.image target
   const sourceAssets = React.useMemo(() => {
-    return (values["source.image"] as readonly ToolcraftMediaAsset[] | undefined) ?? [];
-  }, [values]);
+    return mediaAssets.filter((asset) => asset.sourceTarget === "source.image");
+  }, [mediaAssets]);
 
-  const mediaUrls = useToolcraftMediaPresentationUrls(sourceAssets);
+  // Active asset is the primary uploaded asset in the library
+  const activeAsset = React.useMemo(() => {
+    if (sourceAssets.length === 0) return null;
+    return sourceAssets[0];
+  }, [sourceAssets]);
+
+  const activeAssetsList = React.useMemo(() => {
+    return activeAsset ? [activeAsset] : [];
+  }, [activeAsset]);
+
+  const mediaUrls = useToolcraftMediaPresentationUrls(activeAssetsList);
   const sceneFrame = useToolcraftProductSceneFrame();
 
   const paperColor = (values["appearance.background"] as string) ?? "#121316";
 
-  const firstMediaUrl = React.useMemo(() => {
-    if (!mediaUrls || mediaUrls.size === 0) return null;
-    return Array.from(mediaUrls.values())[0] || null;
-  }, [mediaUrls]);
+  const activeMediaUrl = React.useMemo(() => {
+    if (!activeAsset || !mediaUrls || mediaUrls.size === 0) return null;
+    return mediaUrls.get(activeAsset.id) || Array.from(mediaUrls.values())[0] || null;
+  }, [activeAsset, mediaUrls]);
 
   const [loadedImage, setLoadedImage] = React.useState<HTMLImageElement | null>(null);
 
   React.useEffect(() => {
-    if (!firstMediaUrl) {
+    if (!activeMediaUrl) {
       setLoadedImage(null);
       return;
     }
@@ -40,12 +51,12 @@ export function EffectsCanvas(): React.JSX.Element {
         setLoadedImage(img);
       }
     };
-    img.src = firstMediaUrl;
+    img.src = activeMediaUrl;
 
     return () => {
       active = false;
     };
-  }, [firstMediaUrl]);
+  }, [activeMediaUrl]);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
