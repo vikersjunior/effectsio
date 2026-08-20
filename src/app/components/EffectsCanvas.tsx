@@ -16,6 +16,9 @@ export function EffectsCanvas(): React.JSX.Element {
     return mediaAssets.filter((asset) => asset.sourceTarget === "source.image");
   }, [mediaAssets]);
 
+  // Pre-resolve presentation URLs for all source assets in library
+  const mediaUrls = useToolcraftMediaPresentationUrls(sourceAssets);
+
   const rawActiveId = (values["source.image"] as string) || "";
 
   // Active asset derived from rawActiveId, selectedLayerId, or primary sourceAsset
@@ -35,18 +38,13 @@ export function EffectsCanvas(): React.JSX.Element {
     return sourceAssets[0];
   }, [rawActiveId, selectedLayerId, sourceAssets]);
 
-  const activeAssetsList = React.useMemo(() => {
-    return activeAsset ? [activeAsset] : [];
-  }, [activeAsset]);
-
-  const mediaUrls = useToolcraftMediaPresentationUrls(activeAssetsList);
   const sceneFrame = useToolcraftProductSceneFrame();
-
   const paperColor = (values["appearance.background"] as string) ?? "#121316";
 
+  // Derive exact media presentation URL for the currently active asset
   const activeMediaUrl = React.useMemo(() => {
-    if (!activeAsset || !mediaUrls || mediaUrls.size === 0) return null;
-    return mediaUrls.get(activeAsset.id) || Array.from(mediaUrls.values())[0] || null;
+    if (!activeAsset || !mediaUrls) return null;
+    return mediaUrls.get(activeAsset.id) ?? null;
   }, [activeAsset, mediaUrls]);
 
   const [loadedImage, setLoadedImage] = React.useState<HTMLImageElement | null>(null);
