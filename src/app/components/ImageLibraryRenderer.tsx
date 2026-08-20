@@ -4,6 +4,7 @@ import {
   useToolcraftMediaPresentationUrls,
   useToolcraftSelector,
 } from "@/toolcraft/runtime/react";
+import { getSourceImageAssets, resolveActiveImage } from "./active-image";
 
 export function ImageLibraryRenderer(
   props: ToolcraftCustomControlRendererProps<unknown>,
@@ -11,41 +12,23 @@ export function ImageLibraryRenderer(
   const { dispatch, setValue } = props;
 
   const mediaAssets = useToolcraftSelector((state) => state.mediaAssets);
-  const selectedLayerId = useToolcraftSelector((state) => state.selectedLayerId);
 
-  const sourceAssets = React.useMemo(() => {
-    return mediaAssets.filter((asset) => asset.sourceTarget === "source.image");
-  }, [mediaAssets]);
+  const sourceAssets = React.useMemo(() => getSourceImageAssets(mediaAssets), [mediaAssets]);
 
   const mediaUrls = useToolcraftMediaPresentationUrls(sourceAssets);
 
-  const rawValue = typeof props.value === "string" ? props.value : "";
-
-  // Active asset derived from stored value, selected layer, or primary source asset
   const activeAsset = React.useMemo(() => {
-    if (sourceAssets.length === 0) return null;
-
-    if (rawValue) {
-      const match = sourceAssets.find((a) => a.id === rawValue);
-      if (match) return match;
-    }
-
-    if (selectedLayerId) {
-      const match = sourceAssets.find((a) => a.layerId === selectedLayerId);
-      if (match) return match;
-    }
-
-    return sourceAssets[0];
-  }, [rawValue, selectedLayerId, sourceAssets]);
+    return resolveActiveImage(props.value, sourceAssets);
+  }, [props.value, sourceAssets]);
 
   const activeImageId = activeAsset?.id ?? null;
 
   // Keep control value synchronized with active asset ID
   React.useEffect(() => {
-    if (activeImageId && activeImageId !== rawValue) {
+    if (activeImageId && activeImageId !== props.value) {
       setValue(activeImageId);
     }
-  }, [activeImageId, rawValue, setValue]);
+  }, [activeImageId, props.value, setValue]);
 
   const openFileSelector = () => {
     const input = document.createElement("input");

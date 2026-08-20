@@ -44,6 +44,20 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 - Verification: `pnpm typecheck`, `pnpm ai:check`, `pnpm docs:check`, `node scripts/check-toolcraft-integrity.mjs`, `pnpm vitest run src/app/app-schema.test.ts`, `pnpm build`.
 - Risks: None; all tests and integrity checks pass.
 
+### Iteration 10 — Single active image source of truth for canvas rendering
+
+- Request: Fix the critical bug where selecting an Image Library thumbnail changes its blue border but the canvas continues displaying the first uploaded image.
+- Task type: Broken control and canvas data-flow repair.
+- Root cause: Image Library and EffectsCanvas independently resolved the active asset, including a selected-layer/first-image fallback. That allowed the visible library selection and canvas source to diverge.
+- Decision: Treat the `source.image` runtime value as the single `activeImageId`; both the Image Library and canvas use the same validated resolver. The first source image is only the initial fallback before a valid ID exists. Canvas presentation URLs remain keyed by asset ID, with no cross-asset fallback.
+- User-visible result: Clicking a thumbnail updates the runtime active image ID and immediately causes the canvas renderer to resolve and display that exact image.
+- Alternatives rejected: Adding another selector, maintaining local active-image state, forcing a reload, or selecting the first asset by array position.
+- State/output mapping: `ImageLibraryRenderer.setValue(assetId)` → `state.values["source.image"]` → `resolveActiveImageId`/`resolveActiveImage` → `useToolcraftMediaPresentationUrls` lookup by active asset ID → Canvas 2D image output.
+- Docs/contracts read: workflow.md, decision-contract.md, core/runtime-boundary.md, core/performance.md, component-rules.md, renderer-technique.md.
+- Contract rules applied: interaction-surface-ownership, canvas-surface-preserved, renderer-technique-inventory, acceptance-product-observable.
+- Verification tier: Tier 3; targeted unit/type checks, browser thumbnail selection coverage, then one bare `pnpm verify:delivery` at the delivery boundary. Measured performance is not authorized or required for this bug fix.
+- Risks: The custom control still uses the existing runtime media presentation URL hook; URL resolution is asynchronous, so the canvas may briefly show its background while a newly selected asset is being resolved, but it cannot display another asset.
+
 ## Evidence
 
 - Source reviewed: src/app/app-schema.ts, src/app/components/EffectsCanvas.tsx, src/app/components/ImageLibraryRenderer.tsx, src/app/app-composition.tsx, src/app/app-acceptance-data.ts.

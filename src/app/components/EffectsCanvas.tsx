@@ -4,39 +4,21 @@ import {
   useToolcraftProductSceneFrame,
   useToolcraftSelector,
 } from "@/toolcraft/runtime/react";
+import { getSourceImageAssets, resolveActiveImage } from "./active-image";
 
 export function EffectsCanvas(): React.JSX.Element {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const values = useToolcraftSelector((state) => state.values);
   const mediaAssets = useToolcraftSelector((state) => state.mediaAssets);
-  const selectedLayerId = useToolcraftSelector((state) => state.selectedLayerId);
 
-  // Filter images uploaded to source.image target
-  const sourceAssets = React.useMemo(() => {
-    return mediaAssets.filter((asset) => asset.sourceTarget === "source.image");
-  }, [mediaAssets]);
+  const sourceAssets = React.useMemo(() => getSourceImageAssets(mediaAssets), [mediaAssets]);
 
   // Pre-resolve presentation URLs for all source assets in library
   const mediaUrls = useToolcraftMediaPresentationUrls(sourceAssets);
 
-  const rawActiveId = (values["source.image"] as string) || "";
-
-  // Active asset derived from rawActiveId, selectedLayerId, or primary sourceAsset
   const activeAsset = React.useMemo(() => {
-    if (sourceAssets.length === 0) return null;
-
-    if (rawActiveId) {
-      const match = sourceAssets.find((asset) => asset.id === rawActiveId);
-      if (match) return match;
-    }
-
-    if (selectedLayerId) {
-      const match = sourceAssets.find((asset) => asset.layerId === selectedLayerId);
-      if (match) return match;
-    }
-
-    return sourceAssets[0];
-  }, [rawActiveId, selectedLayerId, sourceAssets]);
+    return resolveActiveImage(values["source.image"], sourceAssets);
+  }, [sourceAssets, values]);
 
   const sceneFrame = useToolcraftProductSceneFrame();
   const paperColor = (values["appearance.background"] as string) ?? "#121316";
