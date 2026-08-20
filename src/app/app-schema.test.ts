@@ -10,7 +10,7 @@ describe("appSchema", () => {
     expect(appSchema.canvas?.sizing?.mode).toBe("editable-output");
   });
 
-  it("includes product sections for source image, style presets, colors, toggles, fine-tuning, and image export", () => {
+  it("includes foundational product sections for Image Library and Image Export", () => {
     const sections = appSchema.panels.controls?.sections ?? [];
 
     const productSections =
@@ -18,13 +18,9 @@ describe("appSchema", () => {
         (section) => !section.id.startsWith("runtime."),
       ) ?? [];
 
-    expect(productSections.length).toBe(6);
+    expect(productSections.length).toBe(2);
     expect(productSections.map((s) => s.id)).toEqual([
       "source-material",
-      "style-presets",
-      "color-tuning",
-      "effect-toggles",
-      "fine-tuning",
       "image-export.part-export-image-format-1k2loow",
     ]);
   });

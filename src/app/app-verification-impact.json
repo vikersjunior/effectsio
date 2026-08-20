@@ -15,51 +15,6 @@
       "acceptanceIds": ["runtime.infinity-canvas"],
       "kind": "functional",
       "path": "src/app/components/EffectsCanvas.tsx"
-    },
-    {
-      "acceptanceIds": ["runtime.infinity-canvas"],
-      "kind": "functional",
-      "path": "src/app/effects/duotone.ts"
-    },
-    {
-      "acceptanceIds": ["runtime.infinity-canvas"],
-      "kind": "functional",
-      "path": "src/app/effects/engine.ts"
-    },
-    {
-      "acceptanceIds": ["runtime.infinity-canvas"],
-      "kind": "functional",
-      "path": "src/app/effects/grain.ts"
-    },
-    {
-      "acceptanceIds": ["runtime.infinity-canvas"],
-      "kind": "functional",
-      "path": "src/app/effects/halftone.ts"
-    },
-    {
-      "acceptanceIds": ["runtime.infinity-canvas"],
-      "kind": "functional",
-      "path": "src/app/effects/posterize.ts"
-    },
-    {
-      "acceptanceIds": ["runtime.infinity-canvas"],
-      "kind": "functional",
-      "path": "src/app/effects/sample-image.ts"
-    },
-    {
-      "acceptanceIds": ["runtime.infinity-canvas"],
-      "kind": "functional",
-      "path": "src/app/effects/screenprint.ts"
-    },
-    {
-      "acceptanceIds": ["persistence.reload"],
-      "kind": "functional",
-      "path": "src/app/presets/presets-data.ts"
-    },
-    {
-      "acceptanceIds": ["persistence.reload"],
-      "kind": "functional",
-      "path": "src/app/presets/types.ts"
     }
   ]
 }

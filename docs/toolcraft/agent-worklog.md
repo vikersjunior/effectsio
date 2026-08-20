@@ -6,7 +6,7 @@ This file records product decisions and the evidence behind them. Keep it short,
 
 Mode: product
 
-EffectsIO is a visual-effects laboratory and reusable visual style preset workstation.
+EffectsIO is a personal image effects and visual-style workstation for applying repeatable creative treatments to images.
 
 ## Automatic Delivery Lifecycle
 
@@ -31,76 +31,76 @@ For high-confidence ordinary work, record `Performance intent: ordinary-product-
 
 ### Renderer
 
-- Decision: Use Canvas 2D image processing pipeline inside EffectsCanvas component.
-- Reason: Provides fast, high-quality pixel manipulation for halftone, duotone, screen print misregistration, posterization, and paper grain.
-- Evidence: src/app/components/EffectsCanvas.tsx and src/app/effects/engine.ts.
+- Decision: Render uploaded source image onto Canvas 2D surface inside EffectsCanvas component.
+- Reason: Provides clean, high-performance image scaling and centered artboard presentation.
+- Evidence: src/app/components/EffectsCanvas.tsx.
 
 ### View Interaction
 
 - Decision: Use non-spatial view interaction mode.
-- Reason: The product is a 2D image-effects laboratory without 3D camera controls.
+- Reason: The product is a 2D image workstation without 3D scene geometry.
 - Evidence: appProductReadiness.viewInteraction.
 
 ### Interaction Ownership
 
-- Decision: Keep controls in panel and preview on canvas.
-- Reason: Panel controls own preset selection and fine-tuning parameters while canvas previews live output.
+- Decision: Panel controls own image library upload and background settings; toolbar owns zoom, pan, radar, center, theme, and undo/redo history.
+- Reason: Clear separation between workspace viewport navigation and panel parameter edits.
 - Evidence: appProductReadiness.interactionOwnership.
 
 ### Timeline
 
 - Decision: Do not enable timeline.
-- Reason: EffectsIO is a visual image effect workstation for still image outputs.
+- Reason: EffectsIO is a visual image workstation focused on still image treatments.
 - Evidence: appSchema.panels.timeline is omitted.
 
 ### Layers
 
 - Decision: Do not enable layers.
-- Reason: The workstation applies style presets directly to source images.
+- Reason: Single-image workstation workflow focused on source image treatments.
 - Evidence: appSchema.panels.layers is omitted.
 
 ### Controls
 
-- Decision: Group controls into 5 workflow sections by entity.
-- Reason: Organizes image upload, style presets, color tuning, effect module toggles, and fine-tuning controls logically.
+- Decision: Structure foundational schema into Image Library (`source-material`), Background (`background-section`), and Image Export (`image-export`).
+- Reason: Delivers a minimal, compact, typography-focused UI giving canvas maximum visual prominence.
 - Evidence: appSchema.panels.controls.sections and appControlSectionInventory.
 
 ### Export
 
-- Decision: Provide PNG image export.
-- Reason: The workstation allows users to export processed visual outputs.
-- Evidence: appProductReadiness.exportIntent.
+- Decision: Provide standard Image Export infrastructure (PNG/JPG, 2K/4K/8K, export-image action).
+- Reason: Allows users to export full-resolution images from the workstation.
+- Evidence: appProductReadiness.exportIntent and exportRenderer in appComposition.tsx.
 
 ### Performance
 
-- Decision: Assign workload performance roles on pixel processing controls.
-- Reason: Connects control parameter changes to canvas render pipeline calculations.
+- Decision: Assign responsiveness roles to image upload and background controls.
+- Reason: Connects control state updates to canvas render pipeline calculations.
 - Evidence: appSchema performanceRole declarations.
 
 ## Decision Trail
 
-### Iteration 7 — EffectsIO visual-style workstation implementation
+### Iteration 8 — Foundational EffectsIO Toolcraft application setup
 
-- Request: Build EffectsIO, a personal image-effects and visual-style workstation. Focus on reusable visual style presets (Chiwara Screen Print, Chiwara Blue/Cream, Editorial Halftone, Vintage Newspaper, Poster Print, Black & White Editorial, Custom Duotone, Parcelra Brand Treatment) and fine-tuning controls. Keep output strictly inside canvasContent.
-- Task type: Schema, custom renderer, presets, export, acceptance, and performance.
-- User-visible result: The canvas renders visual effects and exports PNG.
+- Request: Set up the EffectsIO repository as a proper Toolcraft application. Create clean foundational application shell with image upload, image import, image library, canvas, zoom, pan, center, undo, redo, reset, and standard export infrastructure without implementing fake effects or fake images.
+- Task type: Schema assembly, foundational controls, canvas rendering, export infrastructure, acceptance data alignment.
+- User-visible result: Clean EffectsIO application shell with dark interface, Image Library upload dropzone, centered image canvas preview, zoom/pan/center/undo/redo/reset toolbar, and standard export actions.
 - Source/reference checked: User prompt.
 - Reference inputs: None.
-- Docs/contracts read: workflow.md, assembly-workflow.md, and performance.md.
-- Contract rules applied: runtime-shell-required and output-export-required.
-- View interaction intent: non-spatial; the product has no visible three-dimensional scene or model.
-- Interaction ownership: No cross-surface product operations; panel controls own their distinct property edits.
-- Decision: Render image effects using Canvas 2D pipeline inside EffectsCanvas mounted in ToolcraftAppComposition.canvasContent.
-- Alternatives rejected: Hand-authoring separate UI controls or toolbar, using Tailwind CSS, modifying src/toolcraft runtime files.
-- State/output mapping: Schema values feed EffectsCanvas.tsx and processImageEffect engine.
+- Docs/contracts read: workflow.md, runtime-boundary.md, setup-export.md, media-upload.md.
+- Contract rules applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage, output-export-required.
+- View interaction intent: non-spatial; 2D image workstation.
+- Interaction ownership: Panel owns image library upload and background settings; toolbar owns zoom, pan, radar, center, theme, and undo/redo.
+- Decision: Build clean foundational EffectsIO shell without fake effects or fake placeholder images.
+- Alternatives rejected: Implementing fake effects engine prematurely, adding fake placeholder images, inventing custom UI components.
+- State/output mapping: source.image loads uploaded images onto canvas; appearance.background sets workspace tint; export.image.* configures export format and resolution.
 - Performance intent: ordinary-product-work
-- Verification: pnpm verify:delivery.
-- Risks: None; browser and performance gates cover the touched surfaces.
+- Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
+- Risks: None; browser and acceptance tests cover touched surfaces.
 
 ## Evidence
 
-- Source reviewed: src/app/app-schema.ts and src/app/components/EffectsCanvas.tsx.
-- Contract applied: runtime-shell-required and performance-coverage-levels.
+- Source reviewed: src/app/app-schema.ts, src/app/components/EffectsCanvas.tsx, src/app/app-composition.tsx, src/app/app-acceptance-data.ts.
+- Contract applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage, output-export-required.
 
 ## Verification
 
