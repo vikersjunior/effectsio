@@ -10,7 +10,7 @@ describe("appSchema", () => {
     expect(appSchema.canvas?.sizing?.mode).toBe("editable-output");
   });
 
-  it("includes foundational product sections for Workstation and Image Export", () => {
+  it("includes foundational product sections for Image Library, Creative Effects, and Image Export", () => {
     const sections = appSchema.panels.controls?.sections ?? [];
 
     const productSections =
@@ -18,9 +18,10 @@ describe("appSchema", () => {
         (section) => !section.id.startsWith("runtime."),
       ) ?? [];
 
-    expect(productSections.length).toBe(2);
+    expect(productSections.length).toBe(3);
     expect(productSections.map((s) => s.id)).toEqual([
-      "workstation",
+      "source-material",
+      "effects-section",
       "image-export.part-export-image-format-1k2loow",
     ]);
   });
@@ -28,9 +29,15 @@ describe("appSchema", () => {
   it("declares production reload coverage for EffectsIO", () => {
     expect(
       appSchema.panels.controls?.sections?.some(
-        (section) => section.id === "workstation",
+        (section) => section.id === "source-material",
       ),
     ).toBe(true);
+    expect(
+      appSchema.panels.controls?.sections?.some(
+        (section) => section.id === "effects-section",
+      ),
+    ).toBe(true);
+
     if (appSchema.persistence.storage === "localStorage") {
       expect(appSchema.persistence.include).toContain("values");
       expect(appSchema.persistence.include).toContain("canvas");

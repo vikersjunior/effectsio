@@ -26,6 +26,34 @@ export function EffectsCanvas(): React.JSX.Element {
   const paperColor = (values["appearance.background"] as string) ?? "#121316";
   const selectedEffect = (values["effect.selected"] as string) ?? "original";
 
+  // Build resolved parameters for the currently active effect
+  const effectParameters = React.useMemo(() => {
+    switch (selectedEffect) {
+      case "black-and-white":
+        return {
+          contrast: values["effect.bw.contrast"],
+          warmth: values["effect.bw.warmth"],
+        };
+      case "duotone":
+        return {
+          highlightColor: values["effect.duotone.highlightColor"],
+          shadowColor: values["effect.duotone.shadowColor"],
+        };
+      case "posterize":
+        return {
+          levels: values["effect.posterize.levels"],
+          saturation: values["effect.posterize.saturation"],
+        };
+      case "grain":
+        return {
+          intensity: values["effect.grain.intensity"],
+          size: values["effect.grain.size"],
+        };
+      default:
+        return undefined;
+    }
+  }, [selectedEffect, values]);
+
   // Derive exact media presentation URL for the currently active asset
   const activeMediaUrl = React.useMemo(() => {
     if (!activeAsset || !mediaUrls) return null;
@@ -104,7 +132,7 @@ export function EffectsCanvas(): React.JSX.Element {
         if (offCtx) {
           offCtx.drawImage(loadedImage, 0, 0, targetW, targetH);
           const rawData = offCtx.getImageData(0, 0, targetW, targetH);
-          const processed = applyEffect(rawData, selectedEffect);
+          const processed = applyEffect(rawData, selectedEffect, effectParameters);
           offCtx.putImageData(processed, 0, 0);
           ctx.drawImage(offscreen, offsetX, offsetY);
         } else {
@@ -112,7 +140,7 @@ export function EffectsCanvas(): React.JSX.Element {
         }
       }
     }
-  }, [loadedImage, paperColor, sceneFrame, selectedEffect]);
+  }, [effectParameters, loadedImage, paperColor, sceneFrame, selectedEffect]);
 
   return (
     <div style={{ height: "100%", overflow: "hidden", position: "relative", width: "100%" }}>

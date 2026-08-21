@@ -16,8 +16,8 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 ### Renderer
 
-- Decision: Canvas 2D pixel manipulation for active image rendering and real-time effect processing.
-- Reason: The 5 foundational effects (Original, Black & White, Duotone, Posterize, Grain) operate on direct image pixel buffers (ImageData) using pure transformation kernels drawn to the main canvas.
+- Decision: Canvas 2D pixel manipulation for active image rendering and real-time parameterized effect processing.
+- Reason: The foundational effects operate on direct image pixel buffers (ImageData) using pure transformation kernels drawn to the main canvas with dynamic user parameter updates.
 - Evidence: `src/app/effects/engine.ts`, `src/app/effects/registry.ts`, `src/app/effects/modules/*.ts`, `src/app/components/EffectsCanvas.tsx`.
 
 ### View Interaction
@@ -28,7 +28,7 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 ### Interaction Ownership
 
-- Decision: Panel owns workstation view switcher (`panel.activeView`), creative effect selection (`effect.selected`), image library management (`source.image`), and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
+- Decision: Panel owns image library management (`source.image`), creative effect selection (`effect.selected`), effect mode tabs (`effect.tab`), effect parameter adjustments, and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
 - Reason: Separates global workspace navigation (toolbar) from product state and source material management (panel).
 - Evidence: `src/app/app-schema.ts`, `src/app/app-acceptance-data.ts`.
 
@@ -46,8 +46,8 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 ### Controls
 
-- Decision: Built-in Toolcraft `tabs` control for view navigation, `imagePicker` for effect selection across 5 foundational algorithms, `fileDrop` for image upload/library, and standard export controls.
-- Reason: Single-panel layout where `tabs` controls view switching and `imagePicker` provides a visual grid of effect algorithms without custom UI components.
+- Decision: Standalone Image Library section (`source-material`), unified Creative Effects section (`effects-section`) with Gallery/Controls tabs and conditional per-effect sliders/color pickers, and standard export controls.
+- Reason: Keeps the Image Library permanently accessible while organizing effect selection and fine-tuning parameters into clean workflow tabs.
 - Evidence: `src/app/app-schema.ts`, `src/app/app-acceptance-data.ts`.
 
 ### Export
@@ -207,6 +207,24 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 - Performance intent: ordinary-product-work
 - Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
 - Risks: Dynamic image-picker previews constrained by built-in static schema item contract; addressed with high-contrast semantic vector visual previews per effect.
+
+### Iteration 16 — Standalone Image Library Section & Dedicated Effects Gallery/Controls Tabs
+
+- Request: Separate the Image Library section so it is always visible like it used to be, and organize the Creative Effects section with dedicated tabs for "Gallery" (effect selection) and "Controls" (fine-tuning parameter adjustments).
+- Task type: Section layout restructuring, parameter controls wiring, acceptance alignment.
+- User-visible result: The Image Library section is restored as a permanent, standalone section at the top of the controls panel. Below it, the Creative Effects section contains "Gallery" and "Controls" tabs. In Gallery view, users choose from the 5 effect cards; in Controls view, real-time sliders and color pickers for the active effect (Contrast, Warmth, Shadow/Highlight Color, Levels, Saturation, Intensity, Size) allow fine-tuning the canvas in real time.
+- Source/reference checked: User prompt.
+- Reference inputs: None.
+- Docs/contracts read: workflow.md, core/control-selection.md, core/layout.md, schema-reference.md, component-rules.md, acceptance-testing.md.
+- Contract rules applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage, output-export-required, controls-section-inventory-required, controls-layout-heuristics.
+- View interaction intent: non-spatial; 2D image workstation.
+- Interaction ownership: Panel owns image library management (`source.image`), effect selection (`effect.selected`), effect tab navigation (`effect.tab`), effect parameter adjustments, and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
+- Decision: Restore `source-material` as a standalone always-visible section; structure `effects-section` with top `tabs` (`effect.tab`) switching between `imagePicker` (`effect.selected`) and active effect parameter controls; wire `EffectsCanvas.tsx` to pass dynamic parameters into `applyEffect`.
+- Alternatives rejected: Hiding the Image Library inside a sub-tab or creating multiple fragmented sections for each effect algorithm.
+- State/output mapping: `source.image` loads images; `effect.selected` selects effect algorithm; `effect.bw.*`, `effect.duotone.*`, `effect.posterize.*`, `effect.grain.*` parameter values dynamically re-render processed `ImageData` in `EffectsCanvas.tsx`.
+- Performance intent: ordinary-product-work
+- Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
+- Risks: None; unit and acceptance tests cover touched surfaces.
 
 ## Evidence
 
