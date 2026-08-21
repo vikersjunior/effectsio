@@ -235,7 +235,14 @@ function FileDropControlRenderer({
       }}
       onItemSelect={
         assetKind === "image" && basePresentation.presenter === "image-grid"
-          ? (item) => setSelectedMediaId(item.id)
+          ? (item) => {
+              setSelectedMediaId(item.id);
+              setControlValue(
+                control.target,
+                item.id,
+                `Select ${control.itemLabel ?? "image"}`,
+              );
+            }
           : undefined
       }
       onItemsReorder={

@@ -21,7 +21,26 @@ export const appProductReadiness: ToolcraftProductReadiness = {
     image: { mode: "toolcraft-default" },
     video: { mode: "not-requested" },
   },
-  interactionOwnership: [],
+  interactionOwnership: [
+    {
+      alternative: {
+        reason:
+          "Canvas selection would duplicate the Image Library collection workflow and its upload, delete, and transform actions.",
+        surface: "canvas",
+      },
+      capability: "structured-selection",
+      evidence: {
+        detail:
+          "The requested workflow explicitly uses the Image Library thumbnail grid as the image-selection mechanism.",
+        source: "user-request",
+      },
+      id: "image-library-selection",
+      reason:
+        "The panel keeps image upload, thumbnail selection, and image-specific actions together in one discoverable collection workflow.",
+      surface: "panel",
+      target: "source.image",
+    },
+  ],
   mode: "product",
   productName: "EffectsIO",
   productSummary: "A personal image effects and visual-style workstation for applying repeatable creative treatments to images.",
@@ -87,21 +106,14 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,
     automatedTestName: "renders multi-image library file dropzone",
-    builtInFitCheck: {
-      capabilities: ["collection", "selection", "custom-interaction", "commands"],
-      checkedBuiltIns: ["fileDrop", "sourceCollection"],
-      closestBuiltIn: "fileDrop",
-      productObservable: "Clicking a thumbnail updates active image selection border and switches canvas display.",
-      whyInsufficient: "Built-in FileDrop component keeps thumbnail selection in internal local component state rather than updating active canvas state.",
-    },
     browser: true,
     browserTestName: "browser: user uploads multiple source images into image library",
     componentType: "fileDrop",
-    customControlCoverage: "all-custom-control-behavior",
     evidence: "media-lifecycle",
-    expectedObservable: "Uploaded images render in sortable thumbnail library grid.",
+    expectedObservable: "Uploaded images render in the thumbnail grid, and selecting a thumbnail switches the canvas to that image.",
     fixture: "multi-image file upload",
     id: "control.source-image",
+    interactionId: "image-library-selection",
     kind: "control",
     mediaLifecycleCoverage: ["upload", "remove", "reset", "reorder", "order-output", "rotate", "flip", "transform-output"],
     target: "source.image",

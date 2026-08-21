@@ -58,6 +58,47 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 - Verification tier: Tier 3; targeted unit/type checks, browser thumbnail selection coverage, then one bare `pnpm verify:delivery` at the delivery boundary. Measured performance is not authorized or required for this bug fix.
 - Risks: The custom control still uses the existing runtime media presentation URL hook; URL resolution is asynchronous, so the canvas may briefly show its background while a newly selected asset is being resolved, but it cannot display another asset.
 
+### Iteration 11 — Use Toolcraft selected media layer as active image authority
+
+- Request: The active thumbnail still changes without changing the canvas; find the root cause and amend it accordingly.
+- Task type: Follow-up broken media-selection and canvas-renderer data-flow repair.
+- Root cause: `source.image` is a `multiple: true` fileDrop target with an array default, while Toolcraft media import and `layers.select` maintain the committed selected media object in `selectedLayerId`. The previous canvas fix still trusted the overloaded fileDrop value, so it could remain stale or represent the initial source even when the selected layer changed.
+- Decision: Resolve `activeImageId` from the selected runtime media layer first, then use the synchronized `source.image` value only as a fallback. Both the Image Library and EffectsCanvas use the same resolver. Thumbnail clicks continue to update the control value and dispatch `layers.select`; the canvas now reacts directly to the committed selected layer.
+- User-visible result: Selecting Image B selects its runtime media layer and the canvas resolves Image B rather than retaining Image A.
+- Alternatives rejected: Another selector, local React active state, canvas reload, array-position selection, or patching the copied Toolcraft runtime.
+- State/output mapping: thumbnail click → `layers.select(layerId)` → `state.selectedLayerId` → resolve matching `mediaAssets` entry → ID-keyed presentation URL → Canvas 2D output; `source.image` remains synchronized for the Image Library control.
+- Docs/contracts read: workflow.md, decision-contract.md, core/runtime-boundary.md, component-rules.md, renderer-technique.md, acceptance-testing.md.
+- Contract rules applied: interaction-surface-ownership, canvas-surface-preserved, acceptance-product-observable, runtime-shell-required.
+- Verification tier: Tier 3; targeted resolver tests, typecheck, code health, build, and browser acceptance when the local Playwright executable is available. Measured performance is not authorized.
+- Risks: Runtime browser proof remains pending until the local Playwright browser binary is installed; unit and build checks cover the shared resolution logic.
+
+### Iteration 12 — Route Image Library through the product custom renderer
+
+- Request: The active-image fix still does not work; inspect the supplied root-cause analysis and correct the routing.
+- Task type: Schema control routing and custom-control activation repair.
+- Root cause: `source.image` was declared as built-in `fileDrop`, so the runtime selected its built-in `media` renderer. The registered `ImageLibraryRenderer` under `controlRenderers.fileDrop` was never mounted; built-in thumbnail selection only changed local `selectedMediaId` state and never wrote the active ID to runtime values.
+- Decision: Declare `source.image` as the registered custom schema type `controlRenderers` (Toolcraft’s runtime schema type for `controlRenderers`), use scalar `defaultValue: null`, and register `ImageLibraryRenderer` under `controlRenderers`. Keep the existing runtime media commands and selected-layer synchronization.
+- User-visible result: The actual Image Library renderer handles thumbnail clicks, writes the selected asset ID, dispatches layer selection, and drives the canvas renderer.
+- Alternatives rejected: Patching the built-in FileDrop renderer, adding another selector, or retaining a dead `fileDrop` renderer registration.
+- State/output mapping: `controlRenderers` schema route → `ImageLibraryRenderer` → `setValue(assetId)` and `layers.select` → shared active-image resolver → canvas presentation URL → Canvas 2D output.
+- Docs/contracts read: workflow.md, core/control-selection.md, core/layout.md, schema-reference.md, custom-controls.md, acceptance-testing.md.
+- Contract rules applied: controls-product-coverage, interaction-surface-ownership, acceptance-product-observable, runtime-shell-required.
+- Verification tier: Tier 3; targeted schema/resolver tests, typecheck, code health, build, and browser acceptance when available. Measured performance is not authorized.
+- Risks: This custom control intentionally owns upload, selection, delete, transforms, and ordering because the built-in fileDrop does not expose the required active-ID value model. Browser proof remains environment-blocked by the missing Playwright executable.
+
+### Iteration 13 — Restore Toolcraft FileDrop and commit thumbnail selection
+
+- Request: Upload is broken and the image upload UI no longer uses Toolcraft styling after the custom-control routing change.
+- Task type: Regression repair and shared built-in media-control behavior fix.
+- Root cause: Replacing `fileDrop` with the product custom renderer bypassed Toolcraft’s source-asset coordinator, upload lifecycle, and styled `FileDrop` component. The underlying built-in control also kept thumbnail selection only in local `selectedMediaId` state.
+- Decision: Restore the schema’s built-in `fileDrop` and remove the custom renderer registration. Update the existing runtime-owned image-grid selection callback to preserve local action-button state while also committing the selected asset ID through `setControlValue`. EffectsCanvas consumes that runtime value.
+- User-visible result: Upload/import uses the native Toolcraft FileDrop UI and lifecycle again; selecting a thumbnail commits the active image ID and switches the canvas.
+- Alternatives rejected: Keeping hand-built upload JSX, adding another selector, or duplicating Toolcraft FileDrop styling in product code.
+- State/output mapping: Toolcraft FileDrop upload/import → `mediaAssets`; thumbnail click → `setControlValue("source.image", assetId)` → shared active-image resolver → canvas presentation URL → Canvas 2D output.
+- Contract rules applied: runtime-shell-required, controls-product-coverage, canvas-surface-preserved, acceptance-product-observable.
+- Verification tier: Tier 3; focused acceptance/type/build checks and browser acceptance when available. Measured performance is not authorized.
+- Risks: This fixes a shared copied-runtime behavior and therefore requires the runtime integrity receipt to be regenerated by the upstream Toolcraft workflow; the local browser executable is still unavailable.
+
 ## Evidence
 
 - Source reviewed: src/app/app-schema.ts, src/app/components/EffectsCanvas.tsx, src/app/components/ImageLibraryRenderer.tsx, src/app/app-composition.tsx, src/app/app-acceptance-data.ts.

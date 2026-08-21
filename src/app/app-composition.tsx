@@ -2,7 +2,6 @@ import type { ToolcraftAppComposition } from "@/toolcraft/runtime/react";
 import type { ToolcraftProductExportRenderer } from "@/toolcraft/runtime";
 import { appSchema } from "./app-schema";
 import { EffectsCanvas } from "./components/EffectsCanvas";
-import { ImageLibraryRenderer } from "./components/ImageLibraryRenderer";
 
 const exportRenderer: ToolcraftProductExportRenderer = {
   baseFileName: "effectsio-export",
@@ -20,14 +19,6 @@ const exportRenderer: ToolcraftProductExportRenderer = {
 
 export const appComposition: ToolcraftAppComposition = {
   canvasContent: <EffectsCanvas />,
-  controlRenderers: {
-    fileDrop: (props) => {
-      if (props.control.target === "source.image") {
-        return <ImageLibraryRenderer {...props} />;
-      }
-      return null;
-    },
-  },
   exportRenderer,
   modelPresentation: { mode: "runtime" },
   renderDefaultCanvasMedia: false,

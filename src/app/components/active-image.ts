@@ -8,10 +8,19 @@ export function getSourceImageAssets(
 
 export function resolveActiveImageId(
   value: unknown,
+  selectedLayerId: string | null | undefined,
   sourceAssets: readonly ToolcraftMediaAsset[],
 ): string | null {
   if (typeof value === "string" && sourceAssets.some((asset) => asset.id === value)) {
     return value;
+  }
+
+  const selectedLayerAsset = selectedLayerId
+    ? sourceAssets.find((asset) => asset.layerId === selectedLayerId)
+    : undefined;
+
+  if (selectedLayerAsset) {
+    return selectedLayerAsset.id;
   }
 
   return sourceAssets[0]?.id ?? null;
@@ -19,8 +28,9 @@ export function resolveActiveImageId(
 
 export function resolveActiveImage(
   value: unknown,
+  selectedLayerId: string | null | undefined,
   sourceAssets: readonly ToolcraftMediaAsset[],
 ): ToolcraftMediaAsset | null {
-  const activeImageId = resolveActiveImageId(value, sourceAssets);
+  const activeImageId = resolveActiveImageId(value, selectedLayerId, sourceAssets);
   return sourceAssets.find((asset) => asset.id === activeImageId) ?? null;
 }

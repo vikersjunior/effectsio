@@ -10,6 +10,7 @@ export function EffectsCanvas(): React.JSX.Element {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const values = useToolcraftSelector((state) => state.values);
   const mediaAssets = useToolcraftSelector((state) => state.mediaAssets);
+  const selectedLayerId = useToolcraftSelector((state) => state.selectedLayerId);
 
   const sourceAssets = React.useMemo(() => getSourceImageAssets(mediaAssets), [mediaAssets]);
 
@@ -17,8 +18,8 @@ export function EffectsCanvas(): React.JSX.Element {
   const mediaUrls = useToolcraftMediaPresentationUrls(sourceAssets);
 
   const activeAsset = React.useMemo(() => {
-    return resolveActiveImage(values["source.image"], sourceAssets);
-  }, [sourceAssets, values]);
+    return resolveActiveImage(values["source.image"], selectedLayerId, sourceAssets);
+  }, [selectedLayerId, sourceAssets, values]);
 
   const sceneFrame = useToolcraftProductSceneFrame();
   const paperColor = (values["appearance.background"] as string) ?? "#121316";
