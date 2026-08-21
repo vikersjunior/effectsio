@@ -15,6 +15,56 @@
       "acceptanceIds": ["runtime.infinity-canvas"],
       "kind": "functional",
       "path": "src/app/components/EffectsCanvas.tsx"
+    },
+    {
+      "acceptanceIds": ["runtime.infinity-canvas"],
+      "kind": "functional",
+      "path": "src/app/components/active-image.ts"
+    },
+    {
+      "acceptanceIds": ["runtime.export-image-bounds"],
+      "kind": "functional",
+      "path": "src/app/effects/types.ts"
+    },
+    {
+      "acceptanceIds": ["runtime.export-image-bounds"],
+      "kind": "functional",
+      "path": "src/app/effects/canvas-utils.ts"
+    },
+    {
+      "acceptanceIds": ["runtime.export-image-bounds"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/original.ts"
+    },
+    {
+      "acceptanceIds": ["runtime.export-image-bounds"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/black-and-white.ts"
+    },
+    {
+      "acceptanceIds": ["runtime.export-image-bounds"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/duotone.ts"
+    },
+    {
+      "acceptanceIds": ["runtime.export-image-bounds"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/posterize.ts"
+    },
+    {
+      "acceptanceIds": ["runtime.export-image-bounds"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/grain.ts"
+    },
+    {
+      "acceptanceIds": ["runtime.export-image-bounds"],
+      "kind": "functional",
+      "path": "src/app/effects/registry.ts"
+    },
+    {
+      "acceptanceIds": ["runtime.export-image-bounds"],
+      "kind": "functional",
+      "path": "src/app/effects/engine.ts"
     }
   ]
 }
