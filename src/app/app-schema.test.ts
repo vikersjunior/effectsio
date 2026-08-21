@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { appSchema } from "./app-schema";
 import { validateProductAcceptanceCoverage } from "./app-acceptance";
+import { asciiEffect } from "./effects/modules/ascii";
 import { blackAndWhiteEffect } from "./effects/modules/black-and-white";
 import { duotoneEffect } from "./effects/modules/duotone";
+import { glitchEffect } from "./effects/modules/glitch";
 import { grainEffect } from "./effects/modules/grain";
 import { halftoneEffect } from "./effects/modules/halftone";
+import { lineArtEffect } from "./effects/modules/line-art";
+import { pixelateEffect } from "./effects/modules/pixelate";
 import { posterizeEffect } from "./effects/modules/posterize";
 import { screenPrintEffect } from "./effects/modules/screen-print";
 import { vintageFilmEffect } from "./effects/modules/vintage-film";
@@ -17,7 +21,7 @@ describe("appSchema", () => {
     expect(appSchema.canvas?.sizing?.mode).toBe("editable-output");
   });
 
-  it("includes foundational product sections for Image Library, Creative Effects, and Image Export", () => {
+  it("includes foundational product sections for Image Library, Creative Effects, Adjustments, Background, and Image Export", () => {
     const sections = appSchema.panels.controls?.sections ?? [];
 
     const productSections =
@@ -25,13 +29,14 @@ describe("appSchema", () => {
         (section) => !section.id.startsWith("runtime."),
       ) ?? [];
 
-    expect(productSections.length).toBe(6);
+    expect(productSections.length).toBe(7);
     expect(productSections.map((s) => s.id)).toEqual([
       "source-material",
       "effects-gallery",
       "effects-tonal",
       "effects-artistic",
-      "effects-screenprint",
+      "effects-graphic",
+      "effects-digital",
       "image-export.part-export-image-format-1k2loow",
     ]);
   });
@@ -90,20 +95,48 @@ describe("appSchema", () => {
       vintageFilmEffect.defaultParameters.contrast,
     );
 
-    const screenPrintSection = appSchema.panels.controls?.sections?.find(
-      (s) => s.id === "effects-screenprint",
+    const graphicSection = appSchema.panels.controls?.sections?.find(
+      (s) => s.id === "effects-graphic",
     );
-    expect(screenPrintSection).toBeDefined();
-    const screenPrintControls = screenPrintSection?.controls as Record<string, { defaultValue?: unknown }>;
+    expect(graphicSection).toBeDefined();
+    const graphicControls = graphicSection?.controls as Record<string, { defaultValue?: unknown }>;
 
-    expect(screenPrintControls["screenPrint.inkColor1"].defaultValue).toBe(
+    expect(graphicControls["screenPrint.inkColor1"].defaultValue).toBe(
       screenPrintEffect.defaultParameters.inkColor1,
     );
-    expect(screenPrintControls["screenPrint.inkColor2"].defaultValue).toBe(
+    expect(graphicControls["screenPrint.inkColor2"].defaultValue).toBe(
       screenPrintEffect.defaultParameters.inkColor2,
     );
-    expect(screenPrintControls["screenPrint.registrationOffset"].defaultValue).toBe(
+    expect(graphicControls["screenPrint.registrationOffset"].defaultValue).toBe(
       screenPrintEffect.defaultParameters.registrationOffset,
+    );
+    expect(graphicControls["lineArt.edgeThreshold"].defaultValue).toBe(
+      lineArtEffect.defaultParameters.edgeThreshold,
+    );
+    expect(graphicControls["lineArt.lineWeight"].defaultValue).toBe(
+      lineArtEffect.defaultParameters.lineWeight,
+    );
+
+    const digitalSection = appSchema.panels.controls?.sections?.find(
+      (s) => s.id === "effects-digital",
+    );
+    expect(digitalSection).toBeDefined();
+    const digitalControls = digitalSection?.controls as Record<string, { defaultValue?: unknown }>;
+
+    expect(digitalControls["glitch.intensity"].defaultValue).toBe(
+      glitchEffect.defaultParameters.intensity,
+    );
+    expect(digitalControls["glitch.rgbShift"].defaultValue).toBe(
+      glitchEffect.defaultParameters.rgbShift,
+    );
+    expect(digitalControls["pixelate.blockSize"].defaultValue).toBe(
+      pixelateEffect.defaultParameters.blockSize,
+    );
+    expect(digitalControls["ascii.fontSize"].defaultValue).toBe(
+      asciiEffect.defaultParameters.fontSize,
+    );
+    expect(digitalControls["ascii.characterDensity"].defaultValue).toBe(
+      asciiEffect.defaultParameters.characterDensity,
     );
   });
 

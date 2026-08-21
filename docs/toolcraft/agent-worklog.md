@@ -280,6 +280,24 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 - Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
 - Risks: Halftone and screen print math involve trigonometric projection per pixel; tested efficiently in pure Canvas 2D and verified within standard rendering bounds.
 
+### Iteration 20 — Glitch, Pixelate, Line Art, and ASCII Effects (Phase 4b)
+
+- Request: Implement the remaining effects (Glitch, Pixelate, Line Art, ASCII) in the effect registry with pure mathematical transforms, register parameter schemas and high-fidelity photographic thumbnails, expose adjustment controls in the schema, modularize schema and acceptance structures under 700 lines, and wire dynamic canvas rendering.
+- Task type: Renderer, canvas output, visual technique, pure Canvas 2D transforms, schema parameter integration, code health modularization.
+- User-visible result: Creative Effects gallery features all 12 creative presets with photographic thumbnail previews (Original, B&W, Duotone, Posterize, Grain, Halftone, Screen Print, Vintage Film, Glitch, Pixelate, Line Art, ASCII). Selecting Glitch applies chromatic RGB shift, CRT scanlines, digital noise spikes, and slice distortion. Selecting Pixelate applies mosaic grid downsampling with block size slider. Selecting Line Art applies Sobel contour extraction with threshold sensitivity, line weight, and invert polarity. Selecting ASCII renders a headless 5x7 matrix typography terminal with font size, density ramps (standard, blocks, minimal), and phosphor palettes (monochrome, RGB color, green CRT, amber CRT).
+- Source/reference checked: User prompt.
+- Reference inputs: None.
+- Docs/contracts read: workflow.md, core/runtime-boundary.md, core/performance.md, renderer-technique.md, performance.md, schema-reference.md, component-rules.md.
+- Contract rules applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage, output-export-required, controls-section-inventory-required, controls-layout-heuristics, renderer-technique-inventory.
+- View interaction intent: non-spatial; 2D image workstation.
+- Interaction ownership: Panel owns effect selection (`effect.selected`), Image Library (`source.image`), adjustment parameters, reset actions, and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
+- Decision: Implement pure mathematical transforms (`glitch.ts`, `pixelate.ts`, `line-art.ts`, `ascii.ts`) operating deterministically on `ImageData`, register them in `EFFECT_REGISTRY`, generate high-fidelity photographic thumbnail previews in `PRESET_THUMBNAILS`, organize adjustment controls into cohesive semantic sections (`effects-tonal`, `effects-artistic`, `effects-graphic`, `effects-digital`), modularize schema files and acceptance lists to maintain strict code health budgets (<700 lines), and wire canvas parameter extraction in `EffectsCanvas.tsx`.
+- Alternatives rejected: Adding DOM canvas font dependencies inside ASCII transforms (which fails in headless Node environments); keeping oversized monolithic schema files.
+- State/output mapping: `effect.selected` switches active effect; `glitch.*`, `pixelate.*`, `lineArt.*`, `ascii.*` parameter values dynamically re-render processed `ImageData` in `EffectsCanvas.tsx`; reset actions dispatch scoped `controls.resetTargets`.
+- Performance intent: ordinary-product-work
+- Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
+- Risks: None; all 12 effects run pure deterministic math on ImageData and pass unit and parameter tests.
+
 ## Evidence
 
 - Source reviewed: src/app/app-schema.ts, src/app/effects/preset-thumbnails.ts, src/app/components/EffectsCanvas.tsx, src/app/app-composition.tsx, src/app/effects/registry.ts, src/app/effects/engine.ts, src/app/effects/modules/*.ts.

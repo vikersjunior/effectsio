@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { asciiEffect } from "./modules/ascii";
 import { blackAndWhiteEffect } from "./modules/black-and-white";
 import { duotoneEffect } from "./modules/duotone";
+import { glitchEffect } from "./modules/glitch";
 import { grainEffect } from "./modules/grain";
 import { halftoneEffect } from "./modules/halftone";
+import { lineArtEffect } from "./modules/line-art";
+import { pixelateEffect } from "./modules/pixelate";
 import { posterizeEffect } from "./modules/posterize";
 import { screenPrintEffect } from "./modules/screen-print";
 import { vintageFilmEffect } from "./modules/vintage-film";
@@ -11,7 +15,7 @@ import { createToolcraftState } from "@/toolcraft/runtime/state/create-template-
 import { appSchema } from "../app-schema";
 
 describe("Effect Parameters & Rendering", () => {
-  function createSampleImageData(width = 8, height = 8): ImageData {
+  function createSampleImageData(width = 16, height = 16): ImageData {
     const data = new Uint8ClampedArray(width * height * 4);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
@@ -183,6 +187,72 @@ describe("Effect Parameters & Rendering", () => {
     expect(defaultOutput.data.length).toBe(16 * 16 * 4);
     expect(heavyFadeOutput.data).not.toEqual(defaultOutput.data);
     expect(strongVignetteOutput.data).not.toEqual(defaultOutput.data);
+  });
+
+  it("modifies Glitch output with rgbShift, scanlines, and distortion", () => {
+    const sample = createSampleImageData(16, 16);
+    const defaultOutput = glitchEffect.render(sample, {
+      distortion: 15,
+      intensity: 40,
+      noise: 20,
+      rgbShift: 8,
+      scanlines: 30,
+    });
+
+    const highShiftOutput = glitchEffect.render(sample, {
+      distortion: 15,
+      intensity: 40,
+      noise: 20,
+      rgbShift: 24,
+      scanlines: 30,
+    });
+
+    expect(defaultOutput.data.length).toBe(16 * 16 * 4);
+    expect(highShiftOutput.data).not.toEqual(defaultOutput.data);
+  });
+
+  it("modifies Pixelate output with blockSize", () => {
+    const sample = createSampleImageData(16, 16);
+    const block4Output = pixelateEffect.render(sample, { blockSize: 4 });
+    const block8Output = pixelateEffect.render(sample, { blockSize: 8 });
+
+    expect(block4Output.data).not.toEqual(block8Output.data);
+  });
+
+  it("modifies Line Art output with edgeThreshold, lineWeight, and invert", () => {
+    const sample = createSampleImageData(16, 16);
+    const defaultOutput = lineArtEffect.render(sample, {
+      edgeThreshold: 45,
+      invert: false,
+      lineWeight: 1.5,
+    });
+
+    const invertedOutput = lineArtEffect.render(sample, {
+      edgeThreshold: 45,
+      invert: true,
+      lineWeight: 1.5,
+    });
+
+    expect(defaultOutput.data.length).toBe(16 * 16 * 4);
+    expect(invertedOutput.data).not.toEqual(defaultOutput.data);
+  });
+
+  it("modifies ASCII output with fontSize and colorMode", () => {
+    const sample = createSampleImageData(16, 16);
+    const monoOutput = asciiEffect.render(sample, {
+      characterDensity: "standard",
+      colorMode: "monochrome",
+      fontSize: 10,
+    });
+
+    const greenOutput = asciiEffect.render(sample, {
+      characterDensity: "standard",
+      colorMode: "greenPhosphor",
+      fontSize: 10,
+    });
+
+    expect(monoOutput.data.length).toBe(16 * 16 * 4);
+    expect(greenOutput.data).not.toEqual(monoOutput.data);
   });
 
   it("scopes controls.resetTargets to screen print targets without affecting other values", () => {

@@ -17,6 +17,88 @@
       "path": "src/app/app-identity.ts"
     },
     {
+      "acceptanceIds": ["control.source-image"],
+      "kind": "functional",
+      "path": "src/app/schema/source-material-section.ts"
+    },
+    {
+      "acceptanceIds": ["control.effect-selected"],
+      "kind": "functional",
+      "path": "src/app/schema/effects-gallery-section.ts"
+    },
+    {
+      "acceptanceIds": [
+        "control.bw-contrast",
+        "control.bw-warmth",
+        "control.duotone-shadow-color",
+        "control.duotone-highlight-color",
+        "control.duotone-contrast",
+        "control.posterize-levels",
+        "control.grain-intensity",
+        "control.tonal-reset"
+      ],
+      "kind": "functional",
+      "path": "src/app/schema/effects-tonal-section.ts"
+    },
+    {
+      "acceptanceIds": [
+        "control.halftone-dot-size",
+        "control.halftone-contrast",
+        "control.halftone-angle",
+        "control.halftone-density",
+        "control.halftone-brightness",
+        "control.vintage-film-grain",
+        "control.vintage-film-fade",
+        "control.vintage-film-contrast",
+        "control.vintage-film-saturation",
+        "control.vintage-film-vignette"
+      ],
+      "kind": "functional",
+      "path": "src/app/schema/effects-artistic-section.ts"
+    },
+    {
+      "acceptanceIds": [
+        "control.screen-print-ink-color1",
+        "control.screen-print-ink-color2",
+        "control.screen-print-ink-density",
+        "control.screen-print-halftone-size",
+        "control.screen-print-grain",
+        "control.screen-print-contrast",
+        "control.screen-print-registration-offset",
+        "control.line-art-edge-threshold",
+        "control.line-art-line-weight",
+        "control.line-art-invert"
+      ],
+      "kind": "functional",
+      "path": "src/app/schema/effects-graphic-section.ts"
+    },
+    {
+      "acceptanceIds": [
+        "control.glitch-intensity",
+        "control.glitch-rgb-shift",
+        "control.glitch-noise",
+        "control.glitch-scanlines",
+        "control.glitch-distortion",
+        "control.pixelate-block-size",
+        "control.ascii-font-size",
+        "control.ascii-character-density",
+        "control.ascii-color-mode",
+        "control.digital-reset"
+      ],
+      "kind": "functional",
+      "path": "src/app/schema/effects-digital-section.ts"
+    },
+    {
+      "acceptanceIds": ["control.export-include-background", "control.appearance-background"],
+      "kind": "functional",
+      "path": "src/app/schema/background-section.ts"
+    },
+    {
+      "acceptanceIds": ["control.export-image-format", "control.export-image-resolution", "control.output-export-image"],
+      "kind": "functional",
+      "path": "src/app/schema/image-export-section.ts"
+    },
+    {
       "acceptanceIds": ["control.effect-selected"],
       "kind": "functional",
       "path": "src/app/components/EffectsCanvas.tsx"
@@ -80,6 +162,26 @@
       "acceptanceIds": ["control.effect-selected"],
       "kind": "functional",
       "path": "src/app/effects/modules/vintage-film.ts"
+    },
+    {
+      "acceptanceIds": ["control.effect-selected"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/glitch.ts"
+    },
+    {
+      "acceptanceIds": ["control.effect-selected"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/pixelate.ts"
+    },
+    {
+      "acceptanceIds": ["control.effect-selected"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/line-art.ts"
+    },
+    {
+      "acceptanceIds": ["control.effect-selected"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/ascii.ts"
     },
     {
       "acceptanceIds": ["control.effect-selected"],

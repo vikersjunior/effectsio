@@ -22,9 +22,9 @@ function createSampleImageData(width = 8, height = 8): ImageData {
 }
 
 describe("Effect Registry & Engine Architecture", () => {
-  it("registers effects in the registry", () => {
+  it("registers all 12 effects in the registry", () => {
     const effects = getAllEffects();
-    expect(effects.length).toBeGreaterThanOrEqual(8);
+    expect(effects.length).toBe(12);
 
     const ids = effects.map((e) => e.id);
     expect(ids).toContain("original");
@@ -35,6 +35,10 @@ describe("Effect Registry & Engine Architecture", () => {
     expect(ids).toContain("halftone");
     expect(ids).toContain("screen-print");
     expect(ids).toContain("vintage-film");
+    expect(ids).toContain("glitch");
+    expect(ids).toContain("pixelate");
+    expect(ids).toContain("line-art");
+    expect(ids).toContain("ascii");
   });
 
   it("provides valid metadata and parameter schemas for every registered effect", () => {
@@ -61,6 +65,10 @@ describe("Effect Registry & Engine Architecture", () => {
     expect(hasEffect("halftone")).toBe(true);
     expect(hasEffect("screen-print")).toBe(true);
     expect(hasEffect("vintage-film")).toBe(true);
+    expect(hasEffect("glitch")).toBe(true);
+    expect(hasEffect("pixelate")).toBe(true);
+    expect(hasEffect("line-art")).toBe(true);
+    expect(hasEffect("ascii")).toBe(true);
     expect(hasEffect("non-existent")).toBe(false);
 
     const bw = getEffectDefinition("black-and-white");
@@ -118,5 +126,21 @@ describe("Effect Registry & Engine Architecture", () => {
     // 8. Vintage Film
     const vintageFilmOut = applyEffect(sample, "vintage-film");
     expect(vintageFilmOut.data.length).toBe(sample.data.length);
+
+    // 9. Glitch
+    const glitchOut = applyEffect(sample, "glitch", { intensity: 50, rgbShift: 2 });
+    expect(glitchOut.data.length).toBe(sample.data.length);
+
+    // 10. Pixelate
+    const pixelateOut = applyEffect(sample, "pixelate", { blockSize: 4 });
+    expect(pixelateOut.data.length).toBe(sample.data.length);
+
+    // 11. Line Art
+    const lineArtOut = applyEffect(sample, "line-art", { edgeThreshold: 20, lineWeight: 2 });
+    expect(lineArtOut.data.length).toBe(sample.data.length);
+
+    // 12. ASCII Art
+    const asciiOut = applyEffect(sample, "ascii", { fontSize: 6 });
+    expect(asciiOut.data.length).toBe(sample.data.length);
   });
 });

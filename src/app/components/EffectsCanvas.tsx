@@ -74,6 +74,30 @@ export function EffectsCanvas(): React.JSX.Element {
           saturation: values["vintageFilm.saturation"],
           vignette: values["vintageFilm.vignette"],
         };
+      case "glitch":
+        return {
+          distortion: values["glitch.distortion"],
+          intensity: values["glitch.intensity"],
+          noise: values["glitch.noise"],
+          rgbShift: values["glitch.rgbShift"],
+          scanlines: values["glitch.scanlines"],
+        };
+      case "pixelate":
+        return {
+          blockSize: values["pixelate.blockSize"],
+        };
+      case "line-art":
+        return {
+          edgeThreshold: values["lineArt.edgeThreshold"],
+          invert: values["lineArt.invert"],
+          lineWeight: values["lineArt.lineWeight"],
+        };
+      case "ascii":
+        return {
+          characterDensity: values["ascii.characterDensity"],
+          colorMode: values["ascii.colorMode"],
+          fontSize: values["ascii.fontSize"],
+        };
       default:
         return undefined;
     }

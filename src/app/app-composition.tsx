@@ -69,20 +69,41 @@ export const appComposition: ToolcraftAppComposition = {
       return;
     }
 
-    if (actionValue === "resetScreenPrintEffect") {
-      dispatch({
-        label: "Reset screen print parameters",
-        targets: [
-          "screenPrint.inkColor1",
-          "screenPrint.inkColor2",
-          "screenPrint.inkDensity",
-          "screenPrint.halftoneSize",
-          "screenPrint.grain",
-          "screenPrint.contrast",
-          "screenPrint.registrationOffset",
-        ],
-        type: "controls.resetTargets",
-      });
+    if (actionValue === "resetDigitalEffect") {
+      const selectedEffect = (state.values["effect.selected"] as string) ?? "original";
+      let targetsToReset: string[] = [];
+
+      switch (selectedEffect) {
+        case "glitch":
+          targetsToReset = [
+            "glitch.intensity",
+            "glitch.rgbShift",
+            "glitch.noise",
+            "glitch.scanlines",
+            "glitch.distortion",
+          ];
+          break;
+        case "pixelate":
+          targetsToReset = ["pixelate.blockSize"];
+          break;
+        case "ascii":
+          targetsToReset = [
+            "ascii.fontSize",
+            "ascii.characterDensity",
+            "ascii.colorMode",
+          ];
+          break;
+        default:
+          break;
+      }
+
+      if (targetsToReset.length > 0) {
+        dispatch({
+          label: "Reset digital effect parameters",
+          targets: targetsToReset,
+          type: "controls.resetTargets",
+        });
+      }
     }
   },
 };
