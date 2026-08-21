@@ -39,6 +39,11 @@
     {
       "acceptanceIds": ["control.effect-selected"],
       "kind": "functional",
+      "path": "src/app/effects/preset-thumbnails.ts"
+    },
+    {
+      "acceptanceIds": ["control.effect-selected"],
+      "kind": "functional",
       "path": "src/app/effects/modules/original.ts"
     },
     {

@@ -46,9 +46,9 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 ### Controls
 
-- Decision: Standalone Image Library section (`source-material`), unified Creative Effects section (`effects-section`) with Gallery/Controls tabs and conditional per-effect sliders/color pickers, and standard export controls.
-- Reason: Keeps the Image Library permanently accessible while organizing effect selection and fine-tuning parameters into clean workflow tabs.
-- Evidence: `src/app/app-schema.ts`, `src/app/app-acceptance-data.ts`.
+- Decision: Standalone Image Library section (`source-material`), unified Creative Effects section (`effects-section`) with Gallery/Controls tabs and conditional per-effect sliders/color pickers, and standard export controls. Real-photo preset thumbnails for each effect algorithm in the gallery picker.
+- Reason: Keeps the Image Library permanently accessible while organizing effect selection and fine-tuning parameters into clean workflow tabs with photorealistic effect preview cards.
+- Evidence: `src/app/app-schema.ts`, `src/app/effects/preset-thumbnails.ts`, `src/app/app-acceptance-data.ts`.
 
 ### Export
 
@@ -226,9 +226,27 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 - Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
 - Risks: None; unit and acceptance tests cover touched surfaces.
 
+### Iteration 17 — Real-Photo Preset Thumbnails for Effect Gallery
+
+- Request: Replace vector/illustration effect thumbnails in the gallery with real photo thumbnails showing each effect algorithm applied directly to a reference photograph.
+- Task type: Photorealistic preset thumbnail generation, effect module processing, schema integration.
+- User-visible result: The 5 effect cards in the Creative Effects Gallery show high-fidelity photographic portrait thumbnails with each effect transformation rendered on the real image (Original photo, Black & White monochrome, Duotone blue/navy mapping, Posterize color quantization, and Film Grain noise texture) rather than geometric vector shapes.
+- Source/reference checked: User prompt.
+- Reference inputs: None.
+- Docs/contracts read: workflow.md, core/control-selection.md, schema-reference.md, component-rules.md.
+- Contract rules applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage.
+- View interaction intent: non-spatial; 2D image workstation.
+- Interaction ownership: Panel owns effect selection (`effect.selected`), effect tab navigation (`effect.tab`), image library management (`source.image`), and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
+- Decision: Process a reference studio portrait photo through the 5 pure effect modules (`original`, `black-and-white`, `duotone`, `posterize`, `grain`) to generate exact 1:1 photorealistic preset thumbnail PNG data URLs in `src/app/effects/preset-thumbnails.ts` and wire them into `appSchema`.
+- Alternatives rejected: Using external stock photo URLs that could break offline or using non-matching random images per card.
+- State/output mapping: `PRESET_THUMBNAILS` -> `appSchema.panels.controls.sections['effects-section'].controls['effect.selected'].items` -> Toolcraft imagePicker UI.
+- Performance intent: ordinary-product-work
+- Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
+- Risks: None; all thumbnails are static data URLs compiled into product modules.
+
 ## Evidence
 
-- Source reviewed: src/app/app-schema.ts, src/app/components/EffectsCanvas.tsx, src/app/components/active-image.ts, src/app/effects/registry.ts, src/app/effects/engine.ts, src/app/effects/types.ts, src/app/effects/canvas-utils.ts, src/app/effects/modules/*.ts.
+- Source reviewed: src/app/app-schema.ts, src/app/effects/preset-thumbnails.ts, src/app/components/EffectsCanvas.tsx, src/app/components/active-image.ts, src/app/effects/registry.ts, src/app/effects/engine.ts, src/app/effects/types.ts, src/app/effects/canvas-utils.ts, src/app/effects/modules/*.ts.
 - Contract applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage, output-export-required, renderer-technique-inventory.
 
 ## Verification

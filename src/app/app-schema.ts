@@ -1,5 +1,6 @@
 import { defineToolcraft } from "@/toolcraft/runtime";
 import { appIdentity } from "./app-identity";
+import { PRESET_THUMBNAILS } from "./effects/preset-thumbnails";
 
 export const appSchema = defineToolcraft({
   canvas: {
@@ -64,28 +65,28 @@ export const appSchema = defineToolcraft({
               description: "Choose a visual effect to apply to the active image.",
               items: [
                 {
-                  alt: "Original (Unaltered image)",
-                  src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%231e293b'/><circle cx='50' cy='50' r='28' fill='%2338bdf8'/><path d='M30 70 L50 45 L70 70 Z' fill='%230f172a'/><circle cx='62' cy='38' r='6' fill='%23facc15'/></svg>",
+                  alt: "Original (Unaltered photo)",
+                  src: PRESET_THUMBNAILS.original,
                   value: "original",
                 },
                 {
                   alt: "Black & White (Monochrome)",
-                  src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%231e293b'/><circle cx='50' cy='50' r='28' fill='%230f172a'/><path d='M50 22 A28 28 0 0 1 50 78 Z' fill='%23f8fafc'/></svg>",
+                  src: PRESET_THUMBNAILS["black-and-white"],
                   value: "black-and-white",
                 },
                 {
                   alt: "Duotone (Navy to Cyan)",
-                  src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='duo' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%230f172a'/><stop offset='100%25' stop-color='%2338bdf8'/></linearGradient></defs><rect width='100' height='100' fill='url(%23duo)'/><circle cx='50' cy='50' r='20' fill='%2338bdf8' opacity='0.8'/></svg>",
+                  src: PRESET_THUMBNAILS.duotone,
                   value: "duotone",
                 },
                 {
                   alt: "Posterize (Color Quantization)",
-                  src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='33.3' fill='%23ef4444'/><rect y='33.3' width='100' height='33.3' fill='%233b82f6'/><rect y='66.6' width='100' height='33.4' fill='%23eab308'/></svg>",
+                  src: PRESET_THUMBNAILS.posterize,
                   value: "posterize",
                 },
                 {
                   alt: "Film Grain (Noise Texture)",
-                  src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23334155'/><circle cx='25' cy='25' r='3' fill='%23f8fafc' opacity='0.6'/><circle cx='65' cy='30' r='2' fill='%230f172a' opacity='0.7'/><circle cx='45' cy='60' r='4' fill='%23f8fafc' opacity='0.5'/><circle cx='75' cy='75' r='2.5' fill='%230f172a' opacity='0.6'/><circle cx='20' cy='70' r='3' fill='%23f8fafc' opacity='0.4'/></svg>",
+                  src: PRESET_THUMBNAILS.grain,
                   value: "grain",
                 },
               ],
