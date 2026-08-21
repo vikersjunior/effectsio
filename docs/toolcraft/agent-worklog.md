@@ -16,9 +16,9 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 ### Renderer
 
-- Decision: Use Canvas 2D pixel manipulation for image rendering and effect processing.
-- Reason: The 5 foundational effects (Original, Black & White, Duotone, Posterize, Grain) operate on direct image pixel buffers (ImageData) without requiring complex WebGL shaders or GPU pipeline registration.
-- Evidence: `src/app/effects/engine.ts`, `src/app/effects/registry.ts`, `src/app/effects/modules/*.ts`, `src/app/effects/registry.test.ts`.
+- Decision: Canvas 2D pixel manipulation for active image rendering and real-time effect processing.
+- Reason: The 5 foundational effects (Original, Black & White, Duotone, Posterize, Grain) operate on direct image pixel buffers (ImageData) using pure transformation kernels drawn to the main canvas.
+- Evidence: `src/app/effects/engine.ts`, `src/app/effects/registry.ts`, `src/app/effects/modules/*.ts`, `src/app/components/EffectsCanvas.tsx`.
 
 ### View Interaction
 
@@ -28,7 +28,7 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 ### Interaction Ownership
 
-- Decision: Panel owns image library upload and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
+- Decision: Panel owns workstation view switcher (`panel.activeView`), creative effect selection (`effect.selected`), image library management (`source.image`), and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
 - Reason: Separates global workspace navigation (toolbar) from product state and source material management (panel).
 - Evidence: `src/app/app-schema.ts`, `src/app/app-acceptance-data.ts`.
 
@@ -46,20 +46,20 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 ### Controls
 
-- Decision: Standard Toolcraft schema controls for background configuration and export settings; no user-facing effect controls yet for this architecture phase.
-- Reason: The effect engine is built headlessly in this phase to establish clean registry and data-flow contracts prior to UI wiring.
-- Evidence: `src/app/app-schema.ts`, `src/app/effects/types.ts`.
+- Decision: Built-in Toolcraft `tabs` control for view navigation, `imagePicker` for effect selection across 5 foundational algorithms, `fileDrop` for image upload/library, and standard export controls.
+- Reason: Single-panel layout where `tabs` controls view switching and `imagePicker` provides a visual grid of effect algorithms without custom UI components.
+- Evidence: `src/app/app-schema.ts`, `src/app/app-acceptance-data.ts`.
 
 ### Export
 
 - Decision: Deterministic Canvas 2D image export through Toolcraft runtime export renderer.
-- Reason: Export renders the active image frame at exact target dimensions and returns standard image artifacts.
+- Reason: Export renders the active image frame at exact target dimensions with background fill option.
 - Evidence: `src/app/app-composition.tsx`.
 
 ### Performance
 
 - Decision: Functional targeted delivery without measured performance.
-- Reason: Initial architecture delivery establishing pure data structures and pure pixel transformation functions.
+- Reason: Pure pixel transformation kernels execute on offscreen canvases with responsive Canvas 2D drawing.
 - Evidence: `src/app/effects/registry.test.ts`, `src/app/app-verification-impact.json`.
 
 ## Decision Trail
@@ -189,6 +189,24 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 - Performance intent: ordinary-product-work
 - Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
 - Risks: None; effect modules are isolated pure functions verified with automated tests.
+
+### Iteration 15 — Effect Selection UI with Built-in Tabs and ImagePicker Controls
+
+- Request: Add effect selection to the controls panel using the effect registry built in Phase 1. Add a top-of-panel tabs control ("Effects" and "Library & Controls"), an ImagePicker grid for the 5 effects in the registry, and wire EffectsCanvas.tsx to apply the selected effect in real time to the active image.
+- Task type: Schema, controls, defaults, persistence, actions, canvas rendering integration.
+- User-visible result: The single controls panel features top view switcher tabs. Selecting "Effects" reveals the Creative Effects grid with 5 foundational visual options (Original, Black & White, Duotone, Posterize, Grain). Selecting any effect immediately transforms the active image rendered on the canvas. Selecting "Library & Controls" reveals the Image Library file drop and management controls.
+- Source/reference checked: User prompt.
+- Reference inputs: None.
+- Docs/contracts read: workflow.md, core/control-selection.md, core/layout.md, schema-reference.md, component-rules.md, acceptance-testing.md.
+- Contract rules applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage, output-export-required, controls-section-inventory-required, controls-layout-heuristics.
+- View interaction intent: non-spatial; 2D image workstation.
+- Interaction ownership: Panel owns workstation view switcher (`panel.activeView`), effect picker (`effect.selected`), image library upload/selection (`source.image`), and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
+- Decision: Implement top `tabs` control (`panel.activeView`) and built-in `imagePicker` (`effect.selected`) inside a unified Workstation section with conditional control applicability for view gating. Integrate `EffectsCanvas.tsx` to read `effect.selected` and run `applyEffect` on an offscreen canvas before drawing to the main canvas.
+- Alternatives rejected: Creating custom tab bar components, multi-column panel splits, or hardcoding UI styles.
+- State/output mapping: `state.values["panel.activeView"]` gates section visibility; `state.values["effect.selected"]` -> `applyEffect` -> Canvas 2D image output.
+- Performance intent: ordinary-product-work
+- Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
+- Risks: Dynamic image-picker previews constrained by built-in static schema item contract; addressed with high-contrast semantic vector visual previews per effect.
 
 ## Evidence
 

@@ -4,6 +4,7 @@ import {
   useToolcraftProductSceneFrame,
   useToolcraftSelector,
 } from "@/toolcraft/runtime/react";
+import { applyEffect } from "../effects/engine";
 import { getSourceImageAssets, resolveActiveImage } from "./active-image";
 
 export function EffectsCanvas(): React.JSX.Element {
@@ -23,6 +24,7 @@ export function EffectsCanvas(): React.JSX.Element {
 
   const sceneFrame = useToolcraftProductSceneFrame();
   const paperColor = (values["appearance.background"] as string) ?? "#121316";
+  const selectedEffect = (values["effect.selected"] as string) ?? "original";
 
   // Derive exact media presentation URL for the currently active asset
   const activeMediaUrl = React.useMemo(() => {
@@ -79,26 +81,48 @@ export function EffectsCanvas(): React.JSX.Element {
       let offsetY = 0;
 
       if (imgAspect > canvasAspect) {
-        drawW = height * imgAspect;
-        offsetX = (width - drawW) / 2;
-      } else {
+        drawW = width;
         drawH = width / imgAspect;
         offsetY = (height - drawH) / 2;
+      } else {
+        drawH = height;
+        drawW = height * imgAspect;
+        offsetX = (width - drawW) / 2;
       }
 
-      ctx.drawImage(loadedImage, offsetX, offsetY, drawW, drawH);
+      const targetW = Math.max(1, Math.round(drawW));
+      const targetH = Math.max(1, Math.round(drawH));
+
+      if (selectedEffect === "original") {
+        ctx.drawImage(loadedImage, offsetX, offsetY, targetW, targetH);
+      } else {
+        const offscreen = document.createElement("canvas");
+        offscreen.width = targetW;
+        offscreen.height = targetH;
+        const offCtx = offscreen.getContext("2d", { willReadFrequently: true });
+
+        if (offCtx) {
+          offCtx.drawImage(loadedImage, 0, 0, targetW, targetH);
+          const rawData = offCtx.getImageData(0, 0, targetW, targetH);
+          const processed = applyEffect(rawData, selectedEffect);
+          offCtx.putImageData(processed, 0, 0);
+          ctx.drawImage(offscreen, offsetX, offsetY);
+        } else {
+          ctx.drawImage(loadedImage, offsetX, offsetY, targetW, targetH);
+        }
+      }
     }
-  }, [loadedImage, paperColor, sceneFrame]);
+  }, [loadedImage, paperColor, sceneFrame, selectedEffect]);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+    <div style={{ height: "100%", overflow: "hidden", position: "relative", width: "100%" }}>
       <canvas
         ref={canvasRef}
         style={{
           display: "block",
-          width: "100%",
           height: "100%",
           objectFit: "contain",
+          width: "100%",
         }}
       />
     </div>

@@ -10,7 +10,7 @@ describe("appSchema", () => {
     expect(appSchema.canvas?.sizing?.mode).toBe("editable-output");
   });
 
-  it("includes foundational product sections for Image Library and Image Export", () => {
+  it("includes foundational product sections for Workstation and Image Export", () => {
     const sections = appSchema.panels.controls?.sections ?? [];
 
     const productSections =
@@ -20,7 +20,7 @@ describe("appSchema", () => {
 
     expect(productSections.length).toBe(2);
     expect(productSections.map((s) => s.id)).toEqual([
-      "source-material",
+      "workstation",
       "image-export.part-export-image-format-1k2loow",
     ]);
   });
@@ -28,7 +28,7 @@ describe("appSchema", () => {
   it("declares production reload coverage for EffectsIO", () => {
     expect(
       appSchema.panels.controls?.sections?.some(
-        (section) => section.id === "source-material",
+        (section) => section.id === "workstation",
       ),
     ).toBe(true);
     if (appSchema.persistence.storage === "localStorage") {
