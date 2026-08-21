@@ -34,24 +34,26 @@ export const appComposition: ToolcraftAppComposition = {
       return;
     }
 
-    if (actionValue === "resetEffect") {
+    if (actionValue === "resetTonalEffect") {
       const selectedEffect = (state.values["effect.selected"] as string) ?? "original";
       let targetsToReset: string[] = [];
 
       switch (selectedEffect) {
+        case "black-and-white":
+          targetsToReset = ["bw.contrast", "bw.warmth"];
+          break;
         case "duotone":
           targetsToReset = [
-            "effect.duotone.shadowColor",
-            "effect.duotone.highlightColor",
-            "effect.duotone.contrast",
-            "effect.duotone.exposure",
+            "duotone.shadowColor",
+            "duotone.highlightColor",
+            "duotone.contrast",
           ];
           break;
         case "posterize":
-          targetsToReset = ["effect.posterize.levels"];
+          targetsToReset = ["posterize.levels"];
           break;
         case "grain":
-          targetsToReset = ["effect.grain.intensity"];
+          targetsToReset = ["grain.intensity"];
           break;
         default:
           break;
@@ -59,11 +61,28 @@ export const appComposition: ToolcraftAppComposition = {
 
       if (targetsToReset.length > 0) {
         dispatch({
-          label: "Reset effect parameters",
+          label: "Reset tonal effect parameters",
           targets: targetsToReset,
           type: "controls.resetTargets",
         });
       }
+      return;
+    }
+
+    if (actionValue === "resetScreenPrintEffect") {
+      dispatch({
+        label: "Reset screen print parameters",
+        targets: [
+          "screenPrint.inkColor1",
+          "screenPrint.inkColor2",
+          "screenPrint.inkDensity",
+          "screenPrint.halftoneSize",
+          "screenPrint.grain",
+          "screenPrint.contrast",
+          "screenPrint.registrationOffset",
+        ],
+        type: "controls.resetTargets",
+      });
     }
   },
 };

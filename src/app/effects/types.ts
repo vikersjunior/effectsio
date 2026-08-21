@@ -3,7 +3,14 @@ export type EffectId =
   | "black-and-white"
   | "duotone"
   | "posterize"
-  | "grain";
+  | "grain"
+  | "halftone"
+  | "screen-print"
+  | "vintage-film"
+  | "glitch"
+  | "pixelate"
+  | "line-art"
+  | "ascii";
 
 export type EffectCategory =
   | "artistic"
@@ -31,12 +38,13 @@ export interface EffectParameterSchema {
   options?: EffectParameterOption[];
 }
 
-export interface EffectDefinition {
+export interface EffectDefinition<TParams = Record<string, unknown>> {
   id: EffectId;
   name: string;
   category: EffectCategory;
   description: string;
   parameters: readonly EffectParameterSchema[];
+  parameterSchema?: readonly EffectParameterSchema[];
   defaultParameters: Record<string, unknown>;
-  render: (imageData: ImageData, parameters: Record<string, unknown>) => ImageData;
+  render: (imageData: ImageData, parameters?: TParams) => ImageData;
 }

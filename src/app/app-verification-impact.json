@@ -69,6 +69,21 @@
     {
       "acceptanceIds": ["control.effect-selected"],
       "kind": "functional",
+      "path": "src/app/effects/modules/halftone.ts"
+    },
+    {
+      "acceptanceIds": ["control.effect-selected"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/screen-print.ts"
+    },
+    {
+      "acceptanceIds": ["control.effect-selected"],
+      "kind": "functional",
+      "path": "src/app/effects/modules/vintage-film.ts"
+    },
+    {
+      "acceptanceIds": ["control.effect-selected"],
+      "kind": "functional",
       "path": "src/app/effects/registry.ts"
     },
     {

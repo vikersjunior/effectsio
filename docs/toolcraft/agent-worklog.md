@@ -262,6 +262,24 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 - Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
 - Risks: None; unit and acceptance tests cover touched surfaces.
 
+### Iteration 19 — Halftone, Screen Print, and Vintage Film Effects (Phase 4a)
+
+- Request: Implement Halftone, Screen Print, and Vintage Film effects in the registry with parameter schemas, expose per-effect tuning controls in the schema, update real photographic preset thumbnails, and wire real-time Canvas 2D rendering.
+- Task type: Renderer, canvas output, visual technique, pure Canvas 2D transforms, schema parameter integration.
+- User-visible result: Creative Effects gallery features Halftone, Screen Print, and Vintage Film presets with real-photo thumbnails. Selecting Halftone applies a rotated antialiased dot-matrix print effect with Dot Size, Contrast, Pattern Angle, Density, and Brightness controls. Selecting Screen Print applies a multi-plate serigraphy treatment with Primary/Secondary Ink Colors, Density, Halftone Size, Paper Grain, Contrast, Registration Offset, and Reset action. Selecting Vintage Film applies analog film emulation with Grain, Faded Blacks, Contrast, Saturation, and Vignette.
+- Source/reference checked: User prompt.
+- Reference inputs: None.
+- Docs/contracts read: workflow.md, core/runtime-boundary.md, core/performance.md, renderer-technique.md, performance.md, schema-reference.md, component-rules.md.
+- Contract rules applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage, output-export-required, controls-section-inventory-required, controls-layout-heuristics, renderer-technique-inventory.
+- View interaction intent: non-spatial; 2D image workstation.
+- Interaction ownership: Panel owns effect selection (`effect.selected`), Image Library (`source.image`), adjustment parameters, reset actions, and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
+- Decision: Implement pure Canvas 2D mathematical transform modules (`halftone.ts`, `screen-print.ts`, `vintage-film.ts`) with deterministic parameter resolution, register them in `EFFECT_REGISTRY`, generate high-fidelity photographic thumbnail previews in `PRESET_THUMBNAILS`, structure adjustment controls into semantic sections with conditional visibility, and wire dynamic canvas rendering in `EffectsCanvas.tsx`.
+- Alternatives rejected: Adding WebGL shaders prematurely before Phase 8 performance profiling; using non-photographic placeholder thumbnails.
+- State/output mapping: `effect.selected` switches active effect; `halftone.*`, `screenPrint.*`, `vintageFilm.*` parameter values dynamically re-render processed `ImageData` in `EffectsCanvas.tsx`; reset actions dispatch scoped `controls.resetTargets`.
+- Performance intent: ordinary-product-work
+- Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
+- Risks: Halftone and screen print math involve trigonometric projection per pixel; tested efficiently in pure Canvas 2D and verified within standard rendering bounds.
+
 ## Evidence
 
 - Source reviewed: src/app/app-schema.ts, src/app/effects/preset-thumbnails.ts, src/app/components/EffectsCanvas.tsx, src/app/app-composition.tsx, src/app/effects/registry.ts, src/app/effects/engine.ts, src/app/effects/modules/*.ts.

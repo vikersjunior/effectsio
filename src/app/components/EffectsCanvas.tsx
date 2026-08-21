@@ -29,20 +29,50 @@ export function EffectsCanvas(): React.JSX.Element {
   // Build resolved parameters for the currently active effect
   const effectParameters = React.useMemo(() => {
     switch (selectedEffect) {
+      case "black-and-white":
+        return {
+          contrast: values["bw.contrast"],
+          warmth: values["bw.warmth"],
+        };
       case "duotone":
         return {
-          contrast: values["effect.duotone.contrast"],
-          exposure: values["effect.duotone.exposure"],
-          highlightColor: values["effect.duotone.highlightColor"],
-          shadowColor: values["effect.duotone.shadowColor"],
+          contrast: values["duotone.contrast"],
+          highlightColor: values["duotone.highlightColor"],
+          shadowColor: values["duotone.shadowColor"],
         };
       case "posterize":
         return {
-          levels: values["effect.posterize.levels"],
+          levels: values["posterize.levels"],
         };
       case "grain":
         return {
-          intensity: values["effect.grain.intensity"],
+          intensity: values["grain.intensity"],
+        };
+      case "halftone":
+        return {
+          angle: values["halftone.angle"],
+          brightness: values["halftone.brightness"],
+          contrast: values["halftone.contrast"],
+          density: values["halftone.density"],
+          dotSize: values["halftone.dotSize"],
+        };
+      case "screen-print":
+        return {
+          contrast: values["screenPrint.contrast"],
+          grain: values["screenPrint.grain"],
+          halftoneSize: values["screenPrint.halftoneSize"],
+          inkColor1: values["screenPrint.inkColor1"],
+          inkColor2: values["screenPrint.inkColor2"],
+          inkDensity: values["screenPrint.inkDensity"],
+          registrationOffset: values["screenPrint.registrationOffset"],
+        };
+      case "vintage-film":
+        return {
+          contrast: values["vintageFilm.contrast"],
+          fade: values["vintageFilm.fade"],
+          grain: values["vintageFilm.grain"],
+          saturation: values["vintageFilm.saturation"],
+          vignette: values["vintageFilm.vignette"],
         };
       default:
         return undefined;

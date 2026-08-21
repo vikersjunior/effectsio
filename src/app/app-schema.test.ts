@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { appSchema } from "./app-schema";
 import { validateProductAcceptanceCoverage } from "./app-acceptance";
+import { blackAndWhiteEffect } from "./effects/modules/black-and-white";
 import { duotoneEffect } from "./effects/modules/duotone";
 import { grainEffect } from "./effects/modules/grain";
+import { halftoneEffect } from "./effects/modules/halftone";
 import { posterizeEffect } from "./effects/modules/posterize";
+import { screenPrintEffect } from "./effects/modules/screen-print";
+import { vintageFilmEffect } from "./effects/modules/vintage-film";
 
 describe("appSchema", () => {
   it("publishes the EffectsIO product app contract", () => {
@@ -21,38 +25,85 @@ describe("appSchema", () => {
         (section) => !section.id.startsWith("runtime."),
       ) ?? [];
 
-    expect(productSections.length).toBe(3);
+    expect(productSections.length).toBe(6);
     expect(productSections.map((s) => s.id)).toEqual([
       "source-material",
-      "effects-section",
+      "effects-gallery",
+      "effects-tonal",
+      "effects-artistic",
+      "effects-screenprint",
       "image-export.part-export-image-format-1k2loow",
     ]);
   });
 
   it("ensures schema default values match effect registry default parameters", () => {
-    const effectsSection = appSchema.panels.controls?.sections?.find(
-      (s) => s.id === "effects-section",
+    const tonalSection = appSchema.panels.controls?.sections?.find(
+      (s) => s.id === "effects-tonal",
     );
-    expect(effectsSection).toBeDefined();
-    const controls = effectsSection?.controls as Record<string, { defaultValue?: unknown }>;
+    expect(tonalSection).toBeDefined();
+    const tonalControls = tonalSection?.controls as Record<string, { defaultValue?: unknown }>;
 
-    expect(controls["effect.duotone.shadowColor"].defaultValue).toBe(
+    expect(tonalControls["bw.contrast"].defaultValue).toBe(
+      blackAndWhiteEffect.defaultParameters.contrast,
+    );
+    expect(tonalControls["bw.warmth"].defaultValue).toBe(
+      blackAndWhiteEffect.defaultParameters.warmth,
+    );
+    expect(tonalControls["duotone.shadowColor"].defaultValue).toBe(
       duotoneEffect.defaultParameters.shadowColor,
     );
-    expect(controls["effect.duotone.highlightColor"].defaultValue).toBe(
+    expect(tonalControls["duotone.highlightColor"].defaultValue).toBe(
       duotoneEffect.defaultParameters.highlightColor,
     );
-    expect(controls["effect.duotone.contrast"].defaultValue).toBe(
+    expect(tonalControls["duotone.contrast"].defaultValue).toBe(
       duotoneEffect.defaultParameters.contrast,
     );
-    expect(controls["effect.duotone.exposure"].defaultValue).toBe(
-      duotoneEffect.defaultParameters.exposure,
-    );
-    expect(controls["effect.posterize.levels"].defaultValue).toBe(
+    expect(tonalControls["posterize.levels"].defaultValue).toBe(
       posterizeEffect.defaultParameters.levels,
     );
-    expect(controls["effect.grain.intensity"].defaultValue).toBe(
+    expect(tonalControls["grain.intensity"].defaultValue).toBe(
       grainEffect.defaultParameters.intensity,
+    );
+
+    const artisticSection = appSchema.panels.controls?.sections?.find(
+      (s) => s.id === "effects-artistic",
+    );
+    expect(artisticSection).toBeDefined();
+    const artisticControls = artisticSection?.controls as Record<string, { defaultValue?: unknown }>;
+
+    expect(artisticControls["halftone.dotSize"].defaultValue).toBe(
+      halftoneEffect.defaultParameters.dotSize,
+    );
+    expect(artisticControls["halftone.contrast"].defaultValue).toBe(
+      halftoneEffect.defaultParameters.contrast,
+    );
+    expect(artisticControls["halftone.angle"].defaultValue).toBe(
+      halftoneEffect.defaultParameters.angle,
+    );
+    expect(artisticControls["vintageFilm.grain"].defaultValue).toBe(
+      vintageFilmEffect.defaultParameters.grain,
+    );
+    expect(artisticControls["vintageFilm.fade"].defaultValue).toBe(
+      vintageFilmEffect.defaultParameters.fade,
+    );
+    expect(artisticControls["vintageFilm.contrast"].defaultValue).toBe(
+      vintageFilmEffect.defaultParameters.contrast,
+    );
+
+    const screenPrintSection = appSchema.panels.controls?.sections?.find(
+      (s) => s.id === "effects-screenprint",
+    );
+    expect(screenPrintSection).toBeDefined();
+    const screenPrintControls = screenPrintSection?.controls as Record<string, { defaultValue?: unknown }>;
+
+    expect(screenPrintControls["screenPrint.inkColor1"].defaultValue).toBe(
+      screenPrintEffect.defaultParameters.inkColor1,
+    );
+    expect(screenPrintControls["screenPrint.inkColor2"].defaultValue).toBe(
+      screenPrintEffect.defaultParameters.inkColor2,
+    );
+    expect(screenPrintControls["screenPrint.registrationOffset"].defaultValue).toBe(
+      screenPrintEffect.defaultParameters.registrationOffset,
     );
   });
 
@@ -64,7 +115,7 @@ describe("appSchema", () => {
     ).toBe(true);
     expect(
       appSchema.panels.controls?.sections?.some(
-        (section) => section.id === "effects-section",
+        (section) => section.id === "effects-gallery",
       ),
     ).toBe(true);
 

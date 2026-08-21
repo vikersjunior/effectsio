@@ -1,75 +1,68 @@
 import { clamp, cloneImageData, parseHexColor, rgbToGrayscale } from "../canvas-utils";
-import type { EffectDefinition } from "../types";
+import type { EffectDefinition, EffectParameterSchema } from "../types";
 
-export const duotoneEffect: EffectDefinition = {
-  category: "graphic",
+export interface DuotoneParameters {
+  contrast?: number;
+  highlightColor?: string;
+  shadowColor?: string;
+}
+
+const duotoneParameters: readonly EffectParameterSchema[] = [
+  {
+    defaultValue: "#0f172a",
+    description: "Color mapped to dark shadow tones.",
+    label: "Shadow color",
+    name: "shadowColor",
+    type: "color",
+  },
+  {
+    defaultValue: "#38bdf8",
+    description: "Color mapped to bright highlight tones.",
+    label: "Highlight color",
+    name: "highlightColor",
+    type: "color",
+  },
+  {
+    defaultValue: 1.0,
+    description: "Steepness of the gradient transition curve.",
+    label: "Contrast",
+    max: 2.0,
+    min: 0.5,
+    name: "contrast",
+    step: 0.05,
+    type: "number",
+  },
+];
+
+export const duotoneEffect: EffectDefinition<DuotoneParameters> = {
+  category: "artistic",
   defaultParameters: {
     contrast: 1.0,
-    exposure: 0,
     highlightColor: "#38bdf8",
     shadowColor: "#0f172a",
   },
-  description: "Dual-color gradient mapping between shadow and highlight tones.",
+  description: "Two-color gradient tone mapping between shadow and highlight tones.",
   id: "duotone",
   name: "Duotone",
-  parameters: [
-    {
-      defaultValue: "#0f172a",
-      description: "Color mapped to dark shadows.",
-      label: "Shadow Color",
-      name: "shadowColor",
-      type: "color",
-    },
-    {
-      defaultValue: "#38bdf8",
-      description: "Color mapped to bright highlights.",
-      label: "Highlight Color",
-      name: "highlightColor",
-      type: "color",
-    },
-    {
-      defaultValue: 1.0,
-      description: "Steepness of gradient transition curve.",
-      label: "Contrast",
-      max: 2.0,
-      min: 0.5,
-      name: "contrast",
-      step: 0.05,
-      type: "number",
-    },
-    {
-      defaultValue: 0,
-      description: "Exposure balance across shadow and highlight tones.",
-      label: "Exposure",
-      max: 100,
-      min: -100,
-      name: "exposure",
-      step: 1,
-      type: "number",
-    },
-  ],
-  render: (imageData: ImageData, parameters: Record<string, unknown>): ImageData => {
+  parameterSchema: duotoneParameters,
+  parameters: duotoneParameters,
+  render: (imageData: ImageData, parameters?: DuotoneParameters): ImageData => {
     const output = cloneImageData(imageData);
     const data = output.data;
-
-    const shadow = parseHexColor(parameters.shadowColor, "#0f172a");
-    const highlight = parseHexColor(parameters.highlightColor, "#38bdf8");
-    const contrast = typeof parameters.contrast === "number" ? parameters.contrast : 1.0;
-    const exposure = typeof parameters.exposure === "number" ? parameters.exposure : 0;
+    const shadow = parseHexColor(parameters?.shadowColor, "#0f172a");
+    const highlight = parseHexColor(parameters?.highlightColor, "#38bdf8");
+    const contrast = typeof parameters?.contrast === "number" ? parameters.contrast : 1.0;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i]!;
       const g = data[i + 1]!;
       const b = data[i + 2]!;
 
-      let gray = rgbToGrayscale(r, g, b);
-      if (exposure !== 0) {
-        gray = clamp(gray + exposure);
-      }
+      const gray = rgbToGrayscale(r, g, b);
       let t = gray / 255;
 
       if (contrast !== 1.0) {
-        t = Math.pow(t, contrast);
+        t = clamp(Math.pow(t, contrast), 0, 1);
       }
 
       data[i] = clamp(Math.round(shadow.r + (highlight.r - shadow.r) * t));

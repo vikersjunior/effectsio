@@ -1,5 +1,7 @@
 import { cloneImageData } from "../canvas-utils";
-import type { EffectDefinition } from "../types";
+import type { EffectDefinition, EffectParameterSchema } from "../types";
+
+const originalParameters: readonly EffectParameterSchema[] = [];
 
 export const originalEffect: EffectDefinition = {
   category: "artistic",
@@ -7,7 +9,8 @@ export const originalEffect: EffectDefinition = {
   description: "Pass-through unaltered original image without modifications.",
   id: "original",
   name: "Original",
-  parameters: [],
+  parameterSchema: originalParameters,
+  parameters: originalParameters,
   render: (imageData: ImageData): ImageData => {
     return cloneImageData(imageData);
   },

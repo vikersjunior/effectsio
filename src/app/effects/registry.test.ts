@@ -8,7 +8,7 @@ import {
   hasEffect,
 } from "./registry";
 
-function createSampleImageData(width = 4, height = 4): ImageData {
+function createSampleImageData(width = 8, height = 8): ImageData {
   const img = createImageData(width, height);
   const data = img.data;
   for (let i = 0; i < data.length; i += 4) {
@@ -22,9 +22,9 @@ function createSampleImageData(width = 4, height = 4): ImageData {
 }
 
 describe("Effect Registry & Engine Architecture", () => {
-  it("registers the 5 foundational effects for this phase", () => {
+  it("registers effects in the registry", () => {
     const effects = getAllEffects();
-    expect(effects.length).toBe(5);
+    expect(effects.length).toBeGreaterThanOrEqual(8);
 
     const ids = effects.map((e) => e.id);
     expect(ids).toContain("original");
@@ -32,6 +32,9 @@ describe("Effect Registry & Engine Architecture", () => {
     expect(ids).toContain("duotone");
     expect(ids).toContain("posterize");
     expect(ids).toContain("grain");
+    expect(ids).toContain("halftone");
+    expect(ids).toContain("screen-print");
+    expect(ids).toContain("vintage-film");
   });
 
   it("provides valid metadata and parameter schemas for every registered effect", () => {
@@ -55,13 +58,16 @@ describe("Effect Registry & Engine Architecture", () => {
 
   it("retrieves effects by id and category", () => {
     expect(hasEffect("black-and-white")).toBe(true);
+    expect(hasEffect("halftone")).toBe(true);
+    expect(hasEffect("screen-print")).toBe(true);
+    expect(hasEffect("vintage-film")).toBe(true);
     expect(hasEffect("non-existent")).toBe(false);
 
     const bw = getEffectDefinition("black-and-white");
     expect(bw?.id).toBe("black-and-white");
 
-    const graphicEffects = getEffectsByCategory("graphic");
-    expect(graphicEffects.length).toBeGreaterThanOrEqual(2);
+    const artisticEffects = getEffectsByCategory("artistic");
+    expect(artisticEffects.length).toBeGreaterThanOrEqual(2);
   });
 
   it("resolves default parameters and merges user overrides", () => {
@@ -100,5 +106,17 @@ describe("Effect Registry & Engine Architecture", () => {
     // 5. Grain
     const grainOut = applyEffect(sample, "grain", { intensity: 50 });
     expect(grainOut.data.length).toBe(sample.data.length);
+
+    // 6. Halftone
+    const halftoneOut = applyEffect(sample, "halftone");
+    expect(halftoneOut.data.length).toBe(sample.data.length);
+
+    // 7. Screen Print
+    const screenPrintOut = applyEffect(sample, "screen-print");
+    expect(screenPrintOut.data.length).toBe(sample.data.length);
+
+    // 8. Vintage Film
+    const vintageFilmOut = applyEffect(sample, "vintage-film");
+    expect(vintageFilmOut.data.length).toBe(sample.data.length);
   });
 });
