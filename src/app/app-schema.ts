@@ -1,5 +1,8 @@
 import { defineToolcraft } from "@/toolcraft/runtime";
 import { appIdentity } from "./app-identity";
+import { duotoneEffect } from "./effects/modules/duotone";
+import { grainEffect } from "./effects/modules/grain";
+import { posterizeEffect } from "./effects/modules/posterize";
 import { PRESET_THUMBNAILS } from "./effects/preset-thumbnails";
 
 export const appSchema = defineToolcraft({
@@ -97,48 +100,6 @@ export const appSchema = defineToolcraft({
               target: "effect.selected",
               type: "imagePicker",
             },
-            "effect.bw.contrast": {
-              applicability: {
-                all: [
-                  { equals: "controls", target: "effect.tab" },
-                  { equals: "black-and-white", target: "effect.selected" },
-                ],
-                mode: "conditional",
-              },
-              defaultValue: 1.2,
-              description: "Adjust monochrome contrast balance.",
-              label: "Contrast",
-              max: 2.5,
-              min: 0.5,
-              performanceReason: "Tunes black and white contrast curve.",
-              performanceRole: "responsiveness",
-              semanticGroup: "black-and-white",
-              sliderValueKind: "continuous",
-              step: 0.05,
-              target: "effect.bw.contrast",
-              type: "slider",
-            },
-            "effect.bw.warmth": {
-              applicability: {
-                all: [
-                  { equals: "controls", target: "effect.tab" },
-                  { equals: "black-and-white", target: "effect.selected" },
-                ],
-                mode: "conditional",
-              },
-              defaultValue: 0,
-              description: "Adjust tone warmth offset.",
-              label: "Warmth",
-              max: 50,
-              min: -50,
-              performanceReason: "Adjusts tone temperature offset for monochrome conversion.",
-              performanceRole: "responsiveness",
-              semanticGroup: "black-and-white",
-              sliderValueKind: "continuous",
-              step: 1,
-              target: "effect.bw.warmth",
-              type: "slider",
-            },
             "effect.duotone.shadowColor": {
               applicability: {
                 all: [
@@ -147,7 +108,7 @@ export const appSchema = defineToolcraft({
                 ],
                 mode: "conditional",
               },
-              defaultValue: "#0f172a",
+              defaultValue: (duotoneEffect.defaultParameters.shadowColor as string) ?? "#0f172a",
               description: "Color mapped to dark shadow tones.",
               label: "Shadow color",
               performanceReason: "Sets duotone shadow mapping color.",
@@ -164,7 +125,7 @@ export const appSchema = defineToolcraft({
                 ],
                 mode: "conditional",
               },
-              defaultValue: "#38bdf8",
+              defaultValue: (duotoneEffect.defaultParameters.highlightColor as string) ?? "#38bdf8",
               description: "Color mapped to bright highlight tones.",
               label: "Highlight color",
               performanceReason: "Sets duotone highlight mapping color.",
@@ -172,6 +133,48 @@ export const appSchema = defineToolcraft({
               semanticGroup: "duotone",
               target: "effect.duotone.highlightColor",
               type: "color",
+            },
+            "effect.duotone.contrast": {
+              applicability: {
+                all: [
+                  { equals: "controls", target: "effect.tab" },
+                  { equals: "duotone", target: "effect.selected" },
+                ],
+                mode: "conditional",
+              },
+              defaultValue: (duotoneEffect.defaultParameters.contrast as number) ?? 1.0,
+              description: "Steepness of gradient transition curve.",
+              label: "Contrast",
+              max: 2.0,
+              min: 0.5,
+              performanceReason: "Adjusts duotone gradient contrast curve.",
+              performanceRole: "responsiveness",
+              semanticGroup: "duotone",
+              sliderValueKind: "continuous",
+              step: 0.05,
+              target: "effect.duotone.contrast",
+              type: "slider",
+            },
+            "effect.duotone.exposure": {
+              applicability: {
+                all: [
+                  { equals: "controls", target: "effect.tab" },
+                  { equals: "duotone", target: "effect.selected" },
+                ],
+                mode: "conditional",
+              },
+              defaultValue: (duotoneEffect.defaultParameters.exposure as number) ?? 0,
+              description: "Exposure balance across shadow and highlight tones.",
+              label: "Exposure",
+              max: 100,
+              min: -100,
+              performanceReason: "Adjusts duotone tone exposure offset.",
+              performanceRole: "responsiveness",
+              semanticGroup: "duotone",
+              sliderValueKind: "continuous",
+              step: 1,
+              target: "effect.duotone.exposure",
+              type: "slider",
             },
             "effect.posterize.levels": {
               applicability: {
@@ -181,7 +184,7 @@ export const appSchema = defineToolcraft({
                 ],
                 mode: "conditional",
               },
-              defaultValue: 4,
+              defaultValue: (posterizeEffect.defaultParameters.levels as number) ?? 4,
               description: "Number of color steps per RGB channel.",
               label: "Color levels",
               max: 16,
@@ -195,27 +198,6 @@ export const appSchema = defineToolcraft({
               type: "slider",
               variant: "discrete",
             },
-            "effect.posterize.saturation": {
-              applicability: {
-                all: [
-                  { equals: "controls", target: "effect.tab" },
-                  { equals: "posterize", target: "effect.selected" },
-                ],
-                mode: "conditional",
-              },
-              defaultValue: 1.0,
-              description: "Pre-quantization color saturation multiplier.",
-              label: "Saturation",
-              max: 2.0,
-              min: 0.5,
-              performanceReason: "Tunes saturation multiplier before color quantization.",
-              performanceRole: "responsiveness",
-              semanticGroup: "posterize",
-              sliderValueKind: "continuous",
-              step: 0.1,
-              target: "effect.posterize.saturation",
-              type: "slider",
-            },
             "effect.grain.intensity": {
               applicability: {
                 all: [
@@ -224,7 +206,7 @@ export const appSchema = defineToolcraft({
                 ],
                 mode: "conditional",
               },
-              defaultValue: 35,
+              defaultValue: (grainEffect.defaultParameters.intensity as number) ?? 35,
               description: "Film grain noise amplitude.",
               label: "Intensity",
               max: 100,
@@ -237,27 +219,24 @@ export const appSchema = defineToolcraft({
               target: "effect.grain.intensity",
               type: "slider",
             },
-            "effect.grain.size": {
+            "effect.reset": {
+              actions: [
+                {
+                  label: "Reset Effect",
+                  value: "resetEffect",
+                },
+              ],
               applicability: {
-                all: [
-                  { equals: "controls", target: "effect.tab" },
-                  { equals: "grain", target: "effect.selected" },
-                ],
+                all: [{ equals: "controls", target: "effect.tab" }],
                 mode: "conditional",
               },
-              defaultValue: 1,
-              description: "Grain particle cluster block size.",
-              label: "Particle size",
-              max: 4,
-              min: 1,
-              performanceReason: "Controls film grain particle scaling block size.",
+              description: "Reset parameters for the active effect to default values.",
+              label: "Reset",
+              performanceReason: "Resets parameters for active effect.",
               performanceRole: "responsiveness",
-              semanticGroup: "grain",
-              sliderValueKind: "discrete",
-              step: 1,
-              target: "effect.grain.size",
-              type: "slider",
-              variant: "discrete",
+              semanticGroup: "actions",
+              target: "effect.reset",
+              type: "actions",
             },
           },
         },

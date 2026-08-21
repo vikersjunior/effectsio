@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { appSchema } from "./app-schema";
 import { validateProductAcceptanceCoverage } from "./app-acceptance";
+import { duotoneEffect } from "./effects/modules/duotone";
+import { grainEffect } from "./effects/modules/grain";
+import { posterizeEffect } from "./effects/modules/posterize";
 
 describe("appSchema", () => {
   it("publishes the EffectsIO product app contract", () => {
@@ -24,6 +27,33 @@ describe("appSchema", () => {
       "effects-section",
       "image-export.part-export-image-format-1k2loow",
     ]);
+  });
+
+  it("ensures schema default values match effect registry default parameters", () => {
+    const effectsSection = appSchema.panels.controls?.sections?.find(
+      (s) => s.id === "effects-section",
+    );
+    expect(effectsSection).toBeDefined();
+    const controls = effectsSection?.controls as Record<string, { defaultValue?: unknown }>;
+
+    expect(controls["effect.duotone.shadowColor"].defaultValue).toBe(
+      duotoneEffect.defaultParameters.shadowColor,
+    );
+    expect(controls["effect.duotone.highlightColor"].defaultValue).toBe(
+      duotoneEffect.defaultParameters.highlightColor,
+    );
+    expect(controls["effect.duotone.contrast"].defaultValue).toBe(
+      duotoneEffect.defaultParameters.contrast,
+    );
+    expect(controls["effect.duotone.exposure"].defaultValue).toBe(
+      duotoneEffect.defaultParameters.exposure,
+    );
+    expect(controls["effect.posterize.levels"].defaultValue).toBe(
+      posterizeEffect.defaultParameters.levels,
+    );
+    expect(controls["effect.grain.intensity"].defaultValue).toBe(
+      grainEffect.defaultParameters.intensity,
+    );
   });
 
   it("declares production reload coverage for EffectsIO", () => {

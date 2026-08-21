@@ -29,25 +29,20 @@ export function EffectsCanvas(): React.JSX.Element {
   // Build resolved parameters for the currently active effect
   const effectParameters = React.useMemo(() => {
     switch (selectedEffect) {
-      case "black-and-white":
-        return {
-          contrast: values["effect.bw.contrast"],
-          warmth: values["effect.bw.warmth"],
-        };
       case "duotone":
         return {
+          contrast: values["effect.duotone.contrast"],
+          exposure: values["effect.duotone.exposure"],
           highlightColor: values["effect.duotone.highlightColor"],
           shadowColor: values["effect.duotone.shadowColor"],
         };
       case "posterize":
         return {
           levels: values["effect.posterize.levels"],
-          saturation: values["effect.posterize.saturation"],
         };
       case "grain":
         return {
           intensity: values["effect.grain.intensity"],
-          size: values["effect.grain.size"],
         };
       default:
         return undefined;
@@ -115,7 +110,7 @@ export function EffectsCanvas(): React.JSX.Element {
       } else {
         drawH = height;
         drawW = height * imgAspect;
-        offsetX = (width - drawW) / 2;
+        offsetY = (width - drawW) / 2;
       }
 
       const targetW = Math.max(1, Math.round(drawW));

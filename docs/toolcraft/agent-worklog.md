@@ -28,7 +28,7 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 ### Interaction Ownership
 
-- Decision: Panel owns image library management (`source.image`), creative effect selection (`effect.selected`), effect mode tabs (`effect.tab`), effect parameter adjustments, and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
+- Decision: Panel owns image library management (`source.image`), creative effect selection (`effect.selected`), effect mode tabs (`effect.tab`), effect parameter adjustments, effect reset action, and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
 - Reason: Separates global workspace navigation (toolbar) from product state and source material management (panel).
 - Evidence: `src/app/app-schema.ts`, `src/app/app-acceptance-data.ts`.
 
@@ -46,8 +46,8 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 ### Controls
 
-- Decision: Standalone Image Library section (`source-material`), unified Creative Effects section (`effects-section`) with Gallery/Controls tabs and conditional per-effect sliders/color pickers, and standard export controls. Real-photo preset thumbnails for each effect algorithm in the gallery picker.
-- Reason: Keeps the Image Library permanently accessible while organizing effect selection and fine-tuning parameters into clean workflow tabs with photorealistic effect preview cards.
+- Decision: Standalone Image Library section (`source-material`), unified Creative Effects section (`effects-section`) with Gallery/Controls tabs, conditional per-effect sliders/color pickers derived from the effect registry, a scoped Reset Effect action, and standard export controls.
+- Reason: Keeps the Image Library permanently accessible while organizing effect selection and fine-tuning parameters into clean workflow tabs with photorealistic effect preview cards and localized reset capabilities.
 - Evidence: `src/app/app-schema.ts`, `src/app/effects/preset-thumbnails.ts`, `src/app/app-acceptance-data.ts`.
 
 ### Export
@@ -60,7 +60,7 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 - Decision: Functional targeted delivery without measured performance.
 - Reason: Pure pixel transformation kernels execute on offscreen canvases with responsive Canvas 2D drawing.
-- Evidence: `src/app/effects/registry.test.ts`, `src/app/app-verification-impact.json`.
+- Evidence: `src/app/effects/registry.test.ts`, `src/app/effects/effect-parameters.test.ts`, `src/app/app-verification-impact.json`.
 
 ## Decision Trail
 
@@ -212,7 +212,7 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 
 - Request: Separate the Image Library section so it is always visible like it used to be, and organize the Creative Effects section with dedicated tabs for "Gallery" (effect selection) and "Controls" (fine-tuning parameter adjustments).
 - Task type: Section layout restructuring, parameter controls wiring, acceptance alignment.
-- User-visible result: The Image Library section is restored as a permanent, standalone section at the top of the controls panel. Below it, the Creative Effects section contains "Gallery" and "Controls" tabs. In Gallery view, users choose from the 5 effect cards; in Controls view, real-time sliders and color pickers for the active effect (Contrast, Warmth, Shadow/Highlight Color, Levels, Saturation, Intensity, Size) allow fine-tuning the canvas in real time.
+- User-visible result: The Image Library section is restored as a permanent, standalone section at the top of the controls panel. Below it, the Creative Effects section contains "Gallery" and "Controls" tabs. In Gallery view, users choose from the 5 effect cards; in Controls view, real-time sliders and color pickers for the active effect allow fine-tuning the canvas in real time.
 - Source/reference checked: User prompt.
 - Reference inputs: None.
 - Docs/contracts read: workflow.md, core/control-selection.md, core/layout.md, schema-reference.md, component-rules.md, acceptance-testing.md.
@@ -221,7 +221,7 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 - Interaction ownership: Panel owns image library management (`source.image`), effect selection (`effect.selected`), effect tab navigation (`effect.tab`), effect parameter adjustments, and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
 - Decision: Restore `source-material` as a standalone always-visible section; structure `effects-section` with top `tabs` (`effect.tab`) switching between `imagePicker` (`effect.selected`) and active effect parameter controls; wire `EffectsCanvas.tsx` to pass dynamic parameters into `applyEffect`.
 - Alternatives rejected: Hiding the Image Library inside a sub-tab or creating multiple fragmented sections for each effect algorithm.
-- State/output mapping: `source.image` loads images; `effect.selected` selects effect algorithm; `effect.bw.*`, `effect.duotone.*`, `effect.posterize.*`, `effect.grain.*` parameter values dynamically re-render processed `ImageData` in `EffectsCanvas.tsx`.
+- State/output mapping: `source.image` loads images; `effect.selected` selects effect algorithm; parameter values dynamically re-render processed `ImageData` in `EffectsCanvas.tsx`.
 - Performance intent: ordinary-product-work
 - Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
 - Risks: None; unit and acceptance tests cover touched surfaces.
@@ -244,9 +244,27 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 - Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
 - Risks: None; all thumbnails are static data URLs compiled into product modules.
 
+### Iteration 18 — Per-Effect Parameter Controls & Scoped Reset Effect Action
+
+- Request: Add per-effect parameter controls that appear only when their effect is selected, plus a Reset Effect action. Ensure default values derive from the effect registry and that Reset Effect dispatches a scoped reset targeting only the selected effect's controls.
+- Task type: Parameter controls schema derivation, conditional visibility gating, scoped action dispatch, dynamic canvas rendering integration.
+- User-visible result: In the Controls view, selecting Duotone reveals Shadow Color, Highlight Color, Contrast, and Exposure parameter controls; selecting Posterize reveals Color Levels; selecting Film Grain reveals Intensity. Adjusting parameters immediately transforms the active image canvas in real time. Clicking the "Reset Effect" action restores only the active effect's parameters to default values without affecting unrelated controls.
+- Source/reference checked: User prompt.
+- Reference inputs: None.
+- Docs/contracts read: workflow.md, core/control-selection.md, core/layout.md, schema-reference.md, component-rules.md.
+- Contract rules applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage, controls-section-inventory-required, controls-layout-heuristics.
+- View interaction intent: non-spatial; 2D image workstation.
+- Interaction ownership: Panel owns effect parameter controls, effect selection, scoped effect reset action, and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
+- Decision: Derive schema `defaultValue` directly from effect registry definitions at module load; configure combined conditional applicability (`effect.tab === "controls"` AND `effect.selected === "<effect>"`), implement `onPanelAction` in `ToolcraftAppComposition` with `controls.resetTargets` scoped to the active effect's parameter target list, and bind parameters dynamically in `EffectsCanvas.tsx`.
+- Alternatives rejected: Global controls.reset that resets unrelated controls; duplicating parameter defaults in multiple places without automated parity tests.
+- State/output mapping: `effect.duotone.*`, `effect.posterize.*`, `effect.grain.*` parameter values dynamically re-render processed `ImageData` in `EffectsCanvas.tsx`; `effect.reset` -> `controls.resetTargets` restores defaults for active effect targets.
+- Performance intent: ordinary-product-work
+- Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
+- Risks: None; unit and acceptance tests cover touched surfaces.
+
 ## Evidence
 
-- Source reviewed: src/app/app-schema.ts, src/app/effects/preset-thumbnails.ts, src/app/components/EffectsCanvas.tsx, src/app/components/active-image.ts, src/app/effects/registry.ts, src/app/effects/engine.ts, src/app/effects/types.ts, src/app/effects/canvas-utils.ts, src/app/effects/modules/*.ts.
+- Source reviewed: src/app/app-schema.ts, src/app/effects/preset-thumbnails.ts, src/app/components/EffectsCanvas.tsx, src/app/app-composition.tsx, src/app/effects/registry.ts, src/app/effects/engine.ts, src/app/effects/modules/*.ts.
 - Contract applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage, output-export-required, renderer-technique-inventory.
 
 ## Verification
