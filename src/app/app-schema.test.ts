@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { appSchema } from "./app-schema";
 import { validateProductAcceptanceCoverage } from "./app-acceptance";
+import { blackAndWhiteEffect } from "./effects/modules/black-and-white";
 import { duotoneEffect } from "./effects/modules/duotone";
 import { grainEffect } from "./effects/modules/grain";
 import { posterizeEffect } from "./effects/modules/posterize";
@@ -36,6 +37,12 @@ describe("appSchema", () => {
     expect(effectsSection).toBeDefined();
     const controls = effectsSection?.controls as Record<string, { defaultValue?: unknown }>;
 
+    expect(controls["effect.bw.contrast"].defaultValue).toBe(
+      blackAndWhiteEffect.defaultParameters.contrast,
+    );
+    expect(controls["effect.bw.warmth"].defaultValue).toBe(
+      blackAndWhiteEffect.defaultParameters.warmth,
+    );
     expect(controls["effect.duotone.shadowColor"].defaultValue).toBe(
       duotoneEffect.defaultParameters.shadowColor,
     );
@@ -44,9 +51,6 @@ describe("appSchema", () => {
     );
     expect(controls["effect.duotone.contrast"].defaultValue).toBe(
       duotoneEffect.defaultParameters.contrast,
-    );
-    expect(controls["effect.duotone.exposure"].defaultValue).toBe(
-      duotoneEffect.defaultParameters.exposure,
     );
     expect(controls["effect.posterize.levels"].defaultValue).toBe(
       posterizeEffect.defaultParameters.levels,

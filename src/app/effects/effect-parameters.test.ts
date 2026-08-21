@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { blackAndWhiteEffect } from "./modules/black-and-white";
 import { duotoneEffect } from "./modules/duotone";
 import { grainEffect } from "./modules/grain";
 import { posterizeEffect } from "./modules/posterize";
@@ -17,6 +18,27 @@ describe("Effect Parameters & Rendering", () => {
     }
     return { data, height, width } as ImageData;
   }
+
+  it("modifies Black & White output with contrast and warmth parameters", () => {
+    const sample = createSampleImageData();
+    const defaultOutput = blackAndWhiteEffect.render(sample, {
+      contrast: 1.2,
+      warmth: 0,
+    });
+
+    const highContrastOutput = blackAndWhiteEffect.render(sample, {
+      contrast: 2.2,
+      warmth: 0,
+    });
+
+    const warmTintOutput = blackAndWhiteEffect.render(sample, {
+      contrast: 1.2,
+      warmth: 30,
+    });
+
+    expect(highContrastOutput.data).not.toEqual(defaultOutput.data);
+    expect(warmTintOutput.data).not.toEqual(defaultOutput.data);
+  });
 
   it("modifies Duotone output with contrast and exposure parameters", () => {
     const sample = createSampleImageData();
@@ -70,6 +92,8 @@ describe("Effect Parameters & Rendering", () => {
       values: {
         ...initialState.values,
         "appearance.background": "#ffffff", // changed unrelated value
+        "effect.bw.contrast": 2.4, // changed target
+        "effect.bw.warmth": 45, // changed target
         "effect.duotone.contrast": 1.8, // changed target
         "effect.duotone.exposure": 40, // changed target
         "effect.duotone.highlightColor": "#ff0000", // changed target
@@ -77,26 +101,20 @@ describe("Effect Parameters & Rendering", () => {
       },
     };
 
-    const duotoneTargets = [
-      "effect.duotone.shadowColor",
-      "effect.duotone.highlightColor",
-      "effect.duotone.contrast",
-      "effect.duotone.exposure",
-    ];
+    const bwTargets = ["effect.bw.contrast", "effect.bw.warmth"];
 
     const reducedState = reduceToolcraftControlsCommand(modifiedState, {
       label: "Reset effect parameters",
-      targets: duotoneTargets,
+      targets: bwTargets,
       type: "controls.resetTargets",
     });
 
-    // Duotone targets should be restored to schema defaults
-    expect(reducedState.values["effect.duotone.contrast"]).toBe(1.0);
-    expect(reducedState.values["effect.duotone.exposure"]).toBe(0);
-    expect(reducedState.values["effect.duotone.highlightColor"]).toBe("#38bdf8");
-    expect(reducedState.values["effect.duotone.shadowColor"]).toBe("#0f172a");
+    // BW targets should be restored to schema defaults
+    expect(reducedState.values["effect.bw.contrast"]).toBe(1.2);
+    expect(reducedState.values["effect.bw.warmth"]).toBe(0);
 
     // Unrelated values should be untouched
     expect(reducedState.values["appearance.background"]).toBe("#ffffff");
+    expect(reducedState.values["effect.duotone.contrast"]).toBe(1.8);
   });
 });

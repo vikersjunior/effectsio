@@ -39,6 +39,9 @@ export const appComposition: ToolcraftAppComposition = {
       let targetsToReset: string[] = [];
 
       switch (selectedEffect) {
+        case "black-and-white":
+          targetsToReset = ["effect.bw.contrast", "effect.bw.warmth"];
+          break;
         case "duotone":
           targetsToReset = [
             "effect.duotone.shadowColor",

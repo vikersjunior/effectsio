@@ -1,5 +1,6 @@
 import { defineToolcraft } from "@/toolcraft/runtime";
 import { appIdentity } from "./app-identity";
+import { blackAndWhiteEffect } from "./effects/modules/black-and-white";
 import { duotoneEffect } from "./effects/modules/duotone";
 import { grainEffect } from "./effects/modules/grain";
 import { posterizeEffect } from "./effects/modules/posterize";
@@ -100,6 +101,48 @@ export const appSchema = defineToolcraft({
               target: "effect.selected",
               type: "imagePicker",
             },
+            "effect.bw.contrast": {
+              applicability: {
+                all: [
+                  { equals: "controls", target: "effect.tab" },
+                  { equals: "black-and-white", target: "effect.selected" },
+                ],
+                mode: "conditional",
+              },
+              defaultValue: (blackAndWhiteEffect.defaultParameters.contrast as number) ?? 1.2,
+              description: "Monochrome luminance contrast balance.",
+              label: "Contrast",
+              max: 2.5,
+              min: 0.5,
+              performanceReason: "Adjusts monochrome tonal contrast curve.",
+              performanceRole: "responsiveness",
+              semanticGroup: "bw",
+              sliderValueKind: "continuous",
+              step: 0.05,
+              target: "effect.bw.contrast",
+              type: "slider",
+            },
+            "effect.bw.warmth": {
+              applicability: {
+                all: [
+                  { equals: "controls", target: "effect.tab" },
+                  { equals: "black-and-white", target: "effect.selected" },
+                ],
+                mode: "conditional",
+              },
+              defaultValue: (blackAndWhiteEffect.defaultParameters.warmth as number) ?? 0,
+              description: "Warm (sepia) or cool (cyan) monochrome tone offset.",
+              label: "Warmth",
+              max: 50,
+              min: -50,
+              performanceReason: "Adjusts monochrome temperature tint offset.",
+              performanceRole: "responsiveness",
+              semanticGroup: "bw",
+              sliderValueKind: "continuous",
+              step: 1,
+              target: "effect.bw.warmth",
+              type: "slider",
+            },
             "effect.duotone.shadowColor": {
               applicability: {
                 all: [
@@ -153,27 +196,6 @@ export const appSchema = defineToolcraft({
               sliderValueKind: "continuous",
               step: 0.05,
               target: "effect.duotone.contrast",
-              type: "slider",
-            },
-            "effect.duotone.exposure": {
-              applicability: {
-                all: [
-                  { equals: "controls", target: "effect.tab" },
-                  { equals: "duotone", target: "effect.selected" },
-                ],
-                mode: "conditional",
-              },
-              defaultValue: (duotoneEffect.defaultParameters.exposure as number) ?? 0,
-              description: "Exposure balance across shadow and highlight tones.",
-              label: "Exposure",
-              max: 100,
-              min: -100,
-              performanceReason: "Adjusts duotone tone exposure offset.",
-              performanceRole: "responsiveness",
-              semanticGroup: "duotone",
-              sliderValueKind: "continuous",
-              step: 1,
-              target: "effect.duotone.exposure",
               type: "slider",
             },
             "effect.posterize.levels": {

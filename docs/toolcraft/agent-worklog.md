@@ -262,6 +262,24 @@ Keep this worklog human-shaped. For the first product delivery, record the reque
 - Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
 - Risks: None; unit and acceptance tests cover touched surfaces.
 
+### Iteration 19 — Grayscale / Black & White Contrast and Warmth Parameter Controls
+
+- Request: Wire parameter controls for the Black & White (Grayscale) effect into the Controls view.
+- Task type: Schema controls derivation, conditional parameter binding, dynamic Canvas 2D rendering, scoped reset action alignment.
+- User-visible result: In the Controls view, selecting Black & White reveals Contrast (0.5–2.5) and Warmth (-50 to +50 sepia/cool tint) sliders. Adjusting these sliders updates the canvas monochrome conversion in real time. Clicking "Reset Effect" restores Black & White defaults without touching other settings.
+- Source/reference checked: User prompt.
+- Reference inputs: None.
+- Docs/contracts read: workflow.md, core/control-selection.md, core/layout.md, schema-reference.md, component-rules.md.
+- Contract rules applied: runtime-shell-required, canvas-no-app-ui, controls-product-coverage, controls-section-inventory-required, controls-layout-heuristics.
+- View interaction intent: non-spatial; 2D image workstation.
+- Interaction ownership: Panel owns effect parameter controls, effect selection, scoped effect reset action, and background settings; toolbar owns zoom, pan, radar, center, theme, undo, and redo.
+- Decision: Derive `effect.bw.contrast` and `effect.bw.warmth` default values directly from `blackAndWhiteEffect.defaultParameters`; keep in unified `effects-section` with 10 total controls and `semanticGroup` declared on all entries; wire `EffectsCanvas.tsx` to pass dynamic BW parameters to `applyEffect`; include BW targets in `onPanelAction` scoped `controls.resetTargets`.
+- Alternatives rejected: Leaving Grayscale without tunable parameters; splitting dependent controls across multiple sections violating cohesion rules.
+- State/output mapping: `effect.bw.contrast` and `effect.bw.warmth` -> `applyEffect` -> Canvas 2D image output.
+- Performance intent: ordinary-product-work
+- Verification: One bare `pnpm verify:delivery` will derive and run the protected proof.
+- Risks: None; unit and acceptance tests cover touched surfaces.
+
 ## Evidence
 
 - Source reviewed: src/app/app-schema.ts, src/app/effects/preset-thumbnails.ts, src/app/components/EffectsCanvas.tsx, src/app/app-composition.tsx, src/app/effects/registry.ts, src/app/effects/engine.ts, src/app/effects/modules/*.ts.

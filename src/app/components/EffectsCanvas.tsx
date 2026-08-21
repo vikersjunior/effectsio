@@ -29,6 +29,11 @@ export function EffectsCanvas(): React.JSX.Element {
   // Build resolved parameters for the currently active effect
   const effectParameters = React.useMemo(() => {
     switch (selectedEffect) {
+      case "black-and-white":
+        return {
+          contrast: values["effect.bw.contrast"],
+          warmth: values["effect.bw.warmth"],
+        };
       case "duotone":
         return {
           contrast: values["effect.duotone.contrast"],
