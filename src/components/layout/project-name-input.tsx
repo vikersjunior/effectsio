@@ -1,5 +1,5 @@
-import * as React from "react";
-import { useStudioStore } from "../../context/studio-context";
+import * as React from 'react';
+import { useStudioStore } from '../../context/studio-context';
 
 export function ProjectNameInput(): React.JSX.Element {
   const { projectName, setProjectName } = useStudioStore();
@@ -34,10 +34,10 @@ export function ProjectNameInput(): React.JSX.Element {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault();
       handleCommit();
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       e.preventDefault();
       handleCancel();
     }
@@ -53,7 +53,7 @@ export function ProjectNameInput(): React.JSX.Element {
         onBlur={handleCommit}
         onKeyDown={handleKeyDown}
         aria-label="Project Name"
-        className="h-6 px-1.5 py-0 text-sm font-semibold tracking-tight bg-[color:var(--background)] border border-[color:var(--primary)] rounded text-[color:var(--foreground)] outline-none ring-1 ring-[color:var(--primary)] max-w-[170px] select-text"
+        className="h-6 px-1.5 py-0 text-sm font-semibold tracking-tight bg-[color:var(--background)] border border-[color:var(--primary)] rounded-md text-[color:var(--foreground)] outline-none ring-1 ring-[color:var(--primary)] max-w-[170px] select-text"
       />
     );
   }
@@ -64,14 +64,14 @@ export function ProjectNameInput(): React.JSX.Element {
       tabIndex={0}
       onClick={() => setIsEditing(true)}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           setIsEditing(true);
         }
       }}
       title="Click to rename project"
       aria-label={`Project Name: ${projectName}`}
-      className="text-sm font-semibold tracking-tight text-[color:var(--foreground)] truncate max-w-[170px] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] px-1.5 py-0.5 -mx-1.5 rounded cursor-pointer transition-colors"
+      className="text-sm font-semibold tracking-tight text-[color:var(--foreground)] truncate max-w-[170px] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] px-1.5 py-0.5 -mx-1.5 rounded-md cursor-pointer transition-colors"
     >
       {projectName}
     </div>

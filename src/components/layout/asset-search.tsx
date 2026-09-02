@@ -1,5 +1,5 @@
-import * as React from "react";
-import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
+import * as React from 'react';
+import { MagnifyingGlassIcon, XIcon } from '@phosphor-icons/react';
 
 export interface AssetSearchProps {
   value: string;
@@ -10,7 +10,7 @@ export interface AssetSearchProps {
 export function AssetSearch({
   value,
   onChange,
-  className = "",
+  className = '',
 }: AssetSearchProps): React.JSX.Element {
   return (
     <div className={`relative flex items-center w-full ${className}`}>
@@ -29,7 +29,7 @@ export function AssetSearch({
       {value && (
         <button
           type="button"
-          onClick={() => onChange("")}
+          onClick={() => onChange('')}
           aria-label="Clear search"
           className="absolute right-1.5 size-4 flex items-center justify-center rounded text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_10%,transparent)] transition-colors"
         >

@@ -780,10 +780,10 @@
     "semantic_hash": "cae97fcc671f4b6cdbe29d26bbea5c68"
   },
   "src/components/layout/asset-panel.tsx": {
-    "mtime": 1788374196.13,
-    "seen": 1788375126.100917,
-    "ast_hash": "7eedfecee5ab169c4bd828f03d616b98",
-    "semantic_hash": "7eedfecee5ab169c4bd828f03d616b98"
+    "mtime": 1788380100.44,
+    "seen": 1788380578.630985,
+    "ast_hash": "b77a2288a237a8d67bbb14b56d7a5010",
+    "semantic_hash": "b77a2288a237a8d67bbb14b56d7a5010"
   },
   "src/components/layout/canvas-viewport.tsx": {
     "mtime": 1788374304.96,
@@ -1854,10 +1854,10 @@
     "semantic_hash": "0a3e6cb74c485f998442ded11ed1900f"
   },
   "src/components/layout/asset-search.tsx": {
-    "mtime": 1788374171.13,
-    "seen": 1788375126.10093,
-    "ast_hash": "9b583bf57e1bc7e53cd25ac6c9597a9d",
-    "semantic_hash": "9b583bf57e1bc7e53cd25ac6c9597a9d"
+    "mtime": 1788379391.28,
+    "seen": 1788380578.6309912,
+    "ast_hash": "8ffbb84fa5db489dea5322a381e32dc5",
+    "semantic_hash": "8ffbb84fa5db489dea5322a381e32dc5"
   },
   "src/components/layout/canvas-control-dock.tsx": {
     "mtime": 1788374225.45,
@@ -1866,21 +1866,27 @@
     "semantic_hash": "c7e7cd2ed4712f15af94b6d89eede690"
   },
   "src/components/layout/floating-effect-panel.tsx": {
-    "mtime": 1788374268.11,
-    "seen": 1788375126.101485,
-    "ast_hash": "ba04d2e54d516bdad2218f59822dd49d",
-    "semantic_hash": "ba04d2e54d516bdad2218f59822dd49d"
+    "mtime": 1788379406.73,
+    "seen": 1788380578.6332958,
+    "ast_hash": "ac15cabd9e53d609797ce7e5233e7908",
+    "semantic_hash": "ac15cabd9e53d609797ce7e5233e7908"
   },
   "src/components/layout/phase3-1-fidelity.test.tsx": {
-    "mtime": 1788374472.1,
-    "seen": 1788375126.101509,
-    "ast_hash": "85901a946cbb72350079af5ae51cefd7",
-    "semantic_hash": "85901a946cbb72350079af5ae51cefd7"
+    "mtime": 1788380206.72,
+    "seen": 1788380578.634611,
+    "ast_hash": "b5e8bc4f18b86a6bece8fdea4d504f51",
+    "semantic_hash": "b5e8bc4f18b86a6bece8fdea4d504f51"
   },
   "src/components/layout/project-name-input.tsx": {
-    "mtime": 1788374146.12,
-    "seen": 1788375126.101519,
-    "ast_hash": "5434dbb70c6de19efed4ef261b1370d3",
-    "semantic_hash": "5434dbb70c6de19efed4ef261b1370d3"
+    "mtime": 1788380398.67,
+    "seen": 1788380578.634617,
+    "ast_hash": "5ce303bb3a43510e3cfa18f5fb636163",
+    "semantic_hash": "5ce303bb3a43510e3cfa18f5fb636163"
+  },
+  "scripts/verify-correction01-cdp.mjs": {
+    "mtime": 1788380423.39,
+    "seen": 1788380578.626708,
+    "ast_hash": "43e65ac6dcc48292a16fc6bc65736dec",
+    "semantic_hash": "43e65ac6dcc48292a16fc6bc65736dec"
   }
 }

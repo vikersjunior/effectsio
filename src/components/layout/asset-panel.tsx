@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react';
 import {
   CloudArrowUpIcon,
   SpinnerGapIcon,
@@ -10,20 +10,15 @@ import {
   ImagesIcon,
   CaretDownIcon,
   CaretUpIcon,
-} from "@phosphor-icons/react";
-import {
-  Button,
-  Input,
-  ScrollFade,
-  PanelSurface,
-} from "../ui";
-import { selectedAssetRingClassName } from "../ui/primitives/selection-state";
-import { useStudioStore } from "../../context/studio-context";
-import { formatFileSize } from "../../utils/image-ingestion";
-import { BrandLogo } from "./brand-logo";
-import { ProjectNameInput } from "./project-name-input";
-import { AssetSearch } from "./asset-search";
-import type { Asset } from "../../types/asset";
+} from '@phosphor-icons/react';
+import { Button, Input, ScrollFade, PanelSurface } from '../ui';
+import { selectedAssetRingClassName } from '../ui/primitives/selection-state';
+import { useStudioStore } from '../../context/studio-context';
+import { formatFileSize } from '../../utils/image-ingestion';
+import { BrandLogo } from './brand-logo';
+import { ProjectNameInput } from './project-name-input';
+import { AssetSearch } from './asset-search';
+import type { Asset } from '../../types/asset';
 
 export interface AssetPanelProps {
   onClose?: () => void;
@@ -46,7 +41,7 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
   } = useStudioStore();
 
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
-  const [searchQuery, setSearchQuery] = React.useState<string>("");
+  const [searchQuery, setSearchQuery] = React.useState<string>('');
   const [isSpecsOpen, setIsSpecsOpen] = React.useState<boolean>(false);
   const anchorAssetIdRef = React.useRef<string | null>(null);
 
@@ -54,13 +49,15 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
   const filteredAssets = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return assets;
-    return assets.filter((asset) => asset.filename.toLowerCase().includes(query));
+    return assets.filter((asset) =>
+      asset.filename.toLowerCase().includes(query),
+    );
   }, [assets, searchQuery]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       addAssets(e.target.files);
-      e.target.value = "";
+      e.target.value = '';
     }
   };
 
@@ -87,7 +84,10 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
   };
 
   return (
-    <PanelSurface id="asset-library-panel" className="flex flex-col h-full w-full bg-[color:var(--sidebar)] border-r border-[color:var(--border)] overflow-hidden select-none">
+    <PanelSurface
+      id="asset-library-panel"
+      className="flex flex-col h-full w-full bg-[color:var(--sidebar)] border-r border-[color:var(--border)] overflow-hidden select-none"
+    >
       {/* Hidden File Input for Native File System Dialog */}
       <input
         ref={fileInputRef}
@@ -157,7 +157,10 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
       )}
 
       {/* Panel Body: State A (Empty Dropzone) vs State B (Populated Grid) */}
-      <ScrollFade className="flex-1 overflow-y-auto px-4 py-3" containerClassName="flex-1 min-h-0">
+      <ScrollFade
+        className="flex-1 overflow-y-auto px-4 py-3"
+        containerClassName="flex-1 min-h-0"
+      >
         {assets.length === 0 ? (
           /* State A: Figma-aligned Empty State Composition */
           <div className="flex flex-col items-center justify-center text-center gap-3 py-6 px-2">
@@ -185,10 +188,14 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
                       Add media
                     </span>
                     <span className="text-2xs text-[color:var(--muted-foreground)] leading-relaxed">
-                      Drag here, import from your computer or choose from a stock image
+                      Drag here, import from your computer or choose from a
+                      stock image
                     </span>
                   </div>
-                  <div className="flex flex-col gap-1.5 w-full pt-1" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="flex flex-col gap-1.5 w-full pt-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Button
                       type="button"
                       variant="outline"
@@ -216,10 +223,7 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
           /* State B: Populated 4-Column Square Thumbnail Grid */
           <div className="flex flex-col gap-3">
             {/* Search Control */}
-            <AssetSearch
-              value={searchQuery}
-              onChange={setSearchQuery}
-            />
+            <AssetSearch value={searchQuery} onChange={setSearchQuery} />
 
             {/* 4-Column Square Thumbnail Grid */}
             <div className="grid grid-cols-4 gap-2">
@@ -234,7 +238,7 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
                     className={`group relative aspect-square w-full rounded-md bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] overflow-hidden cursor-pointer transition-all duration-150 ${
                       isSelected
                         ? selectedAssetRingClassName
-                        : "hover:opacity-90 border border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_35%,transparent)]"
+                        : 'hover:opacity-90 border border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_35%,transparent)]'
                     }`}
                     title={`${asset.filename} (${asset.width}×${asset.height})`}
                   >
@@ -297,7 +301,11 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
           className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-medium text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors"
         >
           <span>Asset Specifications</span>
-          {isSpecsOpen ? <CaretUpIcon size={12} /> : <CaretDownIcon size={12} />}
+          {isSpecsOpen ? (
+            <CaretUpIcon size={12} />
+          ) : (
+            <CaretDownIcon size={12} />
+          )}
         </button>
 
         {isSpecsOpen && (
@@ -319,7 +327,7 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
                 <div className="flex justify-between">
                   <span>Format:</span>
                   <span className="uppercase text-[color:var(--foreground)]">
-                    {activeAsset.mimeType.replace("image/", "")}
+                    {activeAsset.mimeType.replace('image/', '')}
                   </span>
                 </div>
               </>

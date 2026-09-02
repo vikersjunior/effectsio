@@ -1,9 +1,9 @@
-import * as React from "react";
+import * as React from 'react';
 import {
   ArrowCounterClockwiseIcon,
   XIcon,
   SlidersIcon,
-} from "@phosphor-icons/react";
+} from '@phosphor-icons/react';
 import {
   Button,
   SliderControl,
@@ -11,9 +11,9 @@ import {
   ColorControl,
   BooleanControl,
   ScrollFade,
-} from "../ui";
-import { useStudioStore } from "../../context/studio-context";
-import { getEffectDefinition } from "../../effects/registry";
+} from '../ui';
+import { useStudioStore } from '../../context/studio-context';
+import { getEffectDefinition } from '../../effects/registry';
 
 export function FloatingEffectPanel(): React.JSX.Element | null {
   const {
@@ -53,7 +53,10 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
       {/* Panel Header */}
       <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] shrink-0">
         <div className="flex items-center gap-1.5 min-w-0">
-          <SlidersIcon size={14} className="text-[color:var(--primary)] shrink-0" />
+          <SlidersIcon
+            size={14}
+            className="text-[color:var(--primary)] shrink-0"
+          />
           <span className="text-xs font-semibold tracking-tight text-[color:var(--foreground)] truncate">
             {definition.name} Parameters
           </span>
@@ -83,7 +86,10 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
       </div>
 
       {/* Parameter Controls List */}
-      <ScrollFade className="flex-1 overflow-y-auto px-3.5 py-3" containerClassName="flex-1 min-h-0">
+      <ScrollFade
+        className="flex-1 overflow-y-auto px-3.5 py-3"
+        containerClassName="flex-1 min-h-0"
+      >
         <div className="flex flex-col gap-3.5">
           {definition.parameters.map((schema) => {
             const paramName = schema.name;
@@ -93,7 +99,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                 : schema.defaultValue;
 
             switch (schema.type) {
-              case "number":
+              case 'number':
                 return (
                   <SliderControl
                     key={paramName}
@@ -109,14 +115,14 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                           selectedInstance.instanceId,
                           {
                             [paramName]: val,
-                          }
+                          },
                         );
                       }
                     }}
                   />
                 );
 
-              case "select":
+              case 'select':
                 return (
                   <SelectControl
                     key={paramName}
@@ -133,14 +139,14 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                           selectedInstance.instanceId,
                           {
                             [paramName]: val,
-                          }
+                          },
                         );
                       }
                     }}
                   />
                 );
 
-              case "color":
+              case 'color':
                 return (
                   <ColorControl
                     key={paramName}
@@ -153,14 +159,14 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                           selectedInstance.instanceId,
                           {
                             [paramName]: val,
-                          }
+                          },
                         );
                       }
                     }}
                   />
                 );
 
-              case "boolean":
+              case 'boolean':
                 return (
                   <BooleanControl
                     key={paramName}
@@ -173,7 +179,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                           selectedInstance.instanceId,
                           {
                             [paramName]: val,
-                          }
+                          },
                         );
                       }
                     }}
