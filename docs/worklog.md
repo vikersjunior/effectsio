@@ -642,6 +642,62 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
 - `pnpm check:public-provenance`: Passed (0 external runtime/provenance references).
 - `pnpm check:no-competitor-refs`: Passed (scanned tracked files against deny-list, zero violations).
 
+---
+
+## Correction 02.2: Bottom Canvas Tool Dock Redesign & Contextual Animate Playback
+
+- **Date**: 2026-09-02
+- **Task**: Redesign bottom floating canvas controls to match Figma node `61:1277` and make animation/timeline playback contextual to `Animate` mode.
+
+### 1. Files Changed
+- `src/context/studio-context.tsx`:
+  - Elevated `editorMode: "design" | "animate"` and `setEditorMode` to `StudioContextType` as the single source of truth for active editing context across workspace panels.
+  - Added workspace-level `isEffectBrowserOpen: boolean` and `setIsEffectBrowserOpen` to `StudioContextType` so all surfaces can trigger the canonical effects picker.
+- `src/components/layout/inspector-panel.tsx`:
+  - Replaced isolated local `useState` with `editorMode`, `setEditorMode`, `isEffectBrowserOpen`, and `setIsEffectBrowserOpen` from `useStudioStore()`.
+- `src/components/layout/canvas-control-dock.tsx`:
+  - Redesigned floating toolbar layout according to Figma node `61:1277`:
+    - `[ Hand ] [ Resize ] [ Magic Wand ] [ Compare ] │ [ Undo ] [ Redo ] │ [ 85% ▼ ]`
+  - Compact floating surface with `rounded-[16px]`, 8px padding (`p-2`), 8px group spacing (`gap-2`), 32px icon button targets (`!size-8 rounded-lg`), prominent 18px icons (`size={18}` / `[&_svg]:!size-[18px]`), and thin vertical dividers (`h-5`).
+  - Hand tool: toggles pan mode with pink active surface (`bg-[color:var(--primary)] text-[color:var(--primary-foreground)]`).
+  - Resize tool: entry point for upcoming frame size selection without inventing competing state.
+  - Magic Wand tool: opens canonical `EffectBrowserModal`.
+  - Compare tool: toggles `viewport.splitView` with active surface, rendered with `ArrowsOutLineHorizontalIcon` (Phosphor `ArrowsOutLineHorizontal`) for the before/after split divider.
+  - Undo/Redo: wired to existing history actions with disabled states.
+  - Zoom control: shows `85% ▼` with popover menu offering Zoom In, Zoom Out, Fit to screen, and Actual size (1:1).
+  - Legacy direct controls (`Zoom -`, `Zoom +`, `Fit`, `1:1`, `Grid`, `Checkerboard`) removed from persistent dock surface.
+  - `TimelineBar` rendered conditionally: appears directly above bottom dock ONLY when `editorMode === "animate"`; absent outside `Animate`.
+- `src/components/effects/effect-preview-cache.ts`:
+  - Safely falls back to `createImageData` from `canvas-utils` in headless/jsdom testing environments without DOM canvas context.
+- `src/components/layout/phase3-1-fidelity.test.tsx`:
+  - Updated CanvasControlDock assertions for Figma node `61:1277` layout.
+- `src/components/layout/canvas-control-dock.test.tsx`:
+  - Added comprehensive 7-test suite verifying tool order, contextual timeline rendering, hand tool active styling, split view compare toggle, effect browser modal opening, and zoom popover operations.
+
+### 2. Behavior Changes
+- In `Design` mode, the workspace displays only the clean floating bottom tool dock. The playback bar is completely unmounted.
+- In `Animate` mode, `TimelineBar` renders above the bottom tool dock with clear vertical hierarchy (`Timeline / Playback ↓ Bottom Tool Dock`).
+- The persistent bottom toolbar is centered, compact, and features prominent 18px icons inside 32px touch/click button targets for high visibility and ergonomic control.
+
+### 3. Verification Performed
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 159/159 tests passed across 17 test suites.
+- `pnpm build`: Production bundle built cleanly in 5.42s.
+- `pnpm verify:approvals`: All mechanical approval gates verified.
+- `pnpm check:no-competitor-refs`: Passed (616 files scanned against deny-list, 0 violations).
+- `pnpm check:public-provenance`: Passed (0 external runtime references).
+- `pnpm graphify:update`: Knowledge graph updated (3,994 nodes, 10,552 edges, 137 communities).
+- Real Headless Chrome Browser Verification:
+  - 1440×900, 1280×800, 1024×768 tested and verified.
+  - Confirmed bottom dock centered and visually balanced with prominent 18px icons.
+  - Confirmed Hand tool pink active state.
+  - Confirmed Zoom popover opens and renders actions.
+  - Confirmed TimelineBar appears ONLY when `Animate` tab is active and disappears when switching back to `Design`.
+
+### 4. Known Limitations
+- Resize button acts as a structural entry point for upcoming Frame Size capability; full Frame/Layer architecture awaits Stage 1 mechanical approval per `docs/approvals/stage-1-frame-layer.md`.
+
+
 
 
 

@@ -210,11 +210,13 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     setTimelineDuration,
     setTimelineLoop,
     setTimelineSpeed,
+    editorMode,
+    setEditorMode,
+    isEffectBrowserOpen,
+    setIsEffectBrowserOpen,
   } = useStudioStore();
 
-  const [editorMode, setEditorMode] = React.useState<"design" | "animate">("design");
   const [activeTab, setActiveTab] = React.useState("effects");
-  const [isBrowserOpen, setIsBrowserOpen] = React.useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
   const [isPageSectionOpen, setIsPageSectionOpen] = React.useState(true);
 
@@ -461,7 +463,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => setIsBrowserOpen(true)}
+                      onClick={() => setIsEffectBrowserOpen(true)}
                       disabled={!activeAsset}
                       className="gap-1 px-2.5 h-6 text-xs font-semibold shadow-xs"
                     >
@@ -679,12 +681,12 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
 
       {/* Modals */}
       <EffectBrowserModal
-        isOpen={isBrowserOpen}
-        onClose={() => setIsBrowserOpen(false)}
+        isOpen={isEffectBrowserOpen}
+        onClose={() => setIsEffectBrowserOpen(false)}
         onSelectEffect={(effectId) => {
           if (activeImageId) {
             addEffectToStack(activeImageId, effectId);
-            setIsBrowserOpen(false);
+            setIsEffectBrowserOpen(false);
           }
         }}
       />

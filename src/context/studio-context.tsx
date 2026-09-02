@@ -54,6 +54,10 @@ export interface StudioContextType {
   isImporting: boolean;
   importError: string | null;
   viewport: ViewportState;
+  editorMode: "design" | "animate";
+  setEditorMode: (mode: "design" | "animate") => void;
+  isEffectBrowserOpen: boolean;
+  setIsEffectBrowserOpen: (open: boolean) => void;
 
   // History & Undo / Redo
   canUndo: boolean;
@@ -181,6 +185,8 @@ export function StudioProvider({
   const [timeline, setTimeline] = React.useState<AnimationTimelineState>(
     DEFAULT_ANIMATION_STATE
   );
+  const [editorMode, setEditorMode] = React.useState<"design" | "animate">("design");
+  const [isEffectBrowserOpen, setIsEffectBrowserOpen] = React.useState(false);
 
   // History state: past & future
   const [past, setPast] = React.useState<StudioHistorySnapshot[]>([]);
@@ -1291,6 +1297,12 @@ export function StudioProvider({
     resetViewportFit,
     resetViewportActual,
     clearImportError,
+
+    // Editing Context & Modals
+    editorMode,
+    setEditorMode,
+    isEffectBrowserOpen,
+    setIsEffectBrowserOpen,
   };
 
   if (typeof window !== "undefined") {

@@ -101,7 +101,7 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
       {/* Top Section: Project Identity */}
       <div className="h-12 min-h-12 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
-          <BrandLogo size={20} />
+          <BrandLogo size={22} />
           <ProjectNameInput />
         </div>
         {onClose && (
@@ -129,12 +129,13 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
         </div>
         <Button
           variant="ghost"
-          size="icon-xs"
+          size="icon-sm"
           onClick={() => fileInputRef.current?.click()}
           title="Import media"
           aria-label="Import media"
+          className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
         >
-          <PlusIcon size={13} />
+          <PlusIcon size={14} className="shrink-0 !size-3.5" />
         </Button>
       </div>
 
@@ -221,7 +222,7 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
           </div>
         ) : (
           /* State B: Populated 4-Column Square Thumbnail Grid */
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             {/* Search Control */}
             <AssetSearch value={searchQuery} onChange={setSearchQuery} />
 
@@ -267,20 +268,22 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
               })}
 
               {/* Add Image '+' Tile */}
-              <div
+              <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="aspect-square w-full rounded-md bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] border border-dashed border-[color:color-mix(in_oklab,var(--border)_30%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_50%,transparent)] flex flex-col items-center justify-center cursor-pointer transition-all duration-150 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
-                title="Add image"
+                aria-label="Add asset"
+                title="Add asset"
+                className="aspect-square w-full rounded-md border border-dashed border-[color:color-mix(in_oklab,var(--border)_45%,transparent)] bg-[color:color-mix(in_oklab,var(--foreground)_4%,transparent)] text-[color:var(--muted-foreground)] hover:border-[color:color-mix(in_oklab,var(--foreground)_30%,transparent)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_9%,transparent)] hover:text-[color:var(--foreground)] focus-visible:border-[color:var(--ring)] focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_oklab,var(--ring)_30%,transparent)] focus-visible:outline-none flex items-center justify-center cursor-pointer transition-[background-color,border-color,color] duration-150 ease-out p-0"
               >
                 {isImporting ? (
                   <SpinnerGapIcon
-                    size={16}
-                    className="text-[color:var(--primary)] animate-spin"
+                    size={19}
+                    className="text-[color:var(--primary)] animate-spin shrink-0"
                   />
                 ) : (
-                  <PlusIcon size={16} />
+                  <PlusIcon size={19} className="shrink-0" />
                 )}
-              </div>
+              </button>
             </div>
 
             {filteredAssets.length === 0 && searchQuery && (

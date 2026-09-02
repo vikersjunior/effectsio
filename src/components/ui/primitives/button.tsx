@@ -72,10 +72,10 @@ export const buttonVariants = cva(
         ghost: `bg-transparent text-[color:var(--muted-foreground)] ${interactiveStateClassName(
           {
             active:
-              "active:bg-[color:color-mix(in_oklab,var(--input)_10%,transparent)] active:text-[color:var(--foreground)]",
+              "active:bg-[color:color-mix(in_oklab,var(--foreground)_10%,transparent)] active:text-[color:var(--foreground)]",
             hover:
-              "hover:bg-[color:color-mix(in_oklab,var(--input)_10%,transparent)] hover:text-[color:var(--foreground)]",
-            persistent: `aria-expanded:bg-[color:color-mix(in_oklab,var(--input)_10%,transparent)] aria-expanded:text-[color:var(--foreground)] data-open:bg-[color:color-mix(in_oklab,var(--input)_10%,transparent)] data-open:text-[color:var(--foreground)] data-popup-open:bg-[color:color-mix(in_oklab,var(--input)_10%,transparent)] data-popup-open:text-[color:var(--foreground)] data-[state=open]:bg-[color:color-mix(in_oklab,var(--input)_10%,transparent)] data-[state=open]:text-[color:var(--foreground)] ${pressedSelectedItemClassName}`,
+              "hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] hover:text-[color:var(--foreground)]",
+            persistent: `aria-expanded:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] aria-expanded:text-[color:var(--foreground)] data-open:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] data-open:text-[color:var(--foreground)] data-popup-open:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] data-popup-open:text-[color:var(--foreground)] data-[state=open]:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] data-[state=open]:text-[color:var(--foreground)] ${pressedSelectedItemClassName}`,
           },
         )}`,
         destructive: `border-[color:color-mix(in_oklab,var(--destructive)_30%,transparent)] bg-[color:color-mix(in_oklab,var(--destructive)_15%,transparent)] text-[color:var(--destructive)] ${interactiveStateClassName(

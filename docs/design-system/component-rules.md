@@ -131,7 +131,7 @@ Selection state across EffectsIO must strictly consume the canonical formula def
 - **Asset Thumbnail Selection**:
   ```ts
   export const selectedAssetRingClassName =
-    "ring-2 ring-[color:color-mix(in_oklab,var(--link)_72%,transparent)] ring-offset-2 ring-offset-[color:var(--background)]";
+    "ring-2 ring-[color:var(--primary)] ring-offset-2 ring-offset-[color:var(--background)]";
   ```
 - **List / Row Selection**:
   ```ts

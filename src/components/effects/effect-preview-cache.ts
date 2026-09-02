@@ -1,5 +1,6 @@
 import { EFFECT_REGISTRY } from "../../effects/registry";
 import { applyEffect } from "../../effects/engine";
+import { createImageData } from "../../effects/canvas-utils";
 
 const PREVIEW_SIZE = 128;
 let previewCache: Map<string, string> | null = null;
@@ -11,7 +12,7 @@ function createReferenceImageData(): ImageData {
   const ctx = canvas.getContext("2d");
 
   if (!ctx) {
-    return new ImageData(PREVIEW_SIZE, PREVIEW_SIZE);
+    return createImageData(PREVIEW_SIZE, PREVIEW_SIZE);
   }
 
   // Draw a rich gradient backdrop

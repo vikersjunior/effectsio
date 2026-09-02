@@ -133,7 +133,7 @@ describe('Phase 3.1: Figma Fidelity Workspace Components', () => {
   });
 
   describe('3. CanvasControlDock', () => {
-    it('renders timeline playback and viewport controls in exact Figma grouping', () => {
+    it('renders bottom toolbar controls matching Figma node 61:1277', () => {
       const containerRef = { current: document.createElement('div') };
 
       render(
@@ -152,23 +152,24 @@ describe('Phase 3.1: Figma Fidelity Workspace Components', () => {
         screen.getByRole('toolbar', { name: /Canvas Workspace Controls/i }),
       ).toBeDefined();
 
-      // Verify Zoom group
-      expect(screen.getByLabelText('Zoom out')).toBeDefined();
-      expect(screen.getByLabelText('Zoom in')).toBeDefined();
+      // Group 1: Tools
+      expect(screen.getByLabelText('Hand tool')).toBeDefined();
+      expect(screen.getByLabelText('Frame size')).toBeDefined();
+      expect(screen.getByLabelText('Add visual effect')).toBeDefined();
+      expect(screen.getByLabelText('Split comparison view')).toBeDefined();
 
-      // Verify Viewport framing tools
-      expect(screen.getByTitle('Fit to Viewport')).toBeDefined();
-      expect(screen.getByTitle('Actual Size 1:1')).toBeDefined();
-
-      // Verify Viewport inspection tools
-      expect(screen.getByLabelText('Pan Tool')).toBeDefined();
-      expect(screen.getByLabelText('Split View')).toBeDefined();
-      expect(screen.getByLabelText('Grid Overlay')).toBeDefined();
-      expect(screen.getByLabelText('Transparency Checkerboard')).toBeDefined();
-
-      // Verify Undo/Redo
+      // Group 2: Undo / Redo
       expect(screen.getByLabelText('Undo')).toBeDefined();
       expect(screen.getByLabelText('Redo')).toBeDefined();
+
+      // Group 3: Zoom options popover trigger
+      expect(screen.getByLabelText('Zoom options')).toBeDefined();
+
+      // Verify removed controls are NOT present in persistent dock
+      expect(screen.queryByLabelText('Zoom out')).toBeNull();
+      expect(screen.queryByLabelText('Zoom in')).toBeNull();
+      expect(screen.queryByLabelText('Grid Overlay')).toBeNull();
+      expect(screen.queryByLabelText('Transparency Checkerboard')).toBeNull();
     });
   });
 

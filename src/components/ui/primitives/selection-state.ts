@@ -31,5 +31,6 @@ export const checkedSelectedItemClassName =
   "data-checked:border-[color:color-mix(in_oklab,var(--border)_10%,transparent)] data-checked:bg-[color:color-mix(in_oklab,var(--link)_12%,transparent)] data-checked:text-[color:var(--foreground)] dark:data-checked:bg-[color:color-mix(in_oklab,var(--link)_12%,transparent)]";
 
 export const selectedAssetRingClassName =
-  "ring-2 ring-[color:color-mix(in_oklab,var(--link)_72%,transparent)] ring-offset-2 ring-offset-[color:var(--background)]";
+  "ring-2 ring-[color:var(--primary)] ring-offset-2 ring-offset-[color:var(--background)]";
+
 

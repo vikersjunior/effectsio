@@ -768,10 +768,10 @@
     "semantic_hash": "c2db6873ede0d9b38286601a7af5799d"
   },
   "src/components/effects/effect-preview-cache.ts": {
-    "mtime": 1788000938.93,
-    "seen": 1788342347.3273869,
-    "ast_hash": "0a3f8f611b3cf9b214e957bd11ca25bd",
-    "semantic_hash": "0a3f8f611b3cf9b214e957bd11ca25bd"
+    "mtime": 1788388129.55,
+    "seen": 1788388891.6914072,
+    "ast_hash": "f8f02380b0e9a27e4352fc2f7130426d",
+    "semantic_hash": "f8f02380b0e9a27e4352fc2f7130426d"
   },
   "src/components/export/export-modal.tsx": {
     "mtime": 1788126836.04,
@@ -780,10 +780,10 @@
     "semantic_hash": "cae97fcc671f4b6cdbe29d26bbea5c68"
   },
   "src/components/layout/asset-panel.tsx": {
-    "mtime": 1788380100.44,
-    "seen": 1788380578.630985,
-    "ast_hash": "b77a2288a237a8d67bbb14b56d7a5010",
-    "semantic_hash": "b77a2288a237a8d67bbb14b56d7a5010"
+    "mtime": 1788385232.43,
+    "seen": 1788385644.118817,
+    "ast_hash": "593857ef1f6c646b55ee79ef363d4000",
+    "semantic_hash": "593857ef1f6c646b55ee79ef363d4000"
   },
   "src/components/layout/canvas-viewport.tsx": {
     "mtime": 1788374304.96,
@@ -798,10 +798,10 @@
     "semantic_hash": "59961f853238ad21a28ee498762dadd2"
   },
   "src/components/layout/inspector-panel.tsx": {
-    "mtime": 1788374377.8,
-    "seen": 1788375126.101502,
-    "ast_hash": "889e6e79394a6ed91793b5f7d960432b",
-    "semantic_hash": "889e6e79394a6ed91793b5f7d960432b"
+    "mtime": 1788387899.47,
+    "seen": 1788388891.696075,
+    "ast_hash": "4ffbb4832fc67172cda0cd7f700c5faa",
+    "semantic_hash": "4ffbb4832fc67172cda0cd7f700c5faa"
   },
   "src/components/looks/looks-browser.tsx": {
     "mtime": 1788126821.68,
@@ -1200,10 +1200,10 @@
     "semantic_hash": "f979d9775c2703c90e7ac007a2b51cdc"
   },
   "src/components/ui/primitives/button.tsx": {
-    "mtime": 1788363440.12,
-    "seen": 1788363661.393775,
-    "ast_hash": "cd72102873c4c99c71dc99002a062481",
-    "semantic_hash": "cd72102873c4c99c71dc99002a062481"
+    "mtime": 1788385223.39,
+    "seen": 1788385644.152821,
+    "ast_hash": "4dd496951254f7e525b4d91d1641a226",
+    "semantic_hash": "4dd496951254f7e525b4d91d1641a226"
   },
   "src/components/ui/primitives/editable-slider-value-label.tsx": {
     "mtime": 1787943392.2,
@@ -1266,10 +1266,10 @@
     "semantic_hash": "6693f5d0472f1d0011849f9482681223"
   },
   "src/components/ui/primitives/selection-state.ts": {
-    "mtime": 1788009881.0,
-    "seen": 1788342347.327542,
-    "ast_hash": "7310b5de15091ce27d1eae50d190c84a",
-    "semantic_hash": "7310b5de15091ce27d1eae50d190c84a"
+    "mtime": 1788385205.85,
+    "seen": 1788385644.156594,
+    "ast_hash": "e70b1dfedff518012472bf158f56be87",
+    "semantic_hash": "e70b1dfedff518012472bf158f56be87"
   },
   "src/components/ui/primitives/separator.tsx": {
     "mtime": 1787942987.71,
@@ -1350,10 +1350,10 @@
     "semantic_hash": "a9a343aad73dc75af2fd0b8a250f7630"
   },
   "src/context/studio-context.tsx": {
-    "mtime": 1788374110.65,
-    "seen": 1788375126.1528609,
-    "ast_hash": "13e1309070f7eb18e666ffc9f5f552b3",
-    "semantic_hash": "13e1309070f7eb18e666ffc9f5f552b3"
+    "mtime": 1788387862.31,
+    "seen": 1788388891.7673721,
+    "ast_hash": "0c37b8ba2312c341da94aab2010dfd40",
+    "semantic_hash": "0c37b8ba2312c341da94aab2010dfd40"
   },
   "src/context/studio-history.test.tsx": {
     "mtime": 1788044654.32,
@@ -1854,39 +1854,45 @@
     "semantic_hash": "0a3e6cb74c485f998442ded11ed1900f"
   },
   "src/components/layout/asset-search.tsx": {
-    "mtime": 1788379391.28,
-    "seen": 1788380578.6309912,
-    "ast_hash": "8ffbb84fa5db489dea5322a381e32dc5",
-    "semantic_hash": "8ffbb84fa5db489dea5322a381e32dc5"
+    "mtime": 1788380742.57,
+    "seen": 1788383671.013356,
+    "ast_hash": "ae1fae6c55ca3e9fae8e91146b1a847c",
+    "semantic_hash": "ae1fae6c55ca3e9fae8e91146b1a847c"
   },
   "src/components/layout/canvas-control-dock.tsx": {
-    "mtime": 1788374225.45,
-    "seen": 1788375126.101391,
-    "ast_hash": "c7e7cd2ed4712f15af94b6d89eede690",
-    "semantic_hash": "c7e7cd2ed4712f15af94b6d89eede690"
+    "mtime": 1788390172.33,
+    "seen": 1788390354.158356,
+    "ast_hash": "f0be6a7ec6c6dc276c45d4cd65d0611c",
+    "semantic_hash": "f0be6a7ec6c6dc276c45d4cd65d0611c"
   },
   "src/components/layout/floating-effect-panel.tsx": {
-    "mtime": 1788379406.73,
-    "seen": 1788380578.6332958,
-    "ast_hash": "ac15cabd9e53d609797ce7e5233e7908",
-    "semantic_hash": "ac15cabd9e53d609797ce7e5233e7908"
+    "mtime": 1788380742.63,
+    "seen": 1788383671.013715,
+    "ast_hash": "386e07af148bc314bad598cb12554d83",
+    "semantic_hash": "386e07af148bc314bad598cb12554d83"
   },
   "src/components/layout/phase3-1-fidelity.test.tsx": {
-    "mtime": 1788380206.72,
-    "seen": 1788380578.634611,
-    "ast_hash": "b5e8bc4f18b86a6bece8fdea4d504f51",
-    "semantic_hash": "b5e8bc4f18b86a6bece8fdea4d504f51"
+    "mtime": 1788387974.44,
+    "seen": 1788388891.696095,
+    "ast_hash": "7511d2f56ef468dc9657ba27b52f394b",
+    "semantic_hash": "7511d2f56ef468dc9657ba27b52f394b"
   },
   "src/components/layout/project-name-input.tsx": {
-    "mtime": 1788380398.67,
-    "seen": 1788380578.634617,
-    "ast_hash": "5ce303bb3a43510e3cfa18f5fb636163",
-    "semantic_hash": "5ce303bb3a43510e3cfa18f5fb636163"
+    "mtime": 1788381254.03,
+    "seen": 1788383671.013969,
+    "ast_hash": "7affc6cd954463ee646a9847d5a9fcdb",
+    "semantic_hash": "7affc6cd954463ee646a9847d5a9fcdb"
   },
-  "scripts/verify-correction01-cdp.mjs": {
-    "mtime": 1788380423.39,
-    "seen": 1788380578.626708,
-    "ast_hash": "43e65ac6dcc48292a16fc6bc65736dec",
-    "semantic_hash": "43e65ac6dcc48292a16fc6bc65736dec"
+  "src/components/layout/asset-panel.test.tsx": {
+    "mtime": 1788385248.73,
+    "seen": 1788385644.1188009,
+    "ast_hash": "b276fd6aebb02418c8536c7fc6899c3d",
+    "semantic_hash": "b276fd6aebb02418c8536c7fc6899c3d"
+  },
+  "src/components/layout/canvas-control-dock.test.tsx": {
+    "mtime": 1788388266.94,
+    "seen": 1788388891.6939058,
+    "ast_hash": "ac6d6b5bcf58b453c5b6ffb480ea0503",
+    "semantic_hash": "ac6d6b5bcf58b453c5b6ffb480ea0503"
   }
 }
