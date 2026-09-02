@@ -1,0 +1,49 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+dist-ssr
+.vite
+.turbo
+.output
+.next
+*.tsbuildinfo
+
+# Test output & verification evidence captures
+coverage
+test-results
+playwright-report
+.playwright-mcp
+docs/evidence/
+
+# Private Reference Study Documents & Research (Local Only)
+docs/reference-study.md
+docs/reference-study-prompts.md
+docs/research/
+.research-scratch/
+
+# Local environment
+.env
+.env.*
+!.env.example
+.headroom/
+.headroom-proxy.log
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# OS and editor files
+.DS_Store
+._*
+**/.DS_Store
+**/._*
+Thumbs.db
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

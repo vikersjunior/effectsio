@@ -1,0 +1,15 @@
+# Dependencies and builds
+node_modules/
+dist/
+dist-ssr/
+.vite/
+.git/
+.headroom/
+
+# Logs and test outputs
+coverage/
+test-results/
+*.log
+
+# Lock files and bundle assets
+pnpm-lock.yaml

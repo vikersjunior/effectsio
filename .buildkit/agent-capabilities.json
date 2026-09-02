@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-26T19:46:23.191Z",
+  "platform": "darwin",
+  "node": "v22.17.1",
+  "note": "Capabilities are evidence-based signals, not guarantees of vendor behavior.",
+  "agents": [
+    {
+      "agent": "claude",
+      "nativeSkills": true,
+      "projectInstructions": true,
+      "cliDetected": false,
+      "shell": true,
+      "git": true,
+      "mcpEvidence": false,
+      "parallelWorkEvidence": true
+    },
+    {
+      "agent": "codex",
+      "nativeSkills": true,
+      "projectInstructions": true,
+      "cliDetected": false,
+      "shell": true,
+      "git": true,
+      "mcpEvidence": false,
+      "parallelWorkEvidence": true
+    },
+    {
+      "agent": "antigravity",
+      "nativeSkills": true,
+      "projectInstructions": true,
+      "cliDetected": false,
+      "shell": true,
+      "git": true,
+      "mcpEvidence": false,
+      "parallelWorkEvidence": true
+    }
+  ]
+}
