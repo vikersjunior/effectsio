@@ -95,21 +95,17 @@ export function TopNav(): React.JSX.Element {
 
         <Button
           variant="outline"
-          size="xs"
-          className="gap-1 text-2xs"
           title="Project settings"
         >
-          <GearIcon size={12} />
+          <GearIcon size={14} />
           <span>Settings</span>
         </Button>
         <Button
           variant="primary"
-          size="xs"
           onClick={() => setIsExportModalOpen(true)}
-          className="gap-1 text-2xs"
           title="Export composition or batch library"
         >
-          <DownloadSimpleIcon size={12} />
+          <DownloadSimpleIcon size={14} />
           <span>Export</span>
         </Button>
       </div>

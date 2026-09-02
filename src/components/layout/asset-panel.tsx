@@ -140,12 +140,11 @@ export function AssetPanel(): React.JSX.Element {
                   <Button
                     type="button"
                     variant="outline"
-                    size="xs"
                     onClick={(e) => {
                       e.stopPropagation();
                       fileInputRef.current?.click();
                     }}
-                    className="mt-1 text-2xs h-6 px-2.5"
+                    className="mt-1"
                   >
                     Import media
                   </Button>

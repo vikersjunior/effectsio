@@ -2,23 +2,47 @@
 
 ## 1. Architectural Principles & Ownership
 
-1. **Native EffectsIO Ownership**: EffectsIO owns 100% of its UI primitives in `src/components/ui/`. All components are native to EffectsIO and consume design tokens declared in `src/styles.css`.
-2. **Permanent Component Decision Rule — Canonical First**:
-   Before creating or styling a new UI component in EffectsIO, inspect `src/components/ui/` for an existing canonical primitive. If an equivalent exists, EffectsIO must use or extend the canonical component rather than creating a parallel custom implementation. New custom primitives require explicit justification and must not duplicate an existing canonical capability.
-   
-   **Hierarchical Component Flow**:
-   ```
-   EffectsIO Design System & Tokens (`src/styles.css`)
-                ↓
-   Canonical Shared Primitives (`src/components/ui/`)
-                ↓
-   Page-Level / Panel Usage (`src/components/layout/`, `src/components/looks/`, etc.)
-   ```
-   *Anti-pattern strictly prohibited*:
-   `Canonical Component → Custom One-Off Implementation → Another Custom Variation → Visual Drift`
+### EffectsIO Component Foundation
+EffectsIO components use:
+```text
+Tailwind CSS v4
++
+shadcn-style semantic token conventions
++
+Base UI primitives (@base-ui/react)
++
+EffectsIO design tokens & custom visual language
+```
 
-3. **Zero Custom Duplication Rule**: Never hand-craft custom ad-hoc buttons, badges, panels, toggles, textareas, search inputs, or dropzones with inline styles or custom Tailwind utility classes when an existing primitive in `src/components/ui/` exists.
-4. **Design System Token Discipline**: All styling must consume variables declared in `src/styles.css` (`var(--background)`, `var(--foreground)`, `var(--card)`, `var(--border)`, `var(--primary)`, `var(--secondary)`, `var(--muted)`, `var(--link)`, `var(--radius)`, `var(--radius-lg)`). Never use arbitrary hardcoded hex codes or arbitrary pixel margins.
+- **Base UI is the primitive/accessibility foundation**: All headless behaviors (buttons, dialogs, tabs, popovers, sliders, selects, tooltips) are powered by `@base-ui/react`. Radix UI is strictly prohibited.
+- **shadcn is the architectural/reference convention**: Semantic token names (`--background`, `--foreground`, `--card`, `--primary`, `--border`, `--ring`, etc.) and composable component patterns provide a clean structure.
+- **EffectsIO owns the visual language**: The dark-first palette (pink brand accent `pink-300` across both themes, near-black surfaces, subtle low-opacity dark borders) and canonical default radius (`0.6rem`) are native to EffectsIO.
+- **Components consume semantic tokens**: Product components preferentially consume semantic tokens (`bg-background`, `text-foreground`, `border-border`, `bg-card`, `bg-sidebar`, etc.) rather than hardcoded primitive colors.
+- **Primitive palette values stay in the token layer**: Raw OKLCH scales (`zinc-50..950`, `pink-50..950`, etc.) reside in `@theme` in `src/styles.css`.
+- **Figma Visual Hierarchy Source of Truth**:
+  - **Dark Mode**: Workspace `zinc-950` (`#09090B`), Panels `zinc-900` (`#18181B`), Controls `zinc-800` (`#27272A`), Primary `pink-300` (`#FDA5D5`), Primary Foreground `zinc-950` (`#09090B`).
+  - **Light Mode**: Workspace `white` (`#FFFFFF`), Panels `zinc-50` (`#FAFAFA`), Controls `zinc-100` (`#F4F4F5`), Borders `zinc-200` (`#E4E4E7`), Primary `pink-300` (`#FDA5D5`), Primary Foreground `zinc-950` (`#09090B`).
+  - **Creative Canvas vs Workspace**: The application chrome and workspace surrounding the artwork consume `--background` and `--sidebar`. The actual creative canvas/frame remains independent.
+- **Permanent Component Decision Rule — Canonical First**:
+  Before creating or styling a new UI component in EffectsIO, inspect `src/components/ui/` for an existing canonical primitive. If an equivalent exists, EffectsIO must use or extend the canonical component rather than creating a parallel custom implementation. New custom primitives require explicit justification and must not duplicate an existing canonical capability.
+  
+  **Hierarchical Component Flow**:
+  ```
+  Primitive OKLCH Palette (`zinc`, `pink`, `blue`, etc.)
+               ↓
+  Semantic EffectsIO Tokens (`--background`, `--primary`, `--card`, `--sidebar`, etc.)
+               ↓
+  Base UI Primitives (`@base-ui/react`)
+               ↓
+  EffectsIO Shared Controls (`src/components/ui/`)
+               ↓
+  EffectsIO Product Layout & Panels (`src/components/layout/`, `src/components/looks/`, etc.)
+  ```
+
+- **Zero Custom Duplication Rule**: Never hand-craft custom ad-hoc buttons, badges, panels, toggles, textareas, search inputs, or dropzones with inline styles or custom Tailwind utility classes when an existing primitive in `src/components/ui/` exists.
+- **Design System Token Discipline**: All styling must consume variables declared in `src/styles.css` (`var(--background)`, `var(--foreground)`, `var(--card)`, `var(--border)`, `var(--primary)`, `var(--secondary)`, `var(--muted)`, `var(--link)`, `var(--radius)`, `var(--radius-lg)`). Never use arbitrary hardcoded hex codes or arbitrary pixel margins.
+- **Canonical Default Radius**: `0.6rem` (`--radius` and `--radius-lg`), with structured scale `xs: 0.2rem`, `sm: 0.35rem`, `md: 0.45rem`, `lg: 0.6rem`, `xl: 0.75rem`, `2xl: 1rem`, `full: 9999px`.
+
 
 ---
 

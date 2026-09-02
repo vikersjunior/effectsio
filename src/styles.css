@@ -4,19 +4,176 @@
 @import "@fontsource-variable/inter";
 
 @theme {
+  /* Typography — Inter as Authoritative Primary Typeface */
+  --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --spacing-field-control: 0.3125rem;
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 0.875rem;
   --text-xs-plus: 0.8125rem;
   --text-xs-plus--line-height: 1.125rem;
-  --font-sans: "Inter Variable", sans-serif;
-  --font-mono:
-    ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  --radius-xs: 0.125rem;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
+
+  /* Canonical Radius Scale — Authoritative Default 0.6rem */
+  --radius: 0.6rem;
+  --radius-xs: 0.2rem;
+  --radius-sm: 0.35rem;
+  --radius-md: 0.45rem;
+  --radius-lg: 0.6rem;
   --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Semantic UI Colors mapped to CSS Custom Properties */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-link: var(--link);
+  --color-inspect: var(--inspect);
+  --color-attention: var(--attention);
+  --color-attention-foreground: var(--attention-foreground);
+
+  /* Sidebar / Panel Semantic Surface Tokens */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+
+  /* Primitive OKLCH Palette — Zinc */
+  --color-zinc-50: oklch(0.985 0 0);
+  --color-zinc-100: oklch(0.967 0.001 286.375);
+  --color-zinc-200: oklch(0.92 0.004 286.32);
+  --color-zinc-300: oklch(0.871 0.006 286.286);
+  --color-zinc-400: oklch(0.705 0.015 286.067);
+  --color-zinc-500: oklch(0.552 0.016 285.938);
+  --color-zinc-600: oklch(0.442 0.017 285.786);
+  --color-zinc-700: oklch(0.37 0.013 285.805);
+  --color-zinc-800: oklch(0.274 0.006 286.033);
+  --color-zinc-900: oklch(0.21 0.006 285.885);
+  --color-zinc-950: oklch(0.141 0.005 285.823);
+
+  /* Primitive OKLCH Palette — Pink (Primary Accent: pink-300 across both themes) */
+  --color-pink-50: oklch(0.971 0.014 343.198);
+  --color-pink-100: oklch(0.948 0.028 342.258);
+  --color-pink-200: oklch(0.899 0.061 343.231);
+  --color-pink-300: oklch(0.823 0.12 346.018);
+  --color-pink-400: oklch(0.718 0.202 349.761);
+  --color-pink-500: oklch(0.656 0.241 354.308);
+  --color-pink-600: oklch(0.592 0.249 0.584);
+  --color-pink-700: oklch(0.525 0.223 3.958);
+  --color-pink-800: oklch(0.459 0.187 3.815);
+  --color-pink-900: oklch(0.408 0.153 2.432);
+  --color-pink-950: oklch(0.284 0.109 3.907);
+
+  /* Primitive OKLCH Palette — Blue */
+  --color-blue-50: oklch(0.97 0.014 254.604);
+  --color-blue-100: oklch(0.932 0.032 255.585);
+  --color-blue-200: oklch(0.882 0.059 254.128);
+  --color-blue-300: oklch(0.809 0.105 251.813);
+  --color-blue-400: oklch(0.707 0.165 254.624);
+  --color-blue-500: oklch(0.623 0.214 259.815);
+  --color-blue-600: oklch(0.546 0.245 262.881);
+  --color-blue-700: oklch(0.488 0.243 264.376);
+  --color-blue-800: oklch(0.424 0.199 265.638);
+  --color-blue-900: oklch(0.379 0.146 265.522);
+  --color-blue-950: oklch(0.282 0.091 267.935);
+
+  /* Primitive OKLCH Palette — Cyan */
+  --color-cyan-50: oklch(0.984 0.014 180.72);
+  --color-cyan-100: oklch(0.953 0.051 180.801);
+  --color-cyan-200: oklch(0.91 0.096 180.426);
+  --color-cyan-300: oklch(0.865 0.127 207.078);
+  --color-cyan-400: oklch(0.789 0.154 211.53);
+  --color-cyan-500: oklch(0.715 0.143 215.221);
+  --color-cyan-600: oklch(0.609 0.126 221.723);
+  --color-cyan-700: oklch(0.52 0.105 223.128);
+  --color-cyan-800: oklch(0.45 0.085 224.283);
+  --color-cyan-900: oklch(0.398 0.07 227.392);
+  --color-cyan-950: oklch(0.302 0.056 229.695);
+
+  /* Primitive OKLCH Palette — Emerald */
+  --color-emerald-50: oklch(0.979 0.021 166.113);
+  --color-emerald-100: oklch(0.95 0.052 163.051);
+  --color-emerald-200: oklch(0.905 0.093 164.15);
+  --color-emerald-300: oklch(0.845 0.143 164.978);
+  --color-emerald-400: oklch(0.765 0.177 163.223);
+  --color-emerald-500: oklch(0.696 0.17 162.48);
+  --color-emerald-600: oklch(0.596 0.145 163.225);
+  --color-emerald-700: oklch(0.508 0.118 165.612);
+  --color-emerald-800: oklch(0.432 0.095 166.913);
+  --color-emerald-900: oklch(0.378 0.077 168.94);
+  --color-emerald-950: oklch(0.262 0.051 172.552);
+
+  /* Primitive OKLCH Palette — Fuchsia */
+  --color-fuchsia-50: oklch(0.977 0.017 320.058);
+  --color-fuchsia-100: oklch(0.952 0.037 318.852);
+  --color-fuchsia-200: oklch(0.903 0.076 319.62);
+  --color-fuchsia-300: oklch(0.833 0.145 321.434);
+  --color-fuchsia-400: oklch(0.74 0.238 322.16);
+  --color-fuchsia-500: oklch(0.667 0.295 322.15);
+  --color-fuchsia-600: oklch(0.591 0.293 322.896);
+  --color-fuchsia-700: oklch(0.518 0.253 323.949);
+  --color-fuchsia-800: oklch(0.452 0.211 324.591);
+  --color-fuchsia-900: oklch(0.401 0.17 325.612);
+  --color-fuchsia-950: oklch(0.293 0.136 325.661);
+
+  /* Primitive OKLCH Palette — Indigo */
+  --color-indigo-50: oklch(0.962 0.018 272.314);
+  --color-indigo-100: oklch(0.93 0.034 272.788);
+  --color-indigo-200: oklch(0.87 0.065 274.039);
+  --color-indigo-300: oklch(0.785 0.115 274.713);
+  --color-indigo-400: oklch(0.673 0.182 276.935);
+  --color-indigo-500: oklch(0.585 0.233 277.117);
+  --color-indigo-600: oklch(0.511 0.262 276.966);
+  --color-indigo-700: oklch(0.457 0.24 277.023);
+  --color-indigo-800: oklch(0.398 0.195 277.366);
+  --color-indigo-900: oklch(0.359 0.144 278.697);
+  --color-indigo-950: oklch(0.257 0.09 281.288);
+
+  /* Primitive OKLCH Palette — Red (Destructive) */
+  --color-red-50: oklch(0.971 0.013 17.38);
+  --color-red-100: oklch(0.936 0.032 17.717);
+  --color-red-200: oklch(0.885 0.062 18.334);
+  --color-red-300: oklch(0.808 0.114 19.571);
+  --color-red-400: oklch(0.704 0.191 22.216);
+  --color-red-500: oklch(0.637 0.237 25.331);
+  --color-red-600: oklch(0.577 0.245 27.325);
+  --color-red-700: oklch(0.505 0.213 27.518);
+  --color-red-800: oklch(0.444 0.177 26.899);
+  --color-red-900: oklch(0.396 0.141 25.723);
+  --color-red-950: oklch(0.258 0.092 26.042);
+
+  /* Primitive OKLCH Palette — Yellow */
+  --color-yellow-50: oklch(0.987 0.026 102.212);
+  --color-yellow-100: oklch(0.973 0.071 103.193);
+  --color-yellow-200: oklch(0.945 0.129 101.54);
+  --color-yellow-300: oklch(0.905 0.182 98.111);
+  --color-yellow-400: oklch(0.852 0.199 91.936);
+  --color-yellow-500: oklch(0.795 0.184 86.047);
+  --color-yellow-600: oklch(0.681 0.162 75.834);
+  --color-yellow-700: oklch(0.554 0.135 66.442);
+  --color-yellow-800: oklch(0.476 0.114 61.907);
+  --color-yellow-900: oklch(0.421 0.095 57.708);
+  --color-yellow-950: oklch(0.286 0.066 53.813);
+
+  /* Constants */
+  --color-black: oklch(0 0 0);
+  --color-white: oklch(1 0 0);
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -31,6 +188,123 @@
 @custom-variant data-horizontal (&:where([data-orientation='horizontal']));
 @custom-variant data-vertical (&:where([data-orientation='vertical']));
 
+/* Default EffectsIO Dark Theme (Figma node 10-869) */
+:root,
+.dark {
+  /* Workspace / Application Background: zinc-950 (#09090B) */
+  --background: oklch(0.141 0.005 285.823);
+
+  /* Side Panels / Cards: zinc-900 (#18181B) */
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+
+  /* Main Foreground: zinc-50 (#FAFAFA) */
+  --foreground: oklch(0.985 0 0);
+  --muted-foreground: oklch(0.705 0.015 286.067); /* zinc-400 (#A1A1AA) */
+
+  /* Primary Brand Accent: pink-300 (#FDA5D5) */
+  --primary: oklch(0.823 0.12 346.018);
+  --primary-foreground: oklch(0.141 0.005 285.823); /* zinc-950 (#09090B) */
+
+  /* Secondary / Control Surfaces: zinc-800 (#27272A) */
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+
+  /* Destructive: red-500 */
+  --destructive: oklch(0.637 0.237 25.331);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  /* Structural Borders: subtle dark translucent border */
+  --border: oklch(0.311 0.013 279.19);
+  --input: oklch(0.274 0.006 286.033);
+  --ring: oklch(0.823 0.12 346.018); /* pink-300 */
+
+  /* Sidebars / Panels */
+  --sidebar: oklch(0.21 0.006 285.885); /* zinc-900 */
+  --sidebar-foreground: oklch(0.985 0 0); /* zinc-50 */
+  --sidebar-accent: oklch(0.274 0.006 286.033); /* zinc-800 */
+  --sidebar-border: oklch(0.311 0.013 279.19);
+
+  /* EffectsIO Semantic Extensions */
+  --link: oklch(0.707 0.165 254.624); /* blue-400 */
+  --inspect: oklch(0.673 0.182 276.935); /* indigo-400 */
+  --attention: oklch(0.852 0.199 91.936); /* yellow-400 */
+  --attention-foreground: oklch(0.141 0.005 285.823);
+
+  /* Canonical Base Radius: 0.6rem */
+  --radius: 0.6rem;
+  --button-radius-xs: 0.2rem;
+  --button-radius-sm: 0.35rem;
+  --button-radius-md: 0.45rem;
+  --button-radius-lg: 0.6rem;
+
+  color-scheme: dark;
+}
+
+/* EffectsIO Light Theme (Figma node 50-1068) */
+.light,
+:root[data-theme="light"],
+html.light:root {
+  /* Workspace / Application Background: white (#FFFFFF) */
+  --background: oklch(1 0 0);
+
+  /* Side Panels / Cards: zinc-50 (#FAFAFA) */
+  --card: oklch(0.985 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+
+  /* Main Foreground: zinc-950 (#09090B) */
+  --foreground: oklch(0.141 0.005 285.823);
+  --muted-foreground: oklch(0.552 0.016 285.938); /* zinc-500 (#71717A) */
+
+  /* Primary Brand Accent: pink-300 (#FDA5D5) — Identical Brand Pink */
+  --primary: oklch(0.823 0.12 346.018);
+  --primary-foreground: oklch(0.141 0.005 285.823); /* zinc-950 (#09090B) */
+
+  /* Secondary / Control Surfaces: zinc-100 (#F4F4F5) */
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.141 0.005 285.823);
+  --muted: oklch(0.967 0.001 286.375);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.141 0.005 285.823);
+
+  /* Destructive: red-600 */
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+
+  /* Structural Borders: zinc-200 (#E4E4E7) */
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.823 0.12 346.018); /* pink-300 */
+
+  /* Sidebars / Panels */
+  --sidebar: oklch(0.985 0 0); /* zinc-50 */
+  --sidebar-foreground: oklch(0.141 0.005 285.823); /* zinc-950 */
+  --sidebar-accent: oklch(0.967 0.001 286.375); /* zinc-100 */
+  --sidebar-border: oklch(0.92 0.004 286.32); /* zinc-200 */
+
+  /* EffectsIO Semantic Extensions */
+  --link: oklch(0.546 0.245 262.881); /* blue-600 */
+  --inspect: oklch(0.511 0.262 276.966); /* indigo-600 */
+  --attention: oklch(0.681 0.162 75.834); /* yellow-600 */
+  --attention-foreground: oklch(1 0 0);
+
+  /* Canonical Base Radius: 0.6rem */
+  --radius: 0.6rem;
+  --button-radius-xs: 0.2rem;
+  --button-radius-sm: 0.35rem;
+  --button-radius-md: 0.45rem;
+  --button-radius-lg: 0.6rem;
+
+  color-scheme: light;
+}
+
 .button-radius-tab-control {
   border-radius: var(--radius-lg);
 }
@@ -39,41 +313,9 @@
   border-color: var(--border);
   background-color: var(
     --floating-popup-surface-background,
-    color-mix(in oklab, var(--popover) 98%, transparent)
+    color-mix(in oklab, var(--card) 95%, transparent)
   );
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
-}
-
-:root {
-  --background: oklch(0 0 0);
-  --foreground: oklch(0.977 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --link: #70b0fa;
-  --primary: oklch(0.546 0.215 262.88);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.249 0.07 263.47);
-  --secondary-foreground: oklch(0.977 0 0);
-  --muted: #262626;
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: #0c8ce9;
-  --accent-foreground: oklch(0.985 0 0);
-  --inspect: #9149f5;
-  --attention: #ea733a;
-  --attention-foreground: oklch(0.145 0 0);
-  --destructive: hsl(0 84% 60%);
-  --destructive-foreground: var(--foreground);
-  --border: oklch(0.311 0.013 279.19);
-  --input: oklch(0.311 0.013 279.19);
-  --ring: oklch(0.556 0 0);
-  --radius: 0.375rem;
-  --button-radius-xs: 0.125rem;
-  --button-radius-sm: 0.25rem;
-  --button-radius-md: 0.375rem;
-  --button-radius-lg: 0.5rem;
-  color-scheme: dark;
 }
 
 @layer base {

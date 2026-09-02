@@ -565,6 +565,18 @@ export function CanvasViewport(): React.JSX.Element {
     requestDraw();
   }, [activeAsset, loadedSourceImage, activeEffectStack, activeBackground, viewport, requestDraw]);
 
+  // Listen for root theme changes to redraw canvas viewport background and chrome
+  React.useEffect(() => {
+    const observer = new MutationObserver(() => {
+      requestDraw();
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "data-theme"],
+    });
+    return () => observer.disconnect();
+  }, [requestDraw]);
+
   // Keyboard shortcut listeners
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

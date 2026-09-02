@@ -309,12 +309,10 @@ export function InspectorPanel(): React.JSX.Element {
                   )}
                   <Button
                     variant="primary"
-                    size="xs"
                     onClick={() => setIsBrowserOpen(true)}
                     disabled={!activeAsset}
-                    className="gap-1 text-2xs"
                   >
-                    <PlusIcon size={12} />
+                    <PlusIcon size={14} />
                     <span>Add Effect</span>
                   </Button>
                 </div>

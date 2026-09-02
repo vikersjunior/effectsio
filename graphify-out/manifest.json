@@ -780,16 +780,16 @@
     "semantic_hash": "cae97fcc671f4b6cdbe29d26bbea5c68"
   },
   "src/components/layout/asset-panel.tsx": {
-    "mtime": 1788341743.95,
-    "seen": 1788342347.327391,
-    "ast_hash": "87a5335396e63fd2480ae6a573369a92",
-    "semantic_hash": "87a5335396e63fd2480ae6a573369a92"
+    "mtime": 1788363136.6,
+    "seen": 1788363661.389552,
+    "ast_hash": "69ee7b6f5f01be36f857cfa3fdfc67c1",
+    "semantic_hash": "69ee7b6f5f01be36f857cfa3fdfc67c1"
   },
   "src/components/layout/canvas-viewport.tsx": {
-    "mtime": 1788126941.07,
-    "seen": 1788342347.327392,
-    "ast_hash": "f8c84f6afbacc97c697c18c0f806eeb2",
-    "semantic_hash": "f8c84f6afbacc97c697c18c0f806eeb2"
+    "mtime": 1788362332.04,
+    "seen": 1788363661.389555,
+    "ast_hash": "e3f355b98ab530bca299176f83827bde",
+    "semantic_hash": "e3f355b98ab530bca299176f83827bde"
   },
   "src/components/layout/index.ts": {
     "mtime": 1787774517.7,
@@ -798,16 +798,16 @@
     "semantic_hash": "6f0e4460e49f842a733e6bc0dfd93368"
   },
   "src/components/layout/inspector-panel.tsx": {
-    "mtime": 1788126966.77,
-    "seen": 1788342347.3273962,
-    "ast_hash": "52d97725b04ab3834f455a27271c43fe",
-    "semantic_hash": "52d97725b04ab3834f455a27271c43fe"
+    "mtime": 1788363128.37,
+    "seen": 1788363661.389646,
+    "ast_hash": "51b167beb91e7adecbd7be3b139d0d3a",
+    "semantic_hash": "51b167beb91e7adecbd7be3b139d0d3a"
   },
   "src/components/layout/top-nav.tsx": {
-    "mtime": 1788127055.18,
-    "seen": 1788342347.3273978,
-    "ast_hash": "ecfbf733757bffe6daaff7ddd8b2de43",
-    "semantic_hash": "ecfbf733757bffe6daaff7ddd8b2de43"
+    "mtime": 1788363120.62,
+    "seen": 1788363661.389647,
+    "ast_hash": "1067c224021f103a1e46ce5551b85332",
+    "semantic_hash": "1067c224021f103a1e46ce5551b85332"
   },
   "src/components/looks/looks-browser.tsx": {
     "mtime": 1788126821.68,
@@ -1206,10 +1206,10 @@
     "semantic_hash": "f979d9775c2703c90e7ac007a2b51cdc"
   },
   "src/components/ui/primitives/button.tsx": {
-    "mtime": 1787944463.62,
-    "seen": 1788342347.327522,
-    "ast_hash": "9bc30c8e23a885a17ed88fa794c7ea0a",
-    "semantic_hash": "9bc30c8e23a885a17ed88fa794c7ea0a"
+    "mtime": 1788363440.12,
+    "seen": 1788363661.393775,
+    "ast_hash": "cd72102873c4c99c71dc99002a062481",
+    "semantic_hash": "cd72102873c4c99c71dc99002a062481"
   },
   "src/components/ui/primitives/editable-slider-value-label.tsx": {
     "mtime": 1787943392.2,
