@@ -262,12 +262,12 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
         <div className="flex items-center gap-1.5">
           <Button
             variant="primary"
-            size="default"
+            size="sm"
             onClick={() => setIsExportModalOpen(true)}
             title="Export composition or batch library"
-            className="gap-1 px-3 text-xs font-semibold shadow-xs"
+            className="gap-1 px-2.5 h-6 text-xs font-semibold shadow-xs"
           >
-            <DownloadSimpleIcon size={14} />
+            <DownloadSimpleIcon size={13} />
             <span>Export</span>
           </Button>
 
@@ -421,9 +421,9 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                 <PaletteIcon size={13} className="shrink-0" />
                 <span className="hidden @[280px]/inspector:inline truncate">Looks</span>
               </TabsTrigger>
-              <TabsTrigger value="backdrop" className="flex items-center justify-center gap-1 text-[11px] px-1 py-1" title="Backdrop & Framing">
+              <TabsTrigger value="backdrop" className="flex items-center justify-center gap-1 text-[11px] px-1 py-1" title="Background & Framing">
                 <StackIcon size={13} className="shrink-0" />
-                <span className="hidden @[280px]/inspector:inline truncate">Backdrop</span>
+                <span className="hidden @[280px]/inspector:inline truncate">Background</span>
               </TabsTrigger>
               <TabsTrigger value="details" className="flex items-center justify-center gap-1 text-[11px] px-1 py-1" title="Asset Details">
                 <InfoIcon size={13} className="shrink-0" />
@@ -460,12 +460,12 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                     )}
                     <Button
                       variant="primary"
-                      size="default"
+                      size="sm"
                       onClick={() => setIsBrowserOpen(true)}
                       disabled={!activeAsset}
-                      className="font-semibold shadow-xs"
+                      className="gap-1 px-2.5 h-6 text-xs font-semibold shadow-xs"
                     >
-                      <PlusIcon size={14} />
+                      <PlusIcon size={13} />
                       <span>Add Effect</span>
                     </Button>
                   </div>

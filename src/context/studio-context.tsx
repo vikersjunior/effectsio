@@ -38,6 +38,8 @@ const MAX_HISTORY_LIMIT = 40;
 
 export interface StudioContextType {
   isHydrated: boolean;
+  projectName: string;
+  setProjectName: (name: string) => void;
   assets: Asset[];
   activeImageId: string | null;
   activeAsset: Asset | null;
@@ -154,6 +156,7 @@ export function StudioProvider({
   children: React.ReactNode;
 }): React.JSX.Element {
   const [isHydrated, setIsHydrated] = React.useState(false);
+  const [projectName, setProjectNameState] = React.useState<string>("Project Name");
   const [assets, setAssets] = React.useState<Asset[]>([]);
   const [activeImageId, setActiveImageIdState] = React.useState<string | null>(
     null
@@ -184,6 +187,7 @@ export function StudioProvider({
   const [future, setFuture] = React.useState<StudioHistorySnapshot[]>([]);
 
   // Live refs for stable callbacks & continuous interaction debouncing
+  const projectNameRef = React.useRef(projectName);
   const effectStacksRef = React.useRef(effectStacks);
   const backgroundsRef = React.useRef(backgrounds);
   const activeImageIdRef = React.useRef(activeImageId);
@@ -192,6 +196,9 @@ export function StudioProvider({
   const futureRef = React.useRef(future);
   const assetsRef = React.useRef(assets);
 
+  React.useEffect(() => {
+    projectNameRef.current = projectName;
+  }, [projectName]);
   React.useEffect(() => {
     effectStacksRef.current = effectStacks;
   }, [effectStacks]);
@@ -284,6 +291,9 @@ export function StudioProvider({
         if (mounted) {
           setAssets(state.assets);
           setActiveImageIdState(state.activeImageId);
+          if (state.projectName) {
+            setProjectNameState(state.projectName);
+          }
           setEffectStacks(state.effectStacks);
           setBackgrounds(state.backgrounds);
           setUserLooks(state.userLooks);
@@ -302,6 +312,12 @@ export function StudioProvider({
     return () => {
       mounted = false;
     };
+  }, []);
+
+  const setProjectName = React.useCallback((name: string) => {
+    const trimmed = name.trim() || "Project Name";
+    setProjectNameState(trimmed);
+    dbSaveSessionState(activeImageIdRef.current, trimmed).catch(console.error);
   }, []);
 
   // Derived active asset
@@ -340,7 +356,7 @@ export function StudioProvider({
 
   const setActiveImageId = React.useCallback((id: string | null) => {
     setActiveImageIdState(id);
-    dbSaveSessionState(id).catch(console.error);
+    dbSaveSessionState(id, projectNameRef.current).catch(console.error);
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -358,7 +374,7 @@ export function StudioProvider({
       return next;
     });
     setActiveImageIdState(assetId);
-    dbSaveSessionState(assetId).catch(console.error);
+    dbSaveSessionState(assetId, projectNameRef.current).catch(console.error);
   }, []);
 
   const selectAsset = React.useCallback(
@@ -372,7 +388,7 @@ export function StudioProvider({
         return next;
       });
       setActiveImageIdState(assetId);
-      dbSaveSessionState(assetId).catch(console.error);
+      dbSaveSessionState(assetId, projectNameRef.current).catch(console.error);
     },
     []
   );
@@ -1200,6 +1216,8 @@ export function StudioProvider({
 
   const value: StudioContextType = {
     isHydrated,
+    projectName,
+    setProjectName,
     assets,
     activeImageId,
     activeAsset,

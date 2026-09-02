@@ -21,6 +21,8 @@ import { selectedAssetRingClassName } from "../ui/primitives/selection-state";
 import { useStudioStore } from "../../context/studio-context";
 import { formatFileSize } from "../../utils/image-ingestion";
 import { BrandLogo } from "./brand-logo";
+import { ProjectNameInput } from "./project-name-input";
+import { AssetSearch } from "./asset-search";
 import type { Asset } from "../../types/asset";
 
 export interface AssetPanelProps {
@@ -98,11 +100,9 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
 
       {/* Top Section: Project Identity */}
       <div className="h-12 min-h-12 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <BrandLogo size={20} />
-          <span className="text-sm font-semibold tracking-tight text-[color:var(--foreground)]">
-            EffectsIO
-          </span>
+          <ProjectNameInput />
         </div>
         {onClose && (
           <Button
@@ -216,30 +216,10 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
           /* State B: Populated 4-Column Square Thumbnail Grid */
           <div className="flex flex-col gap-3">
             {/* Search Control */}
-            <div className="relative flex items-center">
-              <MagnifyingGlassIcon
-                size={12}
-                className="absolute left-2.5 text-[color:var(--muted-foreground)] pointer-events-none"
-              />
-              <Input
-                type="text"
-                placeholder="Find..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-7 pr-7 h-7 text-2xs w-full"
-              />
-              {searchQuery && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xxs"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-1 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
-                >
-                  <XIcon size={11} />
-                </Button>
-              )}
-            </div>
+            <AssetSearch
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
 
             {/* 4-Column Square Thumbnail Grid */}
             <div className="grid grid-cols-4 gap-2">

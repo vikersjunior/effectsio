@@ -20,6 +20,7 @@ export interface PersistedAssetRecord {
 export interface HydratedProjectState {
   assets: Asset[];
   activeImageId: string | null;
+  projectName?: string;
   effectStacks: Record<string, EffectStack>;
   backgrounds: Record<string, BackgroundState>;
   userLooks: Look[];
@@ -211,19 +212,19 @@ export async function dbGetAllUserLooks(): Promise<Look[]> {
 // Session State Storage
 // ---------------------------------------------------------------------------
 
-export async function dbSaveSessionState(activeImageId: string | null): Promise<void> {
+export async function dbSaveSessionState(activeImageId: string | null, projectName?: string): Promise<void> {
   return runTransaction("app_state", "readwrite", (store) => {
-    store.put({ key: "session", activeImageId, updatedAt: Date.now() });
+    store.put({ key: "session", activeImageId, projectName, updatedAt: Date.now() });
   });
 }
 
-export async function dbGetSessionState(): Promise<{ activeImageId: string | null } | null> {
-  const record = await runTransaction<{ key: string; activeImageId: string | null } | undefined>(
+export async function dbGetSessionState(): Promise<{ activeImageId: string | null; projectName?: string } | null> {
+  const record = await runTransaction<{ key: string; activeImageId: string | null; projectName?: string } | undefined>(
     "app_state",
     "readonly",
     (store) => store.get("session")
   );
-  return record ? { activeImageId: record.activeImageId } : null;
+  return record ? { activeImageId: record.activeImageId, projectName: record.projectName } : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -278,6 +279,7 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
     return {
       assets: validAssets,
       activeImageId: resolvedActiveImageId,
+      projectName: session?.projectName || "Project Name",
       effectStacks: effectStacks || {},
       backgrounds: backgrounds || {},
       userLooks: userLooks || [],

@@ -24,7 +24,8 @@ import { renderBackgroundToCanvas } from "../../export/image-encoder";
 import { createWebGL2Context } from "../../rendering/webgl/webgl-context";
 import { GPUEffectPipeline, canExecuteStackOnGPU } from "../../rendering/webgl/webgl-effect-pipeline";
 import { GPUBackgroundRenderer, isGPUSupportedBackground } from "../../rendering/webgl/webgl-background";
-import { TimelineBar } from "../timeline/timeline-bar";
+import { CanvasControlDock } from "./canvas-control-dock";
+import { FloatingEffectPanel } from "./floating-effect-panel";
 
 export interface CanvasViewportProps {
   onOpenAssets?: () => void;
@@ -1093,141 +1094,16 @@ export function CanvasViewport({
           </div>
         )}
 
-        {/* Bottom Floating Control Dock (Timeline Controls + Viewport Tools + Undo/Redo + Zoom) */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: "16px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 10,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "0.5rem",
-            maxWidth: "calc(100% - 2rem)",
-          }}
-        >
-          {/* Timeline Playback Bar */}
-          <TimelineBar />
+        {/* Contextual Floating Effect Customization Panel (when an effect instance is selected) */}
+        <FloatingEffectPanel />
 
-          {/* Viewport Control Bar Overlay */}
-          <div
-            className="floating-popup-surface flex items-center gap-1 rounded-xl border border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] px-2 py-1 shadow-2xl backdrop-blur-2xl text-[color:var(--foreground)] select-none max-w-full"
-          >
-            {/* Hand / Pan Tool */}
-            <Button
-              variant={isHandToolActive || isSpacePressed ? "secondary" : "ghost"}
-              size="icon-xs"
-              onClick={() => setIsHandToolActive((prev) => !prev)}
-              title="Pan Hand Tool (Spacebar)"
-            >
-              <HandIcon size={13} />
-            </Button>
-
-            <Separator orientation="vertical" className="h-4 mx-0.5" />
-
-            {/* Viewport Framing & Inspection Tools */}
-            <Button
-              variant={viewport.fitMode === "contain" ? "secondary" : "ghost"}
-              size="xs"
-              onClick={() => {
-                if (containerRef.current) {
-                  resetViewportFit(containerRef.current.clientWidth, containerRef.current.clientHeight);
-                } else {
-                  resetViewportFit();
-                }
-              }}
-              className="gap-1 text-2xs px-1.5 h-6"
-              title="Fit to Viewport"
-            >
-              <CornersOutIcon size={11} />
-              Fit
-            </Button>
-            <Button
-              variant={viewport.fitMode === "1:1" ? "secondary" : "ghost"}
-              size="xs"
-              onClick={resetViewportActual}
-              className="text-2xs px-1.5 h-6 font-mono"
-              title="Actual Size 1:1"
-            >
-              1:1
-            </Button>
-            <Button
-              variant={viewport.showCheckerboard ? "secondary" : "ghost"}
-              size="icon-xs"
-              onClick={() => setViewport((v) => ({ ...v, showCheckerboard: !v.showCheckerboard }))}
-              title="Transparency Background Preview"
-            >
-              <SquareSplitHorizontalIcon size={12} />
-            </Button>
-            <Button
-              variant={viewport.showGrid ? "secondary" : "ghost"}
-              size="icon-xs"
-              onClick={() => setViewport((v) => ({ ...v, showGrid: !v.showGrid }))}
-              title="Viewport Grid Overlay"
-            >
-              <GridFourIcon size={12} />
-            </Button>
-            <Button
-              variant={viewport.splitView ? "secondary" : "ghost"}
-              size="icon-xs"
-              onClick={() => setViewport((v) => ({ ...v, splitView: !v.splitView }))}
-              title="Split Comparison View (Before | After)"
-            >
-              <EyeIcon size={12} />
-            </Button>
-
-            <Separator orientation="vertical" className="h-4 mx-0.5" />
-
-            {/* Undo / Redo Controls */}
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={undo}
-              disabled={!canUndo}
-              title="Undo"
-              aria-label="Undo"
-              className="disabled:opacity-30"
-            >
-              <ArrowUUpLeftIcon size={13} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={redo}
-              disabled={!canRedo}
-              title="Redo"
-              aria-label="Redo"
-              className="disabled:opacity-30"
-            >
-              <ArrowUUpRightIcon size={13} />
-            </Button>
-
-            <Separator orientation="vertical" className="h-4 mx-0.5" />
-
-            {/* Zoom Controls */}
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => zoomViewport(-25)}
-              aria-label="Zoom out"
-            >
-              <MagnifyingGlassMinusIcon size={12} />
-            </Button>
-            <span className="font-mono text-2xs text-[color:var(--foreground)] min-w-[2.75rem] text-center tabular-nums">
-              {Math.round(viewport.zoom)}%
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => zoomViewport(25)}
-              aria-label="Zoom in"
-            >
-              <MagnifyingGlassPlusIcon size={12} />
-            </Button>
-          </div>
-        </div>
+        {/* Canonical Floating Canvas Control System (Timeline Bar + Viewport Dock) */}
+        <CanvasControlDock
+          isHandToolActive={isHandToolActive}
+          setIsHandToolActive={setIsHandToolActive}
+          isSpacePressed={isSpacePressed}
+          containerRef={containerRef}
+        />
       </div>
     </main>
   );

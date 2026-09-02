@@ -613,6 +613,36 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
 - `pnpm build`: Clean production bundle built in 2.85s.
 - `pnpm graphify:update`: Knowledge graph updated (3,962 nodes, 10,346 edges).
 
+---
+
+## Design-System Documentation Consolidation Pass
+
+- **Date**: 2026-09-02
+- **Task**: Consolidate duplicate design-system documents in `docs/design-system/` without losing information.
+
+### 1. Document Comparison & Verification
+- Compared duplicate document pairs with literal unified diffs:
+  - `docs/design-system/effectsio-ui-system.md` vs `docs/design-system/effectsio-ui-system-v1.1.md`
+  - `docs/design-system/effectsio-component-system.md` vs `docs/design-system/effectsio-component-system-v1.1.md`
+- Confirmed no substantive content was lost: unversioned files are the complete, canonical documents where obsolete "V1.1 Beta" version tags were removed and local relative links were updated to full repository-canonical paths.
+- Confirmed zero stale references: all governance (`AGENTS.md`), product (`PRD.md`), and operational rules (`component-rules.md`) already point exclusively to the unversioned documents.
+
+### 2. Redundant File Removal
+- Deleted redundant files:
+  - `docs/design-system/effectsio-ui-system-v1.1.md`
+  - `docs/design-system/effectsio-component-system-v1.1.md`
+- Canonical documents retained untouched:
+  - `docs/design-system/effectsio-ui-system.md`
+  - `docs/design-system/effectsio-component-system.md`
+  - `docs/design-system/component-rules.md`
+
+### 3. Verification
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm build`: Clean production bundle built in 3.36s.
+- `pnpm check:public-provenance`: Passed (0 external runtime/provenance references).
+- `pnpm check:no-competitor-refs`: Passed (scanned tracked files against deny-list, zero violations).
+
+
 
 
 
