@@ -8,21 +8,29 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
   ImagesIcon,
+  CaretDownIcon,
+  CaretUpIcon,
 } from "@phosphor-icons/react";
 import {
   Button,
   Input,
   ScrollFade,
   PanelSurface,
-  PanelHeader,
 } from "../ui";
 import { selectedAssetRingClassName } from "../ui/primitives/selection-state";
 import { useStudioStore } from "../../context/studio-context";
+import { formatFileSize } from "../../utils/image-ingestion";
+import { BrandLogo } from "./brand-logo";
 import type { Asset } from "../../types/asset";
 
-export function AssetPanel(): React.JSX.Element {
+export interface AssetPanelProps {
+  onClose?: () => void;
+}
+
+export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
   const {
     assets,
+    activeAsset,
     activeImageId,
     selectedAssetIds,
     addAssets,
@@ -37,9 +45,10 @@ export function AssetPanel(): React.JSX.Element {
 
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [searchQuery, setSearchQuery] = React.useState<string>("");
+  const [isSpecsOpen, setIsSpecsOpen] = React.useState<boolean>(false);
   const anchorAssetIdRef = React.useRef<string | null>(null);
 
-  // Filter assets based on prominent inline search
+  // Filter assets based on search query
   const filteredAssets = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return assets;
@@ -69,8 +78,14 @@ export function AssetPanel(): React.JSX.Element {
     }
   };
 
+  // Sample stock images placeholder trigger
+  const handleStockSample = () => {
+    // Trigger file picker as fallback
+    fileInputRef.current?.click();
+  };
+
   return (
-    <PanelSurface id="asset-library-panel" className="flex flex-col h-full overflow-hidden select-none">
+    <PanelSurface id="asset-library-panel" className="flex flex-col h-full w-full bg-[color:var(--sidebar)] border-r border-[color:var(--border)] overflow-hidden select-none">
       {/* Hidden File Input for Native File System Dialog */}
       <input
         ref={fileInputRef}
@@ -81,38 +96,74 @@ export function AssetPanel(): React.JSX.Element {
         onChange={handleFileSelect}
       />
 
-      {/* Panel Header: Assets (N) */}
-      <PanelHeader
-        title="Assets"
-        count={assets.length}
-      />
+      {/* Top Section: Project Identity */}
+      <div className="h-12 min-h-12 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2.5">
+          <BrandLogo size={20} />
+          <span className="text-sm font-semibold tracking-tight text-[color:var(--foreground)]">
+            EffectsIO
+          </span>
+        </div>
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={onClose}
+            aria-label="Close assets panel"
+            className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+          >
+            <XIcon size={14} />
+          </Button>
+        )}
+      </div>
+
+      {/* Assets Section Header */}
+      <div className="h-10 min-h-10 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-semibold tracking-tight text-[color:var(--foreground)]">
+            Assets
+          </span>
+          <span className="text-xs font-mono text-[color:var(--muted-foreground)]">
+            ({assets.length})
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          onClick={() => fileInputRef.current?.click()}
+          title="Import media"
+          aria-label="Import media"
+        >
+          <PlusIcon size={13} />
+        </Button>
+      </div>
 
       {/* Import Error Alert Banner */}
       {importError && (
-        <div className="m-2 p-2 rounded-md bg-[color:color-mix(in_oklab,var(--destructive)_12%,var(--card))] border border-[color:var(--destructive)] flex items-start justify-between gap-2">
+        <div className="m-3 p-2.5 rounded-md bg-[color:color-mix(in_oklab,var(--destructive)_12%,var(--card))] border border-[color:var(--destructive)] flex items-start justify-between gap-2 shrink-0">
           <div className="flex items-start gap-1.5 min-w-0">
             <WarningCircleIcon
-              size={13}
+              size={14}
               className="text-[color:var(--destructive)] mt-0.5 shrink-0"
             />
             <span className="text-2xs text-[color:var(--foreground)] truncate">
               {importError}
             </span>
           </div>
-          <Button variant="ghost" size="icon-xs" onClick={clearImportError}>
+          <Button variant="ghost" size="icon-xxs" onClick={clearImportError}>
             <XIcon size={11} />
           </Button>
         </div>
       )}
 
       {/* Panel Body: State A (Empty Dropzone) vs State B (Populated Grid) */}
-      <ScrollFade className="flex-1 overflow-y-auto p-4" containerClassName="flex-1 min-h-0">
+      <ScrollFade className="flex-1 overflow-y-auto px-4 py-3" containerClassName="flex-1 min-h-0">
         {assets.length === 0 ? (
-          /* State A: Clean Utility Dropzone */
-          <div className="flex flex-col gap-2 pt-2">
+          /* State A: Figma-aligned Empty State Composition */
+          <div className="flex flex-col items-center justify-center text-center gap-3 py-6 px-2">
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="group/file-upload relative flex min-h-[140px] w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[color:color-mix(in_oklab,var(--border)_18%,transparent)] bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_35%,transparent)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] transition-[background-color,border-color] duration-150 ease-out cursor-pointer p-4 text-center"
+              className="group/upload relative flex w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-[color:color-mix(in_oklab,var(--border)_40%,transparent)] bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_70%,transparent)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] transition-all duration-150 ease-out cursor-pointer p-5 text-center"
             >
               {isImporting ? (
                 <>
@@ -126,36 +177,45 @@ export function AssetPanel(): React.JSX.Element {
                 </>
               ) : (
                 <>
-                  <div className="flex items-center justify-center size-9 rounded-full bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--muted-foreground)] group-hover/file-upload:text-[color:var(--foreground)] transition-colors">
-                    <CloudArrowUpIcon size={18} weight="light" />
+                  <div className="flex items-center justify-center size-10 rounded-full bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--muted-foreground)] group-hover/upload:text-[color:var(--foreground)] transition-colors">
+                    <CloudArrowUpIcon size={20} weight="light" />
                   </div>
-                  <div className="flex flex-col gap-0.5 max-w-[200px]">
+                  <div className="flex flex-col gap-1 max-w-[220px]">
                     <span className="text-xs font-semibold text-[color:var(--foreground)]">
                       Add media
                     </span>
-                    <span className="text-2xs text-[color:var(--muted-foreground)] leading-normal">
-                      Drag here, import from your computer
+                    <span className="text-2xs text-[color:var(--muted-foreground)] leading-relaxed">
+                      Drag here, import from your computer or choose from a stock image
                     </span>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                    className="mt-1"
-                  >
-                    Import media
-                  </Button>
+                  <div className="flex flex-col gap-1.5 w-full pt-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="default"
+                      onClick={handleStockSample}
+                      className="w-full text-xs"
+                    >
+                      Choose from stock image
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="default"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full text-xs font-semibold shadow-xs"
+                    >
+                      Import media
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
           </div>
         ) : (
-          /* State B: Populated Searchable 4-Column Square Thumbnail Grid */
-          <div className="flex flex-col gap-2.5">
-            {/* Prominent Search Control */}
+          /* State B: Populated 4-Column Square Thumbnail Grid */
+          <div className="flex flex-col gap-3">
+            {/* Search Control */}
             <div className="relative flex items-center">
               <MagnifyingGlassIcon
                 size={12}
@@ -191,10 +251,10 @@ export function AssetPanel(): React.JSX.Element {
                   <div
                     key={asset.id}
                     onClick={(e) => handleTileClick(e, asset)}
-                    className={`group relative aspect-square w-full rounded-[calc(var(--radius-lg)-4px)] bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] overflow-hidden cursor-pointer transition-all duration-150 ${
+                    className={`group relative aspect-square w-full rounded-md bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] overflow-hidden cursor-pointer transition-all duration-150 ${
                       isSelected
                         ? selectedAssetRingClassName
-                        : "hover:opacity-90 border border-[color:color-mix(in_oklab,var(--border)_10%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_25%,transparent)]"
+                        : "hover:opacity-90 border border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_35%,transparent)]"
                     }`}
                     title={`${asset.filename} (${asset.width}×${asset.height})`}
                   >
@@ -222,10 +282,10 @@ export function AssetPanel(): React.JSX.Element {
                 );
               })}
 
-              {/* Add Image '+' Tile (Final Item in the 4-Column Grid) */}
+              {/* Add Image '+' Tile */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="aspect-square w-full rounded-[calc(var(--radius-lg)-4px)] bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] border border-dashed border-[color:color-mix(in_oklab,var(--border)_20%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_40%,transparent)] flex flex-col items-center justify-center cursor-pointer transition-all duration-150 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+                className="aspect-square w-full rounded-md bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] border border-dashed border-[color:color-mix(in_oklab,var(--border)_30%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_50%,transparent)] flex flex-col items-center justify-center cursor-pointer transition-all duration-150 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
                 title="Add image"
               >
                 {isImporting ? (
@@ -234,7 +294,7 @@ export function AssetPanel(): React.JSX.Element {
                     className="text-[color:var(--primary)] animate-spin"
                   />
                 ) : (
-                  <PlusIcon size={18} />
+                  <PlusIcon size={16} />
                 )}
               </div>
             </div>
@@ -248,6 +308,49 @@ export function AssetPanel(): React.JSX.Element {
           </div>
         )}
       </ScrollFade>
+
+      {/* Asset Specifications Footer: Anchored to Bottom via margin-top: auto */}
+      <div className="mt-auto border-t border-[color:var(--border)] shrink-0 bg-[color:var(--sidebar)]">
+        <button
+          type="button"
+          onClick={() => setIsSpecsOpen((prev) => !prev)}
+          className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-medium text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors"
+        >
+          <span>Asset Specifications</span>
+          {isSpecsOpen ? <CaretUpIcon size={12} /> : <CaretDownIcon size={12} />}
+        </button>
+
+        {isSpecsOpen && (
+          <div className="px-4 pb-3 pt-1 flex flex-col gap-1.5 text-2xs text-[color:var(--muted-foreground)] border-t border-[color:color-mix(in_oklab,var(--border)_50%,transparent)]">
+            {activeAsset ? (
+              <>
+                <div className="flex justify-between">
+                  <span>Dimensions:</span>
+                  <span className="font-mono text-[color:var(--foreground)]">
+                    {activeAsset.width} × {activeAsset.height}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>File size:</span>
+                  <span className="font-mono text-[color:var(--foreground)]">
+                    {formatFileSize(activeAsset.fileSize)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Format:</span>
+                  <span className="uppercase text-[color:var(--foreground)]">
+                    {activeAsset.mimeType.replace("image/", "")}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <span className="italic text-[color:var(--muted-foreground)] opacity-70">
+                No active asset selected
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </PanelSurface>
   );
 }

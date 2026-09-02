@@ -11,6 +11,10 @@ import {
   SpinnerGapIcon,
   CaretLeftIcon,
   CaretRightIcon,
+  ArrowUUpLeftIcon,
+  ArrowUUpRightIcon,
+  FolderIcon,
+  SlidersIcon,
 } from "@phosphor-icons/react";
 import { Button, Separator, Tooltip, TooltipTrigger, TooltipContent } from "../ui";
 import { useStudioStore } from "../../context/studio-context";
@@ -22,7 +26,17 @@ import { GPUEffectPipeline, canExecuteStackOnGPU } from "../../rendering/webgl/w
 import { GPUBackgroundRenderer, isGPUSupportedBackground } from "../../rendering/webgl/webgl-background";
 import { TimelineBar } from "../timeline/timeline-bar";
 
-export function CanvasViewport(): React.JSX.Element {
+export interface CanvasViewportProps {
+  onOpenAssets?: () => void;
+  onOpenInspector?: () => void;
+  isNarrow?: boolean;
+}
+
+export function CanvasViewport({
+  onOpenAssets,
+  onOpenInspector,
+  isNarrow = false,
+}: CanvasViewportProps = {}): React.JSX.Element {
   const {
     isHydrated,
     activeAsset,
@@ -34,6 +48,10 @@ export function CanvasViewport(): React.JSX.Element {
     zoomViewport,
     resetViewportFit,
     resetViewportActual,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
     timeline,
     pause,
     togglePlayback,
@@ -395,10 +413,25 @@ export function CanvasViewport(): React.JSX.Element {
         const cardY = (height - cardHeight) / 2;
 
         ctx.fillStyle = computedStyle.getPropertyValue("--card").trim() || "oklch(0.205 0 0)";
-        ctx.fillRect(cardX, cardY, cardWidth, cardHeight);
-        ctx.strokeStyle = borderVal;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(cardX, cardY, cardWidth, cardHeight);
+        if (typeof (ctx as unknown as { roundRect?: unknown }).roundRect === "function") {
+          ctx.beginPath();
+          (ctx as unknown as { roundRect: (x: number, y: number, w: number, h: number, r: number) => void }).roundRect(
+            cardX,
+            cardY,
+            cardWidth,
+            cardHeight,
+            10
+          );
+          ctx.fill();
+          ctx.strokeStyle = borderVal;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        } else {
+          ctx.fillRect(cardX, cardY, cardWidth, cardHeight);
+          ctx.strokeStyle = borderVal;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(cardX, cardY, cardWidth, cardHeight);
+        }
 
         ctx.fillStyle = computedStyle.getPropertyValue("--foreground").trim() || "oklch(0.977 0 0)";
         ctx.font = "600 14px var(--font-sans, sans-serif)";
@@ -1032,11 +1065,39 @@ export function CanvasViewport(): React.JSX.Element {
           </div>
         )}
 
-        {/* Bottom Floating Control Dock (Timeline Controls + Viewport Tools) */}
+        {/* Narrow Viewport (< 900px) Drawer Trigger Buttons */}
+        {isNarrow && (
+          <div className="absolute top-3 inset-x-3 z-20 flex items-center justify-between pointer-events-none">
+            {onOpenAssets && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onOpenAssets}
+                className="pointer-events-auto gap-1.5 shadow-lg backdrop-blur-md bg-[color:color-mix(in_oklab,var(--card)_85%,transparent)] border border-[color:var(--border)] text-xs font-semibold text-[color:var(--foreground)]"
+              >
+                <FolderIcon size={14} />
+                <span>Assets</span>
+              </Button>
+            )}
+            {onOpenInspector && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onOpenInspector}
+                className="pointer-events-auto ml-auto gap-1.5 shadow-lg backdrop-blur-md bg-[color:color-mix(in_oklab,var(--card)_85%,transparent)] border border-[color:var(--border)] text-xs font-semibold text-[color:var(--foreground)]"
+              >
+                <SlidersIcon size={14} />
+                <span>Inspector</span>
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Bottom Floating Control Dock (Timeline Controls + Viewport Tools + Undo/Redo + Zoom) */}
         <div
           style={{
             position: "absolute",
-            bottom: "1rem",
+            bottom: "16px",
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 10,
@@ -1052,28 +1113,21 @@ export function CanvasViewport(): React.JSX.Element {
 
           {/* Viewport Control Bar Overlay */}
           <div
-            className="floating-popup-surface flex items-center gap-1 rounded-xl border border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] px-2 py-1 shadow-2xl backdrop-blur-2xl text-[color:var(--foreground)] select-none"
+            className="floating-popup-surface flex items-center gap-1 rounded-xl border border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] px-2 py-1 shadow-2xl backdrop-blur-2xl text-[color:var(--foreground)] select-none max-w-full"
           >
+            {/* Hand / Pan Tool */}
             <Button
-              variant="ghost"
+              variant={isHandToolActive || isSpacePressed ? "secondary" : "ghost"}
               size="icon-xs"
-              onClick={() => zoomViewport(-25)}
-              aria-label="Zoom out"
+              onClick={() => setIsHandToolActive((prev) => !prev)}
+              title="Pan Hand Tool (Spacebar)"
             >
-              <MagnifyingGlassMinusIcon size={12} />
+              <HandIcon size={13} />
             </Button>
-            <span className="font-mono text-2xs text-[color:var(--foreground)] min-w-[3rem] text-center tabular-nums">
-              {Math.round(viewport.zoom)}%
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => zoomViewport(25)}
-              aria-label="Zoom in"
-            >
-              <MagnifyingGlassPlusIcon size={12} />
-            </Button>
+
             <Separator orientation="vertical" className="h-4 mx-0.5" />
+
+            {/* Viewport Framing & Inspection Tools */}
             <Button
               variant={viewport.fitMode === "contain" ? "secondary" : "ghost"}
               size="xs"
@@ -1085,6 +1139,7 @@ export function CanvasViewport(): React.JSX.Element {
                 }
               }}
               className="gap-1 text-2xs px-1.5 h-6"
+              title="Fit to Viewport"
             >
               <CornersOutIcon size={11} />
               Fit
@@ -1094,17 +1149,9 @@ export function CanvasViewport(): React.JSX.Element {
               size="xs"
               onClick={resetViewportActual}
               className="text-2xs px-1.5 h-6 font-mono"
+              title="Actual Size 1:1"
             >
               1:1
-            </Button>
-            <Separator orientation="vertical" className="h-4 mx-0.5" />
-            <Button
-              variant={isHandToolActive || isSpacePressed ? "secondary" : "ghost"}
-              size="icon-xs"
-              onClick={() => setIsHandToolActive((prev) => !prev)}
-              title="Pan Hand Tool (Spacebar)"
-            >
-              <HandIcon size={12} />
             </Button>
             <Button
               variant={viewport.showCheckerboard ? "secondary" : "ghost"}
@@ -1129,6 +1176,55 @@ export function CanvasViewport(): React.JSX.Element {
               title="Split Comparison View (Before | After)"
             >
               <EyeIcon size={12} />
+            </Button>
+
+            <Separator orientation="vertical" className="h-4 mx-0.5" />
+
+            {/* Undo / Redo Controls */}
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo"
+              aria-label="Undo"
+              className="disabled:opacity-30"
+            >
+              <ArrowUUpLeftIcon size={13} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo"
+              aria-label="Redo"
+              className="disabled:opacity-30"
+            >
+              <ArrowUUpRightIcon size={13} />
+            </Button>
+
+            <Separator orientation="vertical" className="h-4 mx-0.5" />
+
+            {/* Zoom Controls */}
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => zoomViewport(-25)}
+              aria-label="Zoom out"
+            >
+              <MagnifyingGlassMinusIcon size={12} />
+            </Button>
+            <span className="font-mono text-2xs text-[color:var(--foreground)] min-w-[2.75rem] text-center tabular-nums">
+              {Math.round(viewport.zoom)}%
+            </span>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => zoomViewport(25)}
+              aria-label="Zoom in"
+            >
+              <MagnifyingGlassPlusIcon size={12} />
             </Button>
           </div>
         </div>
