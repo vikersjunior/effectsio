@@ -1860,10 +1860,10 @@
     "semantic_hash": "ae1fae6c55ca3e9fae8e91146b1a847c"
   },
   "src/components/layout/canvas-control-dock.tsx": {
-    "mtime": 1788436808.49,
-    "seen": 1788437126.0712802,
-    "ast_hash": "61f8dbddfd917e5854c743805ebf1387",
-    "semantic_hash": "61f8dbddfd917e5854c743805ebf1387"
+    "mtime": 1788437954.93,
+    "seen": 1788440042.606582,
+    "ast_hash": "9bf3912ecdda3a6205b82b25bc1ccc12",
+    "semantic_hash": "9bf3912ecdda3a6205b82b25bc1ccc12"
   },
   "src/components/layout/floating-effect-panel.tsx": {
     "mtime": 1788434631.92,

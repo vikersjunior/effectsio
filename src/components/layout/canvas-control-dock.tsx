@@ -65,10 +65,10 @@ export function CanvasControlDock({
       {/* Persistent Bottom Tool Dock: matching Figma node 61:1277 */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
-        className="floating-popup-surface flex items-center gap-2 rounded-[16px] border border-[color:var(--border)] p-2 dark:shadow-2xl shadow-none backdrop-blur-2xl text-[color:var(--foreground)] max-w-full"
+        className="floating-popup-surface flex items-stretch divide-x divide-[color:var(--border)] rounded-[16px] border border-[color:var(--border)] dark:shadow-2xl shadow-none backdrop-blur-2xl text-[color:var(--foreground)] max-w-full overflow-hidden"
       >
-        {/* GROUP 1: [ Hand ] [ Resize ] [ Magic Wand ] [ Compare ] */}
-        <div className="flex items-center gap-1">
+        {/* SECTION 1: [ Hand ] [ Resize ] [ Magic Wand ] [ Compare ] */}
+        <div className="flex items-center gap-1 p-1.5">
           {/* 1. Hand / Pan Tool */}
           <Button
             variant={isHandActive ? "primary" : "ghost"}
@@ -101,11 +101,15 @@ export function CanvasControlDock({
 
           {/* 3. Magic Wand / Effects */}
           <Button
-            variant="ghost"
+            variant={isEffectBrowserOpen ? "primary" : "ghost"}
             size="icon-md"
             aria-label="Add visual effect"
             title="Add visual effect"
-            className="!size-8 rounded-lg [&_svg]:!size-[18px]"
+            className={`!size-8 rounded-lg [&_svg]:!size-[18px] ${
+              isEffectBrowserOpen
+                ? "bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:bg-[color:color-mix(in_oklab,var(--primary)_90%,white)]"
+                : ""
+            }`}
             onClick={() => setIsEffectBrowserOpen(true)}
           >
             <MagicWandIcon size={18} className="shrink-0" />
@@ -113,14 +117,14 @@ export function CanvasControlDock({
 
           {/* 4. Compare */}
           <Button
-            variant={viewport.splitView ? "secondary" : "ghost"}
+            variant={viewport.splitView ? "primary" : "ghost"}
             size="icon-md"
             onClick={() => setViewport((v) => ({ ...v, splitView: !v.splitView }))}
             aria-label="Split comparison view"
             title="Compare before/after"
             className={`!size-8 rounded-lg [&_svg]:!size-[18px] ${
               viewport.splitView
-                ? "bg-[color:color-mix(in_oklab,var(--foreground)_12%,transparent)] text-[color:var(--foreground)]"
+                ? "bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:bg-[color:color-mix(in_oklab,var(--primary)_90%,white)]"
                 : ""
             }`}
           >
@@ -128,14 +132,8 @@ export function CanvasControlDock({
           </Button>
         </div>
 
-        {/* Vertical Divider between Group 1 and Group 2 */}
-        <Separator
-          orientation="vertical"
-          className="h-5 mx-0.5 bg-[color:color-mix(in_oklab,var(--border)_30%,transparent)]"
-        />
-
-        {/* GROUP 2: [ Undo ] [ Redo ] */}
-        <div className="flex items-center gap-1">
+        {/* SECTION 2: [ Undo ] [ Redo ] */}
+        <div className="flex items-center gap-1 p-1.5">
           <Button
             variant="ghost"
             size="icon-md"
@@ -161,23 +159,18 @@ export function CanvasControlDock({
           </Button>
         </div>
 
-        {/* Vertical Divider between Group 2 and Group 3 */}
-        <Separator
-          orientation="vertical"
-          className="h-5 mx-0.5 bg-[color:color-mix(in_oklab,var(--border)_30%,transparent)]"
-        />
-
-        {/* GROUP 3: [ 85% ▼ ] Zoom Options Popover */}
-        <Popover>
-          <PopoverTrigger
-            type="button"
-            aria-label="Zoom options"
-            title="Zoom options"
-            className="flex items-center gap-1 px-2.5 h-8 text-xs font-mono font-medium text-[color:var(--foreground)] rounded-lg hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-          >
-            <span className="tabular-nums">{Math.round(viewport.zoom)}%</span>
-            <CaretDownIcon size={14} className="opacity-70 shrink-0 !size-3.5" />
-          </PopoverTrigger>
+        {/* SECTION 3: [ 85% ▼ ] Zoom Options Popover */}
+        <div className="flex items-center p-1.5">
+          <Popover>
+            <PopoverTrigger
+              type="button"
+              aria-label="Zoom options"
+              title="Zoom options"
+              className="flex items-center gap-1 px-2.5 h-8 text-xs font-mono font-medium text-[color:var(--foreground)] rounded-lg hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+            >
+              <span className="tabular-nums">{Math.round(viewport.zoom)}%</span>
+              <CaretDownIcon size={14} className="opacity-70 shrink-0 !size-3.5" />
+            </PopoverTrigger>
           <PopoverContent
             side="top"
             align="end"
@@ -236,6 +229,7 @@ export function CanvasControlDock({
             </button>
           </PopoverContent>
         </Popover>
+        </div>
       </div>
 
       {/* Canonical EffectBrowserModal rendered at dock level for full-workspace access */}

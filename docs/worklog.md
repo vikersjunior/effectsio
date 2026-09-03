@@ -923,6 +923,42 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
 - Real Headless Chrome CDP Verification:
   - Captured `dock_tool_toggles.png` showing the initial Phosphor `ResizeIcon` (dashed bounding box with solid bottom-left square).
 
+---
+
+## 2026-09-03: Bottom Toolbar 3-Section Border Organization & Brand Pink Active Backgrounds
+
+### 1. Code Changes
+- `src/components/layout/canvas-control-dock.tsx`:
+  - Restructured the toolbar container into 3 clearly partitioned sections divided by full-height 1px vertical borders using `divide-x divide-[color:var(--border)]` with `items-stretch`:
+    - **Section 1**: Action buttons `[Pan, Frame size, Add visual effect, Compare]`
+    - **Section 2**: History controls `[Undo, Redo]`
+    - **Section 3**: Zoom controls `[Zoom options popover]`
+  - Removed inset `<Separator className="h-5" />` dividers so border dividers run full-height from top to bottom edge, precisely matching original Figma design (node 61:1277).
+  - Applied the canonical brand pink active styling (`bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:bg-[color:color-mix(in_oklab,var(--primary)_90%,white)]`) to all action buttons in Section 1 (Pan tool, Magic Wand / Effect tool, and Compare tool).
+  - Excluded Undo, Redo, and Zoom controls from the pink active background per directive.
+
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 173/173 tests passing across all 18 test suites.
+- `pnpm build`: Clean production bundle in 1.61s.
+- `pnpm verify:approvals`: All mechanical approval gates verified.
+- `pnpm check:no-competitor-refs`: 619 tracked files scanned, 0 violations.
+- `pnpm check:public-provenance`: Clean (0 external runtime/provenance references).
+- `pnpm graphify:update`: Knowledge graph refreshed (4,002 nodes, 10,558 edges, 137 communities).
+- Real Headless Chrome CDP Verification:
+  - `dock_sections_light_resting.png`: Verified 3 sections separated by full-height vertical borders in dark theme.
+  - `dock_true_light_hand_active.png`: Verified light theme rendering with active Hand tool in brand pink and full-height vertical borders.
+  - `dock_true_light_both_active.png`: Verified light theme rendering with both Hand and Compare tools actively highlighted in brand pink, separated cleanly by borders.
+
+### 3. Graphify & Headroom Actual-Use
+- **Graphify**:
+  - Investigated `CanvasControlDock` component structure and dependencies.
+  - Post-implementation AST synchronization executed (`pnpm graphify:update`), updating knowledge graph to 4,002 nodes and 10,558 edges across 137 communities.
+- **Headroom**:
+  - Pre-flight check verified Headroom proxy running on port 8787.
+  - No Headroom proxy token savings metrics claimed.
+
+
 
 
 
