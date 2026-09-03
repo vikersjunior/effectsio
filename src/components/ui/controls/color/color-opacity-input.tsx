@@ -8,6 +8,7 @@ import {
   InputGroupInput,
   InputGroupText,
 } from "../../primitives";
+import { cn } from "../../lib/utils";
 import type { ControlChangeMeta } from "../control-types";
 
 export function parseOpacityValue(opacity: number | undefined): number {
@@ -23,15 +24,19 @@ function normalizeOpacityInput(value: string): number {
 }
 
 export function ColorOpacityInput({
+  className,
   label,
   name,
   onOpacityChange,
   opacity,
+  size,
 }: {
+  className?: string;
   label: string;
   name?: string;
   onOpacityChange: (nextOpacity: number, meta?: ControlChangeMeta) => void;
   opacity: number;
+  size?: "default" | "sm";
 }): React.JSX.Element {
   const committedOpacity = String(parseOpacityValue(opacity));
   const [draftOpacity, setDraftOpacity] = React.useState(committedOpacity);
@@ -58,11 +63,17 @@ export function ColorOpacityInput({
   }
 
   return (
-    <InputGroup className="w-14 flex-none rounded-l-none [&:not(:focus-within):hover]:!border-[color:color-mix(in_oklab,var(--border)_20%,transparent)] [&:not(:focus-within):hover]:text-[color:var(--foreground)]">
+    <InputGroup
+      size={size}
+      className={cn(
+        "w-14 flex-none [&:not(:focus-within):hover]:!border-[color:color-mix(in_oklab,var(--border)_20%,transparent)] [&:not(:focus-within):hover]:text-[color:var(--foreground)]",
+        className ?? "rounded-l-none",
+      )}
+    >
       <InputGroupInput
         aria-label={`${label} opacity`}
         autoComplete="off"
-        className="pl-2 pr-1 text-right"
+        className="pl-2 pr-1 text-right text-xs"
         inputMode="numeric"
         name={name}
         onBlur={() => commitOpacity()}

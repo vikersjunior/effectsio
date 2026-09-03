@@ -1161,15 +1161,153 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
   - `bg_04_floating_gradient_panel.png`: Gradient panel renders with `Padding` slider and edge-to-edge divider.
   - `bg_05_gradient_stops_added_and_dragged.png`: Interactive gradient stop dragging on track, Padding slider, full-width divider, and Steps list with `MinusIcon`.
 
+---
 
+## Correction 02.4 Refinement 2 — Background Panel Opacity Controls, Alpha Padding & Uniform Section Architecture
 
+- **Date**: 2026-09-03
+- **Task**: 
+  1. Add `Padding` slider to the Alpha parameter panel in its own bottom section below a full-width border divider.
+  2. Add color opacity reduction control (`ColorOpacityInput`, 0% to 100%) to Solid color row, Dot Grid pattern color row, and Grid pattern color row.
+  3. Enable stop opacity reduction (`0%` to `100%`) on individual Gradient stops in the Steps list via the `100%` input next to the color code.
+  4. Move Gradient `Padding` slider into its own bottom section below the Steps section, separated by a full-width border divider.
+  5. Move Dot Spacing and Padding sliders into a unified bottom section separated from the pattern color row by a full-width divider.
+  6. Move Grid Spacing and Padding sliders into a unified bottom section separated from the grid color row by a full-width divider.
+  7. Implement uniform structural design across all 5 background types:
+     - Top area: Type-specific primary controls with color swatch + hex code + opacity input.
+     - Divider: Edge-to-edge border line (`-mx-3.5 border-b border-[color:var(--border)] my-1`).
+     - Bottom area: Sliders section (Padding on all types; Spacing + Padding on patterns).
+  8. Update shaders and image encoder to support GPU and CPU rendering of background and stop opacities.
 
+### 1. Files Changed
+- `src/types/look.ts`:
+  - Added `opacity?: number;` to `BackgroundState` and default `opacity: 100` to `DEFAULT_BACKGROUND_STATE`.
+- `src/components/ui/controls/color/color-opacity-input.tsx`:
+  - Enhanced `ColorOpacityInput` to accept `className?: string` and `size?: "default" | "sm"`.
+  - Allowed standalone rounded-md styling or segmented input-group docking.
+- `src/components/ui/controls/color/index.ts` & `src/components/ui/controls/index.ts`:
+  - Exported `ColorOpacityInput` and `parseOpacityValue`.
+- `src/components/layout/floating-background-panel.tsx`:
+  - **Alpha**: Added `Padding` slider (`0px` to `120px`) in bottom section below full-width divider.
+  - **Solid**: Updated to `ColorValueControl` with `ColorOpacityInput` (`100%` input) + edge-to-edge divider + `Padding` slider.
+  - **Gradient**: Made stop opacity interactive via `ColorOpacityInput` (`handleUpdateStopOpacity`), rendered preview pins and track with computed `hexToRgba`, and moved `Padding` slider below Steps section preceded by edge-to-edge divider.
+  - **Dot Pattern**: Added `ColorOpacityInput` to Pattern Color row + edge-to-edge divider + grouped `Dot Spacing` and `Padding` sliders.
+  - **Grid Pattern**: Added `ColorOpacityInput` to Grid Color row + edge-to-edge divider + grouped `Grid Spacing` and `Padding` sliders.
+  - Preserved `padding` and `opacity` in `handleSelectType` across all background types.
+- `src/rendering/webgl/shaders/background-solid.ts`:
+  - Added `uniform float u_opacity;` and output `fragColor = vec4(u_color, u_opacity);`.
+- `src/rendering/webgl/shaders/background-dots.ts` & `background-grid.ts`:
+  - Added `uniform float u_opacity;` and scaled pattern color intensity by `u_opacity`.
+- `src/rendering/webgl/webgl-background.ts`:
+  - Bound `u_opacity` uniform in `solid`, `dots`, and `grid` background shader pipelines.
+- `src/export/image-encoder.ts`:
+  - Added `hexToRgba` helper and applied `background.opacity` for solid, dots, and grid, and individual `stop.opacity` for gradient color stops in CPU export canvas.
+- `src/rendering/webgl/webgl-background.test.ts`:
+  - Updated solid shader test to assert `u_opacity` and added `save`/`restore` mocks to `mockContext`.
+- `scripts/verify-correction-02-4-cdp.mjs`:
+  - Added Grid Pattern screenshot capture (`bg_12_grid_pattern_panel.png`).
 
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 19 of 19 test suites passed, 180 of 180 tests passed (100% pass rate).
+- `pnpm build`: Completed in 5.93s without errors.
+- `pnpm check:no-competitor-refs`: Passed (622 tracked files scanned, 0 violations).
+- `pnpm check:public-provenance`: Passed (0 external runtime/provenance references).
+- `pnpm graphify:update`: AST knowledge graph updated (4,022 nodes, 10,597 edges, 136 communities).
+- Real Browser Screenshots (CDP Headless Chrome 1440×900):
+  - `bg_02_direct_floating_panel_opened.png`: Solid with Color `#E20000` + Opacity input (`100%`) + edge-to-edge divider + Padding slider.
+  - `bg_05_gradient_stops_added_and_dragged.png`: Gradient with type select, interactive draggable stop pins, edge-to-edge divider, Steps section with stop opacity inputs (`100%`) and minus icon, edge-to-edge divider, and bottom Padding slider.
+  - `bg_07_dot_pattern_panel.png`: Dot Pattern with Color + Opacity input (`100%`) + edge-to-edge divider + Dot Spacing and Padding sliders.
+  - `bg_08_alpha_panel.png`: Alpha with description text + edge-to-edge divider + Padding slider.
+  - `bg_12_grid_pattern_panel.png`: Grid Pattern with Color + Opacity input (`100%`) + edge-to-edge divider + Grid Spacing and Padding sliders.
 
+---
 
+## Inspector Panel Icon Alignment, Hover Visibility & Floating Panel Anchoring Pass
 
+- **Date**: 2026-09-03
+- **Task**: 
+  1. Align all right-side icons in the Inspector panel into a straight vertical line across section headers (`Effects`, `Looks`, `Background`) and row cards.
+  2. Align left-side icons (drag handles, background swatch) and title text in a consistent straight line.
+  3. Hide clutter by showing drag handles, blending mode drop icons, eye icons, and remove icons only on row hover.
+  4. Ensure floating parameter panels (`FloatingEffectPanel`, `FloatingBackgroundPanel`) open by default on the canvas near the right-hand panel, adjacent to the invoking section (`Effects` or `Background`), while remaining freely draggable by the user.
 
+### 1. Files Changed
+- `src/components/layout/inspector-panel.tsx`:
+  - Standardized section header padding to `pl-4 pr-[26px]` on `Effects`, `Looks`, and `Background` headers, placing all header action buttons (`+` / `−`) at exactly 26px from the panel edge.
+  - Added `data-slot="effects-section-header"`, `data-slot="looks-section-header"`, and `data-slot="background-section-header"`.
+  - Updated `SortableEffectRow`:
+    - Updated container to `px-2.5 py-1.5 min-h-[36px]` matching `background-row`.
+    - Wrapped `DotsSixVerticalIcon` drag handle in a dedicated `size-4` slot with `opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150`.
+    - Added `opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150` to blending mode `DropSimpleIcon`, remove `MinusIcon`, and enabled `EyeIcon`. Disabled `EyeSlashIcon` remains visible when an effect is toggled off.
+  - Updated Background row:
+    - Added `opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150` to `EyeIcon`. Hidden background `EyeSlashIcon` remains visible when toggled off.
+    - Set `min-h-[36px]` matching effect rows.
+- `src/components/layout/floating-effect-panel.tsx`:
+  - Implemented `getDefaultPosition()` dynamically calculating `x = Math.max(16, parentWidth - panelWidth - 16)` and measuring the vertical top of the Effects section header in canvas space (`headerRect.top - parentRect.top`, fallback 96px).
+  - Used `hasUserDraggedRef` to preserve custom user drag coordinates while defaulting to the Effects section anchor.
+- `src/components/layout/floating-background-panel.tsx`:
+  - Implemented `getDefaultPosition()` dynamically calculating `x = Math.max(16, parentWidth - panelWidth - 16)` and measuring the vertical top of the Background section in canvas space (`bgRect.top - parentRect.top`, fallback 280px).
+  - Used `hasUserDraggedRef` to preserve custom user drag coordinates while defaulting to the Background section anchor.
+  - Applied `left: `${currentX}px`` and `top: `${currentY}px`` directly from `defaultPos`.
 
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 19 test files passed, 180 of 180 tests passing (100% pass rate).
+- `pnpm check:no-competitor-refs`: PASSED (622 tracked files scanned, 0 competitor references found).
+- `pnpm check:public-provenance`: PASSED (0 external runtime/provenance references).
+- `pnpm graphify:update`: AST knowledge graph updated (4,022 nodes, 10,597 edges, 142 communities).
+- Real Browser CDP Verification (`scratch/verify-ui-tweaks.mjs` running headless Chrome 1440×900):
+  - **Right Alignment**:
+    - `effectsHeaderBtn`: 1413px
+    - `looksHeaderBtn`: 1413px
+    - `bgHeaderBtn`: 1413px
+    - `effectRowRightmostBtn`: 1412px
+    - `bgRowRightmostBtn`: 1412px
+    - *All right edges align within sub-pixel precision (< 1px).*
+  - **Left Alignment**:
+    - `effectDragHandle`: 1204px
+    - `bgSwatch`: 1204px
+    - `effectTitle`: 1228px
+    - `bgTitle`: 1228px
+    - *Left icon slots and titles start at identical horizontal coordinates.*
+  - **Hover-Only Visibility**:
+    - Unhovered computed opacity for `dragHandle`, `drop`, `eye`, and `remove` is `0`.
+    - Hovered state transitions cleanly to `opacity: 1`.
+  - **Smart Default Floating Position**:
+    - `FloatingEffectPanel`: Opens at `panelLeft: 860px` (16px gap to right inspector panel) and `panelTop: 101px` (0px vertical distance to Effects section header).
+    - `FloatingBackgroundPanel`: Opens at `panelLeft: 856px` (16px gap to right inspector panel) and `panelTop: 281px` (0px vertical distance to Background section header).
+  - **Screenshots Generated & Verified**:
+    - `ui_tweaks_effect_panel.png`: Clean inspector with floating effect panel anchored near Effects header.
+    - `ui_tweaks_background_panel.png`: Clean inspector with floating background panel anchored near Background header.
+    - `ui_tweaks_hover_effect_row.png`: Hovered effect row revealing drag handle, drop, eye, and minus icons.
+    - `ui_tweaks_hover_bg_row.png`: Hovered background row revealing eye icon next to 100%.
 
+---
 
+## Revert Inspector Panel Icon Alignment & Hover Reveal Pass
 
+- **Date**: 2026-09-03
+- **Task**: Per user request, revert the icon alignment adjustments and hover-reveal behavior in `src/components/layout/inspector-panel.tsx` to their original state, restoring permanent visibility of all layer icons and original header spacing, while maintaining contextual floating parameter panel opening on the canvas.
+
+### 1. Files Changed
+- `src/components/layout/inspector-panel.tsx`:
+  - Reverted to git HEAD.
+  - Restored original section header padding (`px-4 h-11 min-h-11 shrink-0`).
+  - Restored permanent visibility for all action buttons (`DotsSixVerticalIcon` drag handle, `DropSimpleIcon` blending mode, `EyeIcon` / `EyeSlashIcon` visibility, and `MinusIcon` remove) on `SortableEffectRow`.
+  - Restored permanent visibility for `EyeIcon` / `EyeSlashIcon` on Background row.
+  - Restored original card padding and borders.
+- `src/components/layout/floating-effect-panel.tsx` & `floating-background-panel.tsx`:
+  - Maintained smart default opening position on the canvas near the right-hand panel adjacent to the respective section using native button aria-labels (`button[aria-label="Add effect"]`, `button[aria-label="Add background"]`, `button[aria-label="Remove background"]`, `[data-slot="background-row"]`).
+
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 19 test files passed, 180 of 180 tests passing (100% pass rate).
+- `pnpm check:no-competitor-refs`: PASSED (622 tracked files scanned, 0 competitor references found).
+- `pnpm check:public-provenance`: PASSED (0 external runtime/provenance references).
+- `pnpm graphify:update`: AST knowledge graph updated (4,022 nodes, 10,597 edges, 143 communities).
+- Real Browser CDP Verification (`scratch/verify-ui-tweaks.mjs` running headless Chrome 1440×900):
+  - `addEffectBtn` right edge: 1423px (original `px-4` header padding restored).
+  - All icon opacities in unhovered state: `reorderBtn: 1`, `dropBtn: 1`, `eyeBtn: 1`, `removeBtn: 1`, `bgEyeBtn: 1` (permanently visible).
+  - Floating panels open near the right side panel on canvas: `panelLeft: 860px` (Effects), `panelLeft: 856px` (Background).
+  - Screenshot verified: `ui_reverted_inspector.png`.

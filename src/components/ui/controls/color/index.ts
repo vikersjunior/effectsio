@@ -6,6 +6,7 @@ export {
   ColorOpacityControl as ColorOpacity,
   ColorValueControl,
 } from "./color-control";
+export { ColorOpacityInput, parseOpacityValue } from "./color-opacity-input";
 export {
   getCommittedHexColor,
   getHexDraftValue,

@@ -3,6 +3,7 @@ export * from "./slider/slider-control";
 export * from "./select/select-control";
 export * from "./segmented/segmented-control";
 export * from "./color/color-control";
+export * from "./color/color-opacity-input";
 export * from "./color/palette-control";
 export * from "./gradient";
 export * from "./boolean/boolean-control";

@@ -23,8 +23,9 @@ in vec2 v_texCoord;
 out vec4 fragColor;
 
 uniform vec3 u_color;
+uniform float u_opacity;
 
 void main() {
-    fragColor = vec4(u_color, 1.0);
+    fragColor = vec4(u_color, u_opacity);
 }
 `;

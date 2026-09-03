@@ -68,7 +68,9 @@ export const GPU_BACKGROUND_REGISTRY: Record<BackgroundType, GPUBackgroundShader
     fragmentShader: BACKGROUND_SOLID_FRAGMENT_SHADER,
     bindUniforms: (gl, program, state, _width, _height, time = 0) => {
       const color = hexToNormalizedRgb(state.color, "#000000");
+      const opacity = typeof state.opacity === "number" ? state.opacity / 100 : 1.0;
       setUniform(gl, program, "u_color", { type: "3f", value: color });
+      setUniform(gl, program, "u_opacity", { type: "1f", value: opacity });
       setUniform(gl, program, "u_time", { type: "1f", value: time });
     },
   },
@@ -109,10 +111,12 @@ export const GPU_BACKGROUND_REGISTRY: Record<BackgroundType, GPUBackgroundShader
     bindUniforms: (gl, program, state, width, height, time = 0) => {
       const color = hexToNormalizedRgb(state.color, "#3b82f6");
       const spacing = Math.max(8, typeof state.patternSpacing === "number" ? state.patternSpacing : 24);
+      const opacity = typeof state.opacity === "number" ? state.opacity / 100 : 1.0;
 
       setUniform(gl, program, "u_resolution", { type: "2f", value: [width, height] });
       setUniform(gl, program, "u_color", { type: "3f", value: color });
       setUniform(gl, program, "u_patternSpacing", { type: "1f", value: spacing });
+      setUniform(gl, program, "u_opacity", { type: "1f", value: opacity });
       setUniform(gl, program, "u_time", { type: "1f", value: time });
     },
   },
@@ -123,10 +127,12 @@ export const GPU_BACKGROUND_REGISTRY: Record<BackgroundType, GPUBackgroundShader
     bindUniforms: (gl, program, state, width, height, time = 0) => {
       const color = hexToNormalizedRgb(state.color, "#3b82f6");
       const spacing = Math.max(8, typeof state.patternSpacing === "number" ? state.patternSpacing : 24);
+      const opacity = typeof state.opacity === "number" ? state.opacity / 100 : 1.0;
 
       setUniform(gl, program, "u_resolution", { type: "2f", value: [width, height] });
       setUniform(gl, program, "u_color", { type: "3f", value: color });
       setUniform(gl, program, "u_patternSpacing", { type: "1f", value: spacing });
+      setUniform(gl, program, "u_opacity", { type: "1f", value: opacity });
       setUniform(gl, program, "u_time", { type: "1f", value: time });
     },
   },

@@ -355,6 +355,17 @@ async function run() {
     await sleep(500);
     await cdp.captureScreenshot("bg_08_alpha_panel.png");
 
+    // Switch to Grid Pattern
+    console.log("Switching to Grid Pattern...");
+    await cdp.evaluate(`
+      (() => {
+        const gridBtn = document.querySelector('button[aria-label="Grid Pattern"]');
+        if (gridBtn) gridBtn.click();
+      })()
+    `);
+    await sleep(500);
+    await cdp.captureScreenshot("bg_12_grid_pattern_panel.png");
+
     // Switch back to dark theme
     await cdp.evaluate(`
       (() => {

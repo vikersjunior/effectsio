@@ -27,6 +27,7 @@ uniform vec2 u_resolution;
 uniform vec3 u_color;
 uniform float u_patternSpacing;
 uniform float u_time;
+uniform float u_opacity;
 
 const vec3 BASE_BG = vec3(13.0 / 255.0, 13.0 / 255.0, 18.0 / 255.0);
 
@@ -40,7 +41,7 @@ void main() {
 
     // Antialiased 2px radius circle
     float dotMask = smoothstep(2.5, 1.5, dist);
-    vec3 color = mix(BASE_BG, u_color, dotMask);
+    vec3 color = mix(BASE_BG, u_color, dotMask * u_opacity);
     fragColor = vec4(color, 1.0);
 }
 `;

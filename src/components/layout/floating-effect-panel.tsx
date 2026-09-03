@@ -26,6 +26,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
 
   const [position, setPosition] = React.useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = React.useState(false);
+  const hasUserDraggedRef = React.useRef(false);
   const panelRef = React.useRef<HTMLDivElement | null>(null);
   const dragStartRef = React.useRef<{
     pointerX: number;
@@ -33,6 +34,36 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     posX: number;
     posY: number;
   } | null>(null);
+
+  const getDefaultPosition = React.useCallback(() => {
+    const parent = panelRef.current?.parentElement;
+    const parentWidth = parent ? parent.clientWidth : (typeof window !== "undefined" ? window.innerWidth : 800);
+    const parentHeight = parent ? parent.clientHeight : (typeof window !== "undefined" ? window.innerHeight : 600);
+    const panelWidth = panelRef.current?.offsetWidth ?? 300;
+    const panelHeight = panelRef.current?.offsetHeight ?? 240;
+
+    let targetY = 96;
+    if (typeof document !== "undefined") {
+      const effectsHeader =
+        document.querySelector('[data-slot="effects-section-header"]') ||
+        document.querySelector('button[aria-label="Add effect"]');
+      if (effectsHeader && parent) {
+        const headerRect = effectsHeader.getBoundingClientRect();
+        const parentRect = parent.getBoundingClientRect();
+        targetY = Math.max(16, headerRect.top - parentRect.top);
+      }
+    }
+
+    const newX = Math.max(16, parentWidth - panelWidth - 16);
+    const newY = Math.max(16, Math.min(parentHeight - panelHeight - 16, targetY));
+    return { x: newX, y: newY };
+  }, []);
+
+  React.useEffect(() => {
+    if (!hasUserDraggedRef.current) {
+      setPosition(getDefaultPosition());
+    }
+  }, [selectedInstance?.instanceId, getDefaultPosition]);
 
   if (!activeAsset || !activeImageId || !selectedInstance) {
     return null;
@@ -53,6 +84,10 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     }
   };
 
+  const defaultPos = getDefaultPosition();
+  const currentX = position?.x ?? defaultPos.x;
+  const currentY = position?.y ?? defaultPos.y;
+
   const handleHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest('button')) return;
@@ -60,9 +95,6 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
-
-    const currentX = position?.x ?? 16;
-    const currentY = position?.y ?? 16;
 
     dragStartRef.current = {
       pointerX: e.clientX,
@@ -79,6 +111,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
   const handleHeaderPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging || !dragStartRef.current) return;
     e.preventDefault();
+    hasUserDraggedRef.current = true;
 
     const deltaX = e.clientX - dragStartRef.current.pointerX;
     const deltaY = e.clientY - dragStartRef.current.pointerY;
@@ -105,9 +138,6 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     }
   };
 
-  const currentX = position?.x ?? 16;
-  const currentY = position?.y ?? 16;
-
   return (
     <div
       ref={panelRef}
@@ -126,33 +156,33 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
         onPointerMove={handleHeaderPointerMove}
         onPointerUp={handleHeaderPointerUp}
         onPointerCancel={handleHeaderPointerUp}
-        className="flex items-center justify-between px-3.5 py-2.5 border-b border-[color:var(--border)] shrink-0 cursor-grab active:cursor-grabbing select-none"
+        className="flex items-center justify-between px-3.5 h-10 border-b border-[color:var(--border)] shrink-0 cursor-grab active:cursor-grabbing select-none"
       >
         <div className="flex items-center min-w-0">
           <span className="text-xs font-semibold tracking-tight text-[color:var(--foreground)] truncate">
             {definition.name} Parameters
           </span>
         </div>
-        <div className="flex items-center gap-0.5 shrink-0" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1 shrink-0" onPointerDown={(e) => e.stopPropagation()}>
           <Button
             variant="ghost"
-            size="icon-xxs"
+            size="icon-xs"
             onClick={handleReset}
             title="Reset parameters to defaults"
             aria-label="Reset parameters"
-            className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+            className="size-6 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] cursor-pointer [&_svg]:!size-4"
           >
-            <ArrowCounterClockwiseIcon size={11} />
+            <ArrowCounterClockwiseIcon size={16} />
           </Button>
           <Button
             variant="ghost"
-            size="icon-xxs"
+            size="icon-xs"
             onClick={handleClose}
             title="Close floating panel"
             aria-label="Close parameters"
-            className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+            className="size-6 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] cursor-pointer [&_svg]:!size-4"
           >
-            <XIcon size={12} />
+            <XIcon size={16} />
           </Button>
         </div>
       </div>

@@ -192,7 +192,8 @@ describe("Phase 7.5 Procedural GPU Backgrounds & Compositing Suite", () => {
     it("validates solid background shader uniforms", () => {
       expect(BACKGROUND_SOLID_FRAGMENT_SHADER).toContain("#version 300 es");
       expect(BACKGROUND_SOLID_FRAGMENT_SHADER).toContain("uniform vec3 u_color;");
-      expect(BACKGROUND_SOLID_FRAGMENT_SHADER).toContain("fragColor = vec4(u_color, 1.0);");
+      expect(BACKGROUND_SOLID_FRAGMENT_SHADER).toContain("uniform float u_opacity;");
+      expect(BACKGROUND_SOLID_FRAGMENT_SHADER).toContain("fragColor = vec4(u_color, u_opacity);");
     });
 
     it("validates linear gradient shader uniforms and projection math", () => {
@@ -405,6 +406,8 @@ describe("Phase 7.5 Procedural GPU Backgrounds & Compositing Suite", () => {
         createRadialGradient: vi.fn(() => ({
           addColorStop: vi.fn(),
         })),
+        save: vi.fn(),
+        restore: vi.fn(),
         beginPath: vi.fn(),
         arc: vi.fn(),
         fill: vi.fn(),

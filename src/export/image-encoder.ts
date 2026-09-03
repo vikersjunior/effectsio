@@ -2,7 +2,18 @@ import type { Asset } from "../types/asset";
 import type { ExportFormat } from "../types/export";
 import type { BackgroundState } from "../types/look";
 import { getMimeTypeForFormat } from "./export-utils";
-import { createImageData } from "../effects/canvas-utils";
+import { createImageData, parseHexColor } from "../effects/canvas-utils";
+
+function hexToRgba(hex: string, alpha = 1): string {
+  const { r, g, b } = parseHexColor(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function parseStopPos(pos: string): number {
+  const num = parseFloat(pos);
+  if (isNaN(num)) return 0;
+  return pos.includes("%") ? num / 100 : num;
+}
 
 export async function decodeAssetToImageElement(asset: Asset): Promise<HTMLImageElement> {
   if (typeof Image === "undefined") {
@@ -111,7 +122,16 @@ export function renderBackgroundToCanvas(
   height: number,
   background: BackgroundState
 ): void {
-  const { type, color, gradientEndColor = "#3b82f6", gradientAngle = 135, patternSpacing = 24 } = background;
+  const {
+    type,
+    color,
+    opacity = 100,
+    gradientEndColor = "#3b82f6",
+    gradientAngle = 135,
+    patternSpacing = 24,
+    gradientStops,
+  } = background;
+  const normalizedOpacity = Math.max(0, Math.min(1, opacity / 100));
 
   if (type === "transparent") {
     ctx.clearRect(0, 0, width, height);
@@ -119,8 +139,11 @@ export function renderBackgroundToCanvas(
   }
 
   if (type === "solid") {
+    ctx.save?.();
+    ctx.globalAlpha = normalizedOpacity;
     ctx.fillStyle = color || "#000000";
     ctx.fillRect(0, 0, width, height);
+    ctx.restore?.();
     return;
   }
 
@@ -135,8 +158,16 @@ export function renderBackgroundToCanvas(
     const y1 = cy + Math.sin(rad) * len;
 
     const grad = ctx.createLinearGradient(x0, y0, x1, y1);
-    grad.addColorStop(0, color || "#000000");
-    grad.addColorStop(1, gradientEndColor);
+    if (gradientStops && gradientStops.length > 0) {
+      for (const stop of gradientStops) {
+        const p = Math.max(0, Math.min(1, parseStopPos(stop.position)));
+        const op = typeof stop.opacity === "number" ? Math.max(0, Math.min(1, stop.opacity / 100)) : 1;
+        grad.addColorStop(p, hexToRgba(stop.color, op));
+      }
+    } else {
+      grad.addColorStop(0, color || "#000000");
+      grad.addColorStop(1, gradientEndColor);
+    }
 
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
@@ -149,8 +180,16 @@ export function renderBackgroundToCanvas(
     const r = Math.max(width, height) / 1.5;
 
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    grad.addColorStop(0, color || "#000000");
-    grad.addColorStop(1, gradientEndColor);
+    if (gradientStops && gradientStops.length > 0) {
+      for (const stop of gradientStops) {
+        const p = Math.max(0, Math.min(1, parseStopPos(stop.position)));
+        const op = typeof stop.opacity === "number" ? Math.max(0, Math.min(1, stop.opacity / 100)) : 1;
+        grad.addColorStop(p, hexToRgba(stop.color, op));
+      }
+    } else {
+      grad.addColorStop(0, color || "#000000");
+      grad.addColorStop(1, gradientEndColor);
+    }
 
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
@@ -162,6 +201,8 @@ export function renderBackgroundToCanvas(
     ctx.fillStyle = "#0d0d12";
     ctx.fillRect(0, 0, width, height);
 
+    ctx.save?.();
+    ctx.globalAlpha = normalizedOpacity;
     ctx.fillStyle = color || "#3b82f6";
     ctx.strokeStyle = color || "#3b82f6";
     ctx.lineWidth = 1;
@@ -190,6 +231,8 @@ export function renderBackgroundToCanvas(
         ctx.stroke();
       }
     }
+    ctx.restore?.();
+    return;
   }
 }
 
