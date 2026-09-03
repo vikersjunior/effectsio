@@ -119,7 +119,7 @@ function SortableEffectRow({
           size="icon-xs"
           title="Blending mode"
           aria-label="Blending mode"
-          className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4"
+          className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150 [&_svg]:!size-4 cursor-pointer"
         >
           <DropSimpleIcon size={16} />
         </Button>
@@ -130,7 +130,7 @@ function SortableEffectRow({
           onClick={onToggleEnabled}
           title={instance.enabled ? "Disable effect" : "Enable effect"}
           aria-label={instance.enabled ? "Disable effect" : "Enable effect"}
-          className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4"
+          className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150 [&_svg]:!size-4 cursor-pointer"
         >
           {instance.enabled ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
         </Button>

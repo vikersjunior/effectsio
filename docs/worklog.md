@@ -1311,3 +1311,71 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
   - All icon opacities in unhovered state: `reorderBtn: 1`, `dropBtn: 1`, `eyeBtn: 1`, `removeBtn: 1`, `bgEyeBtn: 1` (permanently visible).
   - Floating panels open near the right side panel on canvas: `panelLeft: 860px` (Effects), `panelLeft: 856px` (Background).
   - Screenshot verified: `ui_reverted_inspector.png`.
+
+---
+
+## Effect Row Eye & Drop Icons Hover-Reveal Pass
+
+- **Date**: 2026-09-03
+- **Task**: Hide the eye and drop icons in the effect stack rows by default to declutter the layer list, smoothly revealing them on hover, while keeping the drag handles, row minus buttons, and section headers in their original layout.
+
+### 1. Files Changed
+- `src/components/layout/inspector-panel.tsx`:
+  - Updated `SortableEffectRow`:
+    - Drop button (`DropSimpleIcon`): Added `opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150`.
+    - Eye button (`EyeIcon` / `EyeSlashIcon`): Added `opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150`.
+    - Drag handle (`DotsSixVerticalIcon`) remains permanently visible.
+    - Remove button (`MinusIcon`) remains permanently visible on the far right.
+    - Section headers (`Effects`, `Looks`, `Background`) and Background row remain in their original layout and spacing.
+
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 19 test files passed, 180 of 180 tests passing (100% pass rate).
+- `pnpm check:no-competitor-refs`: PASSED (622 tracked files scanned, 0 competitor references found).
+- `pnpm check:public-provenance`: PASSED (0 external runtime/provenance references).
+- `pnpm graphify:update`: AST knowledge graph updated (4,022 nodes, 10,597 edges, 144 communities).
+- Real Browser CDP Verification (`scratch/verify-ui-tweaks.mjs` running headless Chrome 1440×900):
+  - **Unhovered State**:
+    - `dragHandleOpacity`: 1
+    - `removeBtnOpacity`: 1
+    - `dropBtnOpacity`: 0
+    - `eyeBtnOpacity`: 0
+  - **Hovered State**:
+    - `dragHandleOpacity`: 1
+    - `removeBtnOpacity`: 1
+    - `dropBtnOpacity`: 1
+    - `eyeBtnOpacity`: 1
+  - **Visual Verification Screenshots**:
+    - `ui_unhovered_clean.png`: Clean effect rows with visible drag handle and minus button, with drop and eye icons cleanly hidden.
+    - `ui_hovered_reveal.png`: Hovered effect row smoothly revealing the drop and eye icons.
+
+---
+
+## Reference Study: Light Stroke Rail (`light-stroke-rail.vercel.app`) Pass
+
+- **Date**: 2026-09-03
+- **Task**: Deep product, interaction, visual, and technical reference study of Light Stroke Rail per `docs/reference-study.md` and `docs/reference-study-prompts.md`.
+- **Classification**: `restored-local` & `source-verified` (Inspected live HTML/JS/GLSL runtime and extracted full 2,300-line WebGL fragment shader source).
+- **Rule 14 & Rule 15 Compliance**: Preserved private study records in git-ignored locations (`docs/evidence/light-stroke-rail-study/`, `docs/reference-study.md`). Added target domain/name to `DENY_LIST` in `scripts/check-no-competitor-refs.mjs`. Verified zero competitor mentions in git-tracked files.
+
+### 1. Key Technical Insights Extracted
+- **Unified $(u, v)$ Coordinate Manifold**: Fragment shader projects screen coordinates across 38 distinct geometric shape modes (fans, rings, tunnels, flower bursts, barcodes, ribbons, tile grids, Bezier curves) into a canonical 2D manifold coordinate pair $(u, v)$, allowing downstream shading stages to operate uniformly.
+- **The Periodic Comb Line Generator**: Implements an anti-aliased periodic Gaussian distance comb filter with saturation-preserving inter-rail troughs and white-hot specular cores.
+- **CPU Euclidean Distance Transform (EDT)**: Uses Felzenszwalb & Huttenlocher's exact 1-D squared Euclidean Distance Transform running in $O(N)$ linear time on the CPU, packed into a 16-bit RG texture to evaluate smooth contour offsets around typography and Bezier paths with zero terracing.
+- **Dynamic Parameter Re-specification**: Floating control panels dynamically re-label, change slider min/max ranges, and toggle visibility depending on the active geometric shape definition (`SHAPE_UI`).
+- **Direct Canvas Spline Drag Handles**: Renders 4 interactive pointer-captured handles directly on the canvas to manipulate cubic Bezier control points at 60 FPS.
+- **Zero-Server Client-Side Exporter**: Implements 100% browser-side export for 2x high-resolution PNG (up to 6000px), JSON recipe payloads, WebM/MP4 video streams (`MediaRecorder`), and animated GIFs via a custom LZW encoder with a 6×7×6 RGB color cube quantizer.
+
+### 2. Deliverables & Evidence Artifacts
+- Source HTML & Shader Extract: `docs/evidence/light-stroke-rail-study/light-stroke-rail-source.html` (350 KB).
+- Feature Inventory: `docs/evidence/light-stroke-rail-study/feature-inventory.md` (complete 20-section reference document with Feature Opportunity Matrix, Architecture Mapping, and 4 Implementation Prompt Seeds).
+- Reference Study Record: Section 12 appended to `docs/reference-study.md`.
+- Competitor Reference Gatekeeper: Appended `light-stroke-rail` and `Light Stroke Rail` to `scripts/check-no-competitor-refs.mjs`.
+
+### 3. Empirical Verification Evidence (Rule 1)
+- `pnpm verify:approvals`: Verified mechanical approval gates (`stage-1-frame-layer.md` gate closed; zero application code modified).
+- `pnpm check:no-competitor-refs`: PASSED (622 tracked files scanned against 16 deny-list terms; 0 violations).
+- `pnpm check:public-provenance`: PASSED (0 external runtime/provenance references found in tracked files).
+- `pnpm graphify:update`: AST knowledge graph refreshed.
+
+

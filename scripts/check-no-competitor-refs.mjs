@@ -38,6 +38,8 @@ const DENY_LIST = [
   "basement.studio",
   "willnewton",
   "kacemmathlouthi",
+  "light-stroke-rail",
+  "Light Stroke Rail",
 ];
 
 // Files exempt from this check (the validator itself and historical governance/cleanup records)
