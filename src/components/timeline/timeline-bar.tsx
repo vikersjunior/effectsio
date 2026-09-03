@@ -43,7 +43,7 @@ export function TimelineBar(): React.JSX.Element {
     <div
       role="region"
       aria-label="Animation Timeline Controls"
-      className="floating-popup-surface flex items-center gap-2 rounded-xl border border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] px-3 py-1.5 shadow-2xl backdrop-blur-2xl text-[color:var(--foreground)] w-full max-w-[620px] min-w-[380px] select-none"
+      className="floating-popup-surface flex items-center gap-2 rounded-xl border border-[color:var(--border)] px-3 py-1.5 dark:shadow-2xl shadow-none backdrop-blur-2xl text-[color:var(--foreground)] w-full max-w-[620px] min-w-[380px] select-none"
     >
       {/* Play / Pause Toggle Button */}
       <Tooltip>

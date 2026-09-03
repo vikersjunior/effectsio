@@ -237,7 +237,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       });
     });
 
-    it("discloses parameter drawer and toggles with sliders icon", async () => {
+    it("renders blending mode button and ensures parameters are not duplicated in inspector panel", async () => {
       render(
         <StudioProvider>
           <PopulatedTestHost />
@@ -252,24 +252,14 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
 
       await waitFor(() => {
         expect(screen.getByText("Duotone")).toBeDefined();
-        // Newly added effect is auto-selected, so parameters are initially disclosed
-        expect(screen.getByText(/Duotone Parameters/i)).toBeDefined();
       });
 
-      // Click disclosure to collapse
-      const slidersBtn = screen.getByRole("button", { name: /Toggle effect parameters/i });
-      fireEvent.click(slidersBtn);
+      // Blending mode button with Phosphor DropSimpleIcon
+      expect(screen.getByRole("button", { name: /Blending mode/i })).toBeDefined();
 
-      await waitFor(() => {
-        expect(screen.queryByText(/Duotone Parameters/i)).toBeNull();
-      });
-
-      // Click disclosure again to expand
-      fireEvent.click(slidersBtn);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Duotone Parameters/i)).toBeDefined();
-      });
+      // Invariant: inspector panel does not render duplicate parameters drawer;
+      // parameters are managed exclusively via the floating canvas panel.
+      expect(screen.queryByText(/Duotone Parameters/i)).toBeNull();
     });
   });
 

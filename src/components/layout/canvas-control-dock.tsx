@@ -61,7 +61,7 @@ export function CanvasControlDock({
       {editorMode === "animate" && <TimelineBar />}
 
       {/* Persistent Bottom Tool Dock: matching Figma node 61:1277 */}
-      <div className="floating-popup-surface flex items-center gap-2 rounded-[16px] border border-[color:color-mix(in_oklab,var(--border)_20%,transparent)] p-2 shadow-2xl backdrop-blur-2xl text-[color:var(--foreground)] max-w-full">
+      <div className="floating-popup-surface flex items-center gap-2 rounded-[16px] border border-[color:var(--border)] p-2 dark:shadow-2xl shadow-none backdrop-blur-2xl text-[color:var(--foreground)] max-w-full">
         {/* GROUP 1: [ Hand ] [ Resize ] [ Magic Wand ] [ Compare ] */}
         <div className="flex items-center gap-1">
           {/* 1. Hand / Pan Tool */}

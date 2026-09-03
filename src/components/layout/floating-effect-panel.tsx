@@ -48,10 +48,10 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     <div
       role="dialog"
       aria-label={`${definition.name} Parameters`}
-      className="floating-popup-surface absolute top-4 left-4 z-20 flex flex-col w-[300px] max-h-[calc(100%-6rem)] rounded-xl border border-[color:color-mix(in_oklab,var(--border)_20%,transparent)] shadow-2xl backdrop-blur-2xl text-[color:var(--foreground)] select-none pointer-events-auto transition-all duration-150 animate-in fade-in zoom-in-95"
+      className="floating-popup-surface absolute top-4 left-4 z-20 flex flex-col w-[300px] max-h-[calc(100%-6rem)] rounded-xl border border-[color:var(--border)] dark:shadow-2xl shadow-none backdrop-blur-2xl text-[color:var(--foreground)] select-none pointer-events-auto transition-all duration-150 animate-in fade-in zoom-in-95"
     >
       {/* Panel Header */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] shrink-0">
+      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[color:var(--border)] shrink-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <SlidersIcon
             size={14}

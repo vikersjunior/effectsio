@@ -794,6 +794,66 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
   - `pnpm check:no-competitor-refs`: Verified clean (0 violations).
   - `pnpm check:public-provenance`: Clean (0 violations).
 
+---
+
+## Inspector Polish, Blending Mode Icon & Light Theme Shadow Refinements
+
+- **Date**: 2026-09-03
+- **Task**: Systematically resolve three visual & interaction corrections:
+  1. Remove duplicate parameters drawer from right Inspector panel (floating canvas panel remains sole parameter control surface).
+  2. Replace gear/slider icon with Phosphor `DropSimpleIcon` for blending modes, and enlarge effect row icons from 12px to 16px with comfortable 36px row hit targets.
+  3. Remove harsh shadows in light theme mode across bottom tool dock, canvas image, floating effect panel, and user profile dropdown, replacing them with crisp 1px borders (`border border-[color:var(--border)]`).
+
+### 1. Architectural Changes & Implementations
+
+1. **Elimination of Duplicate Effect Parameters Drawer (`src/components/layout/inspector-panel.tsx`)**:
+   - Removed the inline parameters drawer from `inspector-panel.tsx`.
+   - The right panel effect row now strictly serves layer hierarchy, reordering, visibility toggle, blending mode entry, and deletion.
+   - Preserved `selectedInstanceId` dispatch so clicking the effect row activates the canvas `FloatingEffectPanel`, ensuring a single source of truth without duplicated controls.
+
+2. **Phosphor `DropSimpleIcon` & 16px Row Icon Ergonomics (`src/components/layout/inspector-panel.tsx`)**:
+   - Imported Phosphor `DropSimpleIcon` for blending mode action on applied effect rows (`title="Blending mode"`).
+   - Enlarged drag handle (`DotsSixVerticalIcon`), blend button (`DropSimpleIcon`), visibility button (`EyeIcon`/`EyeSlashIcon`), and remove button (`TrashIcon`) to 16px (`size={16}`).
+   - Increased button hit targets to `size-7` (28×28px) with subtle hover feedback (`rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)]`).
+   - Expanded row height to 36px (`h-9 px-2.5 py-1`) for creative software precision and visual balance.
+
+3. **Light Mode Shadow Elimination & Crisp Border Enforcement (`src/styles.css`, `src/components/layout/canvas-viewport.tsx`, `src/components/layout/canvas-control-dock.tsx`, `src/components/layout/floating-effect-panel.tsx`, `src/components/timeline/timeline-bar.tsx`, `src/components/layout/inspector-panel.tsx`)**:
+   - In `src/styles.css`, added `:root[data-theme="light"] .floating-popup-surface, .light .floating-popup-surface { box-shadow: none; border-color: var(--border); }`.
+   - In `canvas-viewport.tsx`, removed the hardcoded pitch-black shadow (`ctx.shadowColor = "rgba(0, 0, 0, 0.6)"; ctx.shadowBlur = 24 / scale;`) when `padding === 0`.
+   - In `canvas-control-dock.tsx` and `timeline-bar.tsx`, replaced `shadow-2xl` with `dark:shadow-2xl shadow-none` and reinforced crisp borders (`border border-[color:var(--border)]`).
+   - In `floating-effect-panel.tsx`, replaced `shadow-2xl` with `dark:shadow-2xl shadow-none` and reinforced crisp borders (`border border-[color:var(--border)]`).
+   - In `inspector-panel.tsx`, replaced `shadow-xl` on PopoverContent (User Profile, Looks, Background) with `dark:shadow-xl shadow-none border border-[color:var(--border)]`.
+
+### 2. Empirical Verification Performed
+
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 173/173 tests passed across all 18 test suites (including updated tests verifying `DropSimpleIcon` blending mode button and absence of duplicate parameters drawer in `inspector-panel.test.tsx`).
+- `pnpm build`: Clean production bundle built in 3.21s (`dist/assets/index-DgQnyJdU.js` 844.34 kB).
+- `pnpm verify:approvals`: All mechanical approval gates verified.
+- `pnpm check:no-competitor-refs`: 619 tracked files scanned, 0 violations.
+- `pnpm check:public-provenance`: Clean (0 external runtime/provenance references).
+- `pnpm graphify:update`: Knowledge graph refreshed (4,006 nodes, 10,562 edges, 139 communities).
+- Real Headless Chrome CDP DOM & Computed Style Measurements in Light Mode:
+  - `dock.boxShadow`: `"none"`
+  - `dock.borderColor`: `"oklch(0.92 0.004 286.32)"` (exact `--border` token)
+  - `dock.borderWidth`: `"1px"`
+  - `floatingPanel.boxShadow`: `"none"`
+  - `floatingPanel.borderColor`: `"oklch(0.92 0.004 286.32)"`
+  - `floatingPanel.borderWidth`: `"1px"`
+  - `effectRow.height`: `"36px"` (`h-9`)
+  - `effectRow.icons`: 16px (`width="16"`, `height="16"`)
+  - `blendBtn.title`: `"Blending mode"` with Phosphor `DropSimpleIcon`
+  - `inspectorHasInlineParams`: `false` (zero duplicate parameters drawer)
+
+### 3. Graphify & Headroom Actual-Use
+- **Graphify**:
+  - Pre-implementation queries mapped `SortableEffectRow`, `FloatingEffectPanel`, `CanvasControlDock`, and `TimelineBar` dependencies and style classes.
+  - Post-implementation AST synchronization executed (`pnpm graphify:update`), updating knowledge graph to 4,006 nodes and 10,562 edges across 139 communities.
+- **Headroom**:
+  - Checked proxy availability; verified direct CLI execution.
+  - No Headroom proxy metrics claimed.
+
+
 
 
 

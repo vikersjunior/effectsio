@@ -5,11 +5,10 @@ import {
   EyeIcon,
   EyeSlashIcon,
   TrashIcon,
-  ArrowCounterClockwiseIcon,
   DotsSixVerticalIcon,
   DownloadSimpleIcon,
   XIcon,
-  SlidersIcon,
+  DropSimpleIcon,
   PlayIcon,
   SparkleIcon,
   CheckIcon,
@@ -38,10 +37,6 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-  SliderControl,
-  SelectControl,
-  ColorControl,
-  BooleanControl,
 } from "../ui";
 import { useStudioStore } from "../../context/studio-context";
 import { getEffectDefinition } from "../../effects/registry";
@@ -90,14 +85,14 @@ function SortableEffectRow({
       ref={setNodeRef}
       style={style}
       onClick={onSelect}
-      className={`group relative flex items-center justify-between h-8 px-2 py-1 rounded-lg gap-2 text-xs cursor-pointer transition-colors duration-100 select-none ${
+      className={`group relative flex items-center justify-between h-9 px-2.5 py-1 rounded-lg gap-2 text-xs cursor-pointer transition-colors duration-100 select-none ${
         isSelected
-          ? "bg-[color:var(--secondary)] border border-[color:color-mix(in_oklab,var(--border)_40%,transparent)] text-[color:var(--foreground)]"
+          ? "bg-[color:var(--secondary)] border border-[color:var(--border)] text-[color:var(--foreground)]"
           : "hover:bg-[color:color-mix(in_oklab,var(--foreground)_4%,transparent)] text-[color:var(--muted-foreground)]"
       } ${!instance.enabled ? "opacity-50" : ""}`}
     >
       {/* Drag handle & Effect Name */}
-      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <button
           type="button"
           {...attributes}
@@ -106,7 +101,7 @@ function SortableEffectRow({
           className="cursor-grab active:cursor-grabbing text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] p-0.5 shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
-          <DotsSixVerticalIcon size={14} />
+          <DotsSixVerticalIcon size={16} />
         </button>
         <span className="font-medium truncate text-xs text-[color:var(--foreground)]">
           {def?.name || instance.effectId}
@@ -114,36 +109,38 @@ function SortableEffectRow({
       </div>
 
       {/* Item Action Controls */}
-      <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+        {/* Blending Mode Button (Phosphor DropSimpleIcon) */}
         <Button
           variant="ghost"
-          size="icon-xxs"
-          onClick={onSelect}
-          title="Toggle effect parameters"
-          aria-label="Toggle effect parameters"
-          className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+          size="icon-xs"
+          title="Blending mode"
+          aria-label="Blending mode"
+          className="size-7 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors"
         >
-          <SlidersIcon size={12} />
+          <DropSimpleIcon size={16} />
         </Button>
+        {/* Visibility Toggle Button */}
         <Button
           variant="ghost"
-          size="icon-xxs"
+          size="icon-xs"
           onClick={onToggleEnabled}
           title={instance.enabled ? "Disable effect" : "Enable effect"}
           aria-label={instance.enabled ? "Disable effect" : "Enable effect"}
-          className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+          className="size-7 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors"
         >
-          {instance.enabled ? <EyeIcon size={12} /> : <EyeSlashIcon size={12} />}
+          {instance.enabled ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
         </Button>
+        {/* Remove Effect Button */}
         <Button
           variant="ghost"
-          size="icon-xxs"
+          size="icon-xs"
           onClick={onRemove}
           title="Remove effect"
           aria-label="Remove effect"
-          className="text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)]"
+          className="size-7 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-colors"
         >
-          <TrashIcon size={12} />
+          <TrashIcon size={16} />
         </Button>
       </div>
     </div>
@@ -189,11 +186,6 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
   const [isLooksPopoverOpen, setIsLooksPopoverOpen] = React.useState(false);
   const [isBgPopoverOpen, setIsBgPopoverOpen] = React.useState(false);
 
-  const selectedEffectDef = React.useMemo(() => {
-    if (!selectedInstance) return null;
-    return getEffectDefinition(selectedInstance.effectId);
-  }, [selectedInstance]);
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -238,7 +230,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
             side="bottom"
             align="start"
             sideOffset={8}
-            className="w-56 p-2 flex flex-col gap-1 shadow-xl bg-[color:var(--card)] border border-[color:var(--border)]"
+            className="w-56 p-2 flex flex-col gap-1 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
           >
             <div className="px-2 py-1.5 flex flex-col">
               <span className="text-xs font-semibold text-[color:var(--foreground)]">John Doe</span>
@@ -425,149 +417,27 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                       {activeEffectStack.map((instance, index) => {
                         const isSelected = selectedInstanceId === instance.instanceId;
                         return (
-                          <div key={instance.instanceId} className="flex flex-col">
-                            <SortableEffectRow
-                              instance={instance}
-                              index={index}
-                              isSelected={isSelected}
-                              onSelect={() =>
-                                activeImageId &&
-                                selectInstance(
-                                  activeImageId,
-                                  isSelected ? null : instance.instanceId
-                                )
-                              }
-                              onToggleEnabled={() =>
-                                activeImageId &&
-                                toggleInstanceEnabled(activeImageId, instance.instanceId)
-                              }
-                              onRemove={() =>
-                                activeImageId &&
-                                removeInstanceFromStack(activeImageId, instance.instanceId)
-                              }
-                            />
-
-                            {/* Disclosed Parameters Drawer */}
-                            {isSelected && selectedEffectDef && (
-                              <div className="mt-1 mb-2 px-3 py-2.5 rounded-lg bg-[color:var(--secondary)] border border-[color:var(--border)] flex flex-col gap-3">
-                                <div className="flex items-center justify-between text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
-                                  <span>{selectedEffectDef.name} Parameters</span>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-xxs"
-                                    onClick={() =>
-                                      activeImageId &&
-                                      resetInstanceParameters(
-                                        activeImageId,
-                                        instance.instanceId
-                                      )
-                                    }
-                                    title="Reset parameters"
-                                    aria-label="Reset parameters"
-                                  >
-                                    <ArrowCounterClockwiseIcon size={12} />
-                                  </Button>
-                                </div>
-
-                                <div className="flex flex-col gap-2.5">
-                                  {selectedEffectDef.parameters.map((schema) => {
-                                    const paramName = schema.name;
-                                    const currentValue =
-                                      instance.parameters[paramName] !== undefined
-                                        ? instance.parameters[paramName]
-                                        : schema.defaultValue;
-
-                                    switch (schema.type) {
-                                      case "number":
-                                        return (
-                                          <SliderControl
-                                            key={paramName}
-                                            name={paramName}
-                                            value={Number(currentValue)}
-                                            min={schema.min ?? 0}
-                                            max={schema.max ?? 100}
-                                            step={schema.step ?? 1}
-                                            onValueChange={(val: number) => {
-                                              if (activeImageId) {
-                                                updateInstanceParameters(
-                                                  activeImageId,
-                                                  instance.instanceId,
-                                                  { [paramName]: val }
-                                                );
-                                              }
-                                            }}
-                                          />
-                                        );
-
-                                      case "select":
-                                        return (
-                                          <SelectControl
-                                            key={paramName}
-                                            name={paramName}
-                                            value={String(currentValue)}
-                                            options={(schema.options ?? []).map((opt) => ({
-                                              label: opt.label,
-                                              value: String(opt.value),
-                                            }))}
-                                            onValueChange={(val: string) => {
-                                              if (activeImageId) {
-                                                updateInstanceParameters(
-                                                  activeImageId,
-                                                  instance.instanceId,
-                                                  { [paramName]: val }
-                                                );
-                                              }
-                                            }}
-                                          />
-                                        );
-
-                                      case "color":
-                                        return (
-                                          <ColorControl
-                                            key={paramName}
-                                            name={paramName}
-                                            value={String(currentValue)}
-                                            onValueChange={(val) => {
-                                              if (activeImageId) {
-                                                updateInstanceParameters(
-                                                  activeImageId,
-                                                  instance.instanceId,
-                                                  {
-                                                    [paramName]:
-                                                      typeof val === "string" ? val : val?.hex,
-                                                  }
-                                                );
-                                              }
-                                            }}
-                                          />
-                                        );
-
-                                      case "boolean":
-                                        return (
-                                          <BooleanControl
-                                            key={paramName}
-                                            name={paramName}
-                                            value={Boolean(currentValue)}
-                                            onValueChange={(val: boolean) => {
-                                              if (activeImageId) {
-                                                updateInstanceParameters(
-                                                  activeImageId,
-                                                  instance.instanceId,
-                                                  { [paramName]: val }
-                                                );
-                                              }
-                                            }}
-                                          />
-                                        );
-
-                                      default:
-                                        return null;
-                                    }
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                          <SortableEffectRow
+                            key={instance.instanceId}
+                            instance={instance}
+                            index={index}
+                            isSelected={isSelected}
+                            onSelect={() =>
+                              activeImageId &&
+                              selectInstance(
+                                activeImageId,
+                                isSelected ? null : instance.instanceId
+                              )
+                            }
+                            onToggleEnabled={() =>
+                              activeImageId &&
+                              toggleInstanceEnabled(activeImageId, instance.instanceId)
+                            }
+                            onRemove={() =>
+                              activeImageId &&
+                              removeInstanceFromStack(activeImageId, instance.instanceId)
+                            }
+                          />
                         );
                       })}
                     </SortableContext>
@@ -605,7 +475,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                       side="left"
                       align="start"
                       sideOffset={8}
-                      className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col shadow-xl bg-[color:var(--card)] border border-[color:var(--border)]"
+                      className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
                     >
                       <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
                     </PopoverContent>
@@ -650,7 +520,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                       side="left"
                       align="start"
                       sideOffset={8}
-                      className="w-52 p-1.5 flex flex-col gap-0.5 shadow-xl bg-[color:var(--card)] border border-[color:var(--border)]"
+                      className="w-52 p-1.5 flex flex-col gap-0.5 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
                     >
                       <div className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
                         Choose Background

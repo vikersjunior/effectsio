@@ -339,9 +339,9 @@ export function CanvasViewport({
             }
             ctx.restore();
           } else if (padding === 0) {
-            ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-            ctx.shadowBlur = 24 / scale;
-            ctx.shadowOffsetY = 8 / scale;
+            ctx.shadowColor = "transparent";
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
           }
 
           // 3. Draw Image Bitmap (with optional corner radius clipping)
