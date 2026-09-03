@@ -1506,10 +1506,10 @@
     "semantic_hash": "92f47440b2e768e7e7c5e0341f26ac84"
   },
   "src/export/image-encoder.ts": {
-    "mtime": 1788453543.32,
-    "seen": 1788453828.1653929,
-    "ast_hash": "3e5425a49080863b32e369b3b49990af",
-    "semantic_hash": "3e5425a49080863b32e369b3b49990af"
+    "mtime": 1788455976.74,
+    "seen": 1788457357.131069,
+    "ast_hash": "b1794435d4f1b5a9599eb5bb8487412e",
+    "semantic_hash": "b1794435d4f1b5a9599eb5bb8487412e"
   },
   "src/looks/builtin-looks.ts": {
     "mtime": 1787793902.56,
@@ -1566,16 +1566,16 @@
     "semantic_hash": "6667549c0110e8d8b2fc6e4f957b7a0c"
   },
   "src/rendering/webgl/shaders/background-dots.ts": {
-    "mtime": 1788453105.09,
-    "seen": 1788453828.165985,
-    "ast_hash": "9726dcd4f0ac4671f3f9eba4749e2591",
-    "semantic_hash": "9726dcd4f0ac4671f3f9eba4749e2591"
+    "mtime": 1788455919.34,
+    "seen": 1788457357.1325219,
+    "ast_hash": "8790c04bf41f1e3a06dd6fb00a418053",
+    "semantic_hash": "8790c04bf41f1e3a06dd6fb00a418053"
   },
   "src/rendering/webgl/shaders/background-grid.ts": {
-    "mtime": 1788453123.22,
-    "seen": 1788453828.1659882,
-    "ast_hash": "fd4b3b79f5601d85d6aea20df43a0fee",
-    "semantic_hash": "fd4b3b79f5601d85d6aea20df43a0fee"
+    "mtime": 1788455933.74,
+    "seen": 1788457357.1325262,
+    "ast_hash": "a1c4994db6643240afdba86e43fa397f",
+    "semantic_hash": "a1c4994db6643240afdba86e43fa397f"
   },
   "src/rendering/webgl/shaders/background-linear-gradient.ts": {
     "mtime": 1787925696.15,
@@ -1674,16 +1674,16 @@
     "semantic_hash": "837a3a3808e1feebcfb612b85e0b9e93"
   },
   "src/rendering/webgl/webgl-background.test.ts": {
-    "mtime": 1788453578.93,
-    "seen": 1788453828.1670558,
-    "ast_hash": "f6bcb6be4591746be6862d098d12d95a",
-    "semantic_hash": "f6bcb6be4591746be6862d098d12d95a"
+    "mtime": 1788456124.12,
+    "seen": 1788457357.1353018,
+    "ast_hash": "b42a392f62db8046faf35abd9fa018be",
+    "semantic_hash": "b42a392f62db8046faf35abd9fa018be"
   },
   "src/rendering/webgl/webgl-background.ts": {
-    "mtime": 1788453145.16,
-    "seen": 1788453828.167058,
-    "ast_hash": "9cf9c3c1bf1339213906d32ad3cfa6fb",
-    "semantic_hash": "9cf9c3c1bf1339213906d32ad3cfa6fb"
+    "mtime": 1788455954.95,
+    "seen": 1788457357.135305,
+    "ast_hash": "d6d057908e943a85f7231e7ac807a057",
+    "semantic_hash": "d6d057908e943a85f7231e7ac807a057"
   },
   "src/rendering/webgl/webgl-context.ts": {
     "mtime": 1787798110.06,
@@ -1794,10 +1794,10 @@
     "semantic_hash": "4575f07b4aec875b5f27d3648a8e25ea"
   },
   "src/types/look.ts": {
-    "mtime": 1788453002.54,
-    "seen": 1788453828.1682298,
-    "ast_hash": "31b2cb245fd180b634eaad8a483e6e41",
-    "semantic_hash": "31b2cb245fd180b634eaad8a483e6e41"
+    "mtime": 1788455658.79,
+    "seen": 1788457357.13802,
+    "ast_hash": "7ea150f32ab8943e0c5671660518dd3c",
+    "semantic_hash": "7ea150f32ab8943e0c5671660518dd3c"
   },
   "src/utils/image-ingestion.test.ts": {
     "mtime": 1787776634.08,
@@ -1866,10 +1866,10 @@
     "semantic_hash": "9bf3912ecdda3a6205b82b25bc1ccc12"
   },
   "src/components/layout/floating-effect-panel.tsx": {
-    "mtime": 1788454000.09,
-    "seen": 1788454245.49825,
-    "ast_hash": "12378504d4935d2907aad86a1e617383",
-    "semantic_hash": "12378504d4935d2907aad86a1e617383"
+    "mtime": 1788455347.19,
+    "seen": 1788457357.106048,
+    "ast_hash": "9c576d82d45c18dcb9959865d0fa4d0c",
+    "semantic_hash": "9c576d82d45c18dcb9959865d0fa4d0c"
   },
   "src/components/layout/phase3-1-fidelity.test.tsx": {
     "mtime": 1788387974.44,
@@ -1914,9 +1914,9 @@
     "semantic_hash": "cb410ada37ee11e851553921d4e1fba0"
   },
   "src/components/layout/floating-background-panel.tsx": {
-    "mtime": 1788454035.57,
-    "seen": 1788454245.498246,
-    "ast_hash": "ceb3d47ed71f0ae6e88b093e5db171d8",
-    "semantic_hash": "ceb3d47ed71f0ae6e88b093e5db171d8"
+    "mtime": 1788456045.65,
+    "seen": 1788457357.1060412,
+    "ast_hash": "57266b21b9901507cefe453daeac154f",
+    "semantic_hash": "57266b21b9901507cefe453daeac154f"
   }
 }

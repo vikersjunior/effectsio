@@ -25,11 +25,11 @@ out vec4 fragColor;
 
 uniform vec2 u_resolution;
 uniform vec3 u_color;
+uniform vec3 u_bgColor;
 uniform float u_patternSpacing;
 uniform float u_time;
 uniform float u_opacity;
-
-const vec3 BASE_BG = vec3(13.0 / 255.0, 13.0 / 255.0, 18.0 / 255.0);
+uniform float u_bgOpacity;
 
 void main() {
     vec2 timeShift = u_time > 0.0 ? vec2(sin(u_time * 0.8) * 8.0, cos(u_time * 0.8) * 8.0) : vec2(0.0);
@@ -41,7 +41,8 @@ void main() {
 
     // Antialiased 2px radius circle
     float dotMask = smoothstep(2.5, 1.5, dist);
-    vec3 color = mix(BASE_BG, u_color, dotMask * u_opacity);
+    vec3 bg = u_bgColor * u_bgOpacity;
+    vec3 color = mix(bg, u_color, dotMask * u_opacity);
     fragColor = vec4(color, 1.0);
 }
 `;

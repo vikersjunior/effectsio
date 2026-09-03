@@ -232,6 +232,8 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
         type: "dots",
         color: activeBackground.color || "#A1A1AA",
         opacity: activeBackground.opacity ?? 100,
+        patternBackgroundColor: activeBackground.patternBackgroundColor ?? "#000000",
+        patternBackgroundOpacity: activeBackground.patternBackgroundOpacity ?? 100,
         patternSpacing: activeBackground.patternSpacing ?? 24,
         padding: activeBackground.padding ?? 32,
       });
@@ -240,6 +242,8 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
         type: "grid",
         color: activeBackground.color || "#A1A1AA",
         opacity: activeBackground.opacity ?? 100,
+        patternBackgroundColor: activeBackground.patternBackgroundColor ?? "#000000",
+        patternBackgroundOpacity: activeBackground.patternBackgroundOpacity ?? 100,
         patternSpacing: activeBackground.patternSpacing ?? 32,
         padding: activeBackground.padding ?? 32,
       });
@@ -764,21 +768,44 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
           {/* Dot Pattern Parameters */}
           {isDotsActive && (
             <div className="flex flex-col gap-3">
-              {/* Color & Opacity Row */}
-              <div className="flex items-center gap-2">
-                <div className="flex-1 min-w-0">
-                  <ColorValueControl
-                    color={activeBackground.color || "#A1A1AA"}
+              {/* Pattern Color & Opacity Row */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-medium text-[color:var(--muted-foreground)] leading-none">Pattern</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <ColorValueControl
+                      color={activeBackground.color || "#A1A1AA"}
+                      label="Pattern Color"
+                      onColorChange={(val) => updateActiveBackground({ color: val })}
+                    />
+                  </div>
+                  <ColorOpacityInput
                     label="Pattern Color"
-                    onColorChange={(val) => updateActiveBackground({ color: val })}
+                    opacity={activeBackground.opacity ?? 100}
+                    onOpacityChange={(op: number) => updateActiveBackground({ opacity: op })}
+                    className="w-14 rounded-md"
                   />
                 </div>
-                <ColorOpacityInput
-                  label="Pattern Color"
-                  opacity={activeBackground.opacity ?? 100}
-                  onOpacityChange={(op: number) => updateActiveBackground({ opacity: op })}
-                  className="w-14 rounded-md"
-                />
+              </div>
+
+              {/* Background Color & Opacity Row */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-medium text-[color:var(--muted-foreground)] leading-none">Background</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <ColorValueControl
+                      color={activeBackground.patternBackgroundColor || "#000000"}
+                      label="Background Color"
+                      onColorChange={(val) => updateActiveBackground({ patternBackgroundColor: val })}
+                    />
+                  </div>
+                  <ColorOpacityInput
+                    label="Background Color"
+                    opacity={activeBackground.patternBackgroundOpacity ?? 100}
+                    onOpacityChange={(op: number) => updateActiveBackground({ patternBackgroundOpacity: op })}
+                    className="w-14 rounded-md"
+                  />
+                </div>
               </div>
 
               {/* Full-width Border Divider spanning to the edges */}
@@ -811,21 +838,44 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
           {/* Grid Pattern Parameters */}
           {isGridActive && (
             <div className="flex flex-col gap-3">
-              {/* Color & Opacity Row */}
-              <div className="flex items-center gap-2">
-                <div className="flex-1 min-w-0">
-                  <ColorValueControl
-                    color={activeBackground.color || "#A1A1AA"}
+              {/* Grid Color & Opacity Row */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-medium text-[color:var(--muted-foreground)] leading-none">Pattern</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <ColorValueControl
+                      color={activeBackground.color || "#A1A1AA"}
+                      label="Grid Color"
+                      onColorChange={(val) => updateActiveBackground({ color: val })}
+                    />
+                  </div>
+                  <ColorOpacityInput
                     label="Grid Color"
-                    onColorChange={(val) => updateActiveBackground({ color: val })}
+                    opacity={activeBackground.opacity ?? 100}
+                    onOpacityChange={(op: number) => updateActiveBackground({ opacity: op })}
+                    className="w-14 rounded-md"
                   />
                 </div>
-                <ColorOpacityInput
-                  label="Grid Color"
-                  opacity={activeBackground.opacity ?? 100}
-                  onOpacityChange={(op: number) => updateActiveBackground({ opacity: op })}
-                  className="w-14 rounded-md"
-                />
+              </div>
+
+              {/* Background Color & Opacity Row */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-medium text-[color:var(--muted-foreground)] leading-none">Background</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <ColorValueControl
+                      color={activeBackground.patternBackgroundColor || "#000000"}
+                      label="Background Color"
+                      onColorChange={(val) => updateActiveBackground({ patternBackgroundColor: val })}
+                    />
+                  </div>
+                  <ColorOpacityInput
+                    label="Background Color"
+                    opacity={activeBackground.patternBackgroundOpacity ?? 100}
+                    onOpacityChange={(op: number) => updateActiveBackground({ patternBackgroundOpacity: op })}
+                    className="w-14 rounded-md"
+                  />
+                </div>
               </div>
 
               {/* Full-width Border Divider spanning to the edges */}

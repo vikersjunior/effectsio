@@ -197,9 +197,18 @@ export function renderBackgroundToCanvas(
   }
 
   if (type === "dots" || type === "grid") {
-    // Base dark background
-    ctx.fillStyle = "#0d0d12";
+    // User-configurable pattern background color
+    const bgHex = background.patternBackgroundColor ?? "#000000";
+    const bgOpacity = typeof background.patternBackgroundOpacity === "number"
+      ? Math.max(0, Math.min(1, background.patternBackgroundOpacity / 100))
+      : 1.0;
+
+    ctx.save?.();
+    ctx.globalAlpha = bgOpacity;
+    ctx.fillStyle = bgHex;
     ctx.fillRect(0, 0, width, height);
+    ctx.globalAlpha = 1;
+    ctx.restore?.();
 
     ctx.save?.();
     ctx.globalAlpha = normalizedOpacity;

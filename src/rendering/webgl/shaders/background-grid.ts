@@ -25,11 +25,11 @@ out vec4 fragColor;
 
 uniform vec2 u_resolution;
 uniform vec3 u_color;
+uniform vec3 u_bgColor;
 uniform float u_patternSpacing;
 uniform float u_time;
 uniform float u_opacity;
-
-const vec3 BASE_BG = vec3(13.0 / 255.0, 13.0 / 255.0, 18.0 / 255.0);
+uniform float u_bgOpacity;
 
 void main() {
     vec2 timeShift = u_time > 0.0 ? vec2(u_time * 6.0, u_time * 4.0) : vec2(0.0);
@@ -44,7 +44,8 @@ void main() {
 
     // Antialiased 1px grid line
     float lineMask = smoothstep(1.0, 0.0, distToLine);
-    vec3 color = mix(BASE_BG, u_color, lineMask * u_opacity);
+    vec3 bg = u_bgColor * u_bgOpacity;
+    vec3 color = mix(bg, u_color, lineMask * u_opacity);
     fragColor = vec4(color, 1.0);
 }
 `;

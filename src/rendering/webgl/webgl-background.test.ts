@@ -35,7 +35,7 @@ function createMockGL(): {
     attachShader: () => {},
     linkProgram: () => {},
     getProgramParameter: (_p: WebGLProgram, param: number) => {
-      if (param === 0x8b89) return 10; // ACTIVE_UNIFORMS
+      if (param === 0x8b89) return 19; // ACTIVE_UNIFORMS
       if (param === 0x8b84) return 2; // ACTIVE_ATTRIBUTES
       return true; // LINK_STATUS / COMPILE_STATUS
     },
@@ -46,10 +46,14 @@ function createMockGL(): {
         "u_foregroundTexture",
         "u_resolution",
         "u_color",
+        "u_bgColor",
         "u_startColor",
         "u_endColor",
         "u_angle",
         "u_patternSpacing",
+        "u_opacity",
+        "u_bgOpacity",
+        "u_time",
         "u_imageSize",
         "u_padding",
         "u_borderRadius",
@@ -213,20 +217,24 @@ describe("Phase 7.5 Procedural GPU Backgrounds & Compositing Suite", () => {
       expect(BACKGROUND_RADIAL_GRADIENT_FRAGMENT_SHADER).toContain("mix(u_startColor, u_endColor, t)");
     });
 
-    it("validates dots pattern shader uniforms and base dark background", () => {
+    it("validates dots pattern shader uniforms and configurable background color", () => {
       expect(BACKGROUND_DOTS_FRAGMENT_SHADER).toContain("#version 300 es");
       expect(BACKGROUND_DOTS_FRAGMENT_SHADER).toContain("uniform vec2 u_resolution;");
       expect(BACKGROUND_DOTS_FRAGMENT_SHADER).toContain("uniform vec3 u_color;");
+      expect(BACKGROUND_DOTS_FRAGMENT_SHADER).toContain("uniform vec3 u_bgColor;");
+      expect(BACKGROUND_DOTS_FRAGMENT_SHADER).toContain("uniform float u_bgOpacity;");
       expect(BACKGROUND_DOTS_FRAGMENT_SHADER).toContain("uniform float u_patternSpacing;");
-      expect(BACKGROUND_DOTS_FRAGMENT_SHADER).toContain("13.0 / 255.0");
+      expect(BACKGROUND_DOTS_FRAGMENT_SHADER).toContain("u_bgColor * u_bgOpacity");
     });
 
-    it("validates grid pattern shader uniforms and line antialiasing", () => {
+    it("validates grid pattern shader uniforms and configurable background color", () => {
       expect(BACKGROUND_GRID_FRAGMENT_SHADER).toContain("#version 300 es");
       expect(BACKGROUND_GRID_FRAGMENT_SHADER).toContain("uniform vec2 u_resolution;");
       expect(BACKGROUND_GRID_FRAGMENT_SHADER).toContain("uniform vec3 u_color;");
+      expect(BACKGROUND_GRID_FRAGMENT_SHADER).toContain("uniform vec3 u_bgColor;");
+      expect(BACKGROUND_GRID_FRAGMENT_SHADER).toContain("uniform float u_bgOpacity;");
       expect(BACKGROUND_GRID_FRAGMENT_SHADER).toContain("uniform float u_patternSpacing;");
-      expect(BACKGROUND_GRID_FRAGMENT_SHADER).toContain("13.0 / 255.0");
+      expect(BACKGROUND_GRID_FRAGMENT_SHADER).toContain("u_bgColor * u_bgOpacity");
     });
 
     it("validates background compositing shader framing, SDF corner clipping, shadow, and alpha blending", () => {

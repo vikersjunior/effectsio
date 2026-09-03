@@ -24,6 +24,8 @@ export interface BackgroundState {
   type: BackgroundType;
   color: string;                  // Solid color or primary gradient/pattern color (Hex)
   opacity?: number;               // Color opacity in percent (0 to 100)
+  patternBackgroundColor?: string; // Background color behind pattern dots/grid lines (Hex)
+  patternBackgroundOpacity?: number; // Background color opacity behind pattern (0 to 100)
   gradientEndColor?: string;      // Second color stop for linear/radial gradient
   gradientAngle?: number;         // 0° to 360° for linear gradient
   patternSpacing?: number;        // Grid or dot spacing in pixels (8px to 64px)
@@ -40,6 +42,8 @@ export const DEFAULT_BACKGROUND_STATE: BackgroundState = {
   type: "transparent",
   color: "#000000",
   opacity: 100,
+  patternBackgroundColor: "#000000",
+  patternBackgroundOpacity: 100,
   gradientEndColor: "#3b82f6",
   gradientAngle: 135,
   patternSpacing: 24,
