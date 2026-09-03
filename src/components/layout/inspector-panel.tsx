@@ -4,7 +4,6 @@ import {
   MinusIcon,
   EyeIcon,
   EyeSlashIcon,
-  TrashIcon,
   DotsSixVerticalIcon,
   DownloadSimpleIcon,
   XIcon,
@@ -12,6 +11,11 @@ import {
   PlayIcon,
   SparkleIcon,
   CheckIcon,
+  CircleIcon,
+  CircleHalfIcon,
+  DotsNineIcon,
+  GridFourIcon,
+  GradientIcon,
 } from "@phosphor-icons/react";
 import {
   DndContext,
@@ -42,7 +46,6 @@ import { useStudioStore } from "../../context/studio-context";
 import { getEffectDefinition } from "../../effects/registry";
 import { EffectBrowserModal } from "../effects/effect-browser-modal";
 import { LooksBrowser } from "../looks/looks-browser";
-import { BackgroundControls } from "../background/background-controls";
 import { ExportModal } from "../export/export-modal";
 import type { EffectInstance } from "../../types/asset";
 import type { BackgroundType } from "../../types/look";
@@ -138,9 +141,9 @@ function SortableEffectRow({
           onClick={onRemove}
           title="Remove effect"
           aria-label="Remove effect"
-          className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-colors [&_svg]:!size-4"
+          className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer"
         >
-          <TrashIcon size={16} />
+          <MinusIcon size={16} />
         </Button>
       </div>
     </div>
@@ -157,6 +160,9 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     activeImageId,
     activeEffectStack,
     activeBackground,
+    hasActiveBackground,
+    isBackgroundPanelOpen,
+    setIsBackgroundPanelOpen,
     updateActiveBackground,
     resetActiveBackground,
     selectedInstanceId,
@@ -184,7 +190,6 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
   const [isAccountPopoverOpen, setIsAccountPopoverOpen] = React.useState(false);
   const [isLooksPopoverOpen, setIsLooksPopoverOpen] = React.useState(false);
-  const [isBgPopoverOpen, setIsBgPopoverOpen] = React.useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -296,9 +301,9 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
               size="icon-xs"
               onClick={onClose}
               aria-label="Close inspector panel"
-              className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+              className="size-6 rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] [&_svg]:!size-4"
             >
-              <XIcon size={14} />
+              <XIcon size={16} />
             </Button>
           )}
         </div>
@@ -396,9 +401,9 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                   onClick={() => setIsEffectBrowserOpen(true)}
                   aria-label="Add effect"
                   title="Add effect"
-                  className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer"
+                  className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
                 >
-                  <PlusIcon size={14} />
+                  <PlusIcon size={16} />
                 </button>
               </div>
 
@@ -456,9 +461,9 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                     onClick={clearAppliedLook}
                     aria-label="Remove applied look"
                     title="Remove applied look"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors [&_svg]:!size-4 cursor-pointer"
                   >
-                    <MinusIcon size={14} />
+                    <MinusIcon size={16} />
                   </Button>
                 ) : (
                   <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
@@ -466,9 +471,9 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                       type="button"
                       aria-label="Open looks browser"
                       title="Open looks browser"
-                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
                     >
-                      <PlusIcon size={14} />
+                      <PlusIcon size={16} />
                     </PopoverTrigger>
                     <PopoverContent
                       side="left"
@@ -484,7 +489,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
 
               {appliedLook && (
                 <div className="px-4 pb-3 flex items-center gap-2 text-xs font-medium text-[color:var(--foreground)]">
-                  <SparkleIcon size={14} className="text-[color:var(--primary)] shrink-0" />
+                  <SparkleIcon size={16} className="text-[color:var(--primary)] shrink-0" />
                   <span className="truncate">{appliedLook.name}</span>
                 </div>
               )}
@@ -494,66 +499,118 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
             <div className="flex flex-col border-b border-[color:var(--border)]">
               <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
                 <span className="text-sm font-medium text-[color:var(--foreground)]">Background</span>
-                {activeBackground && activeBackground.type !== "transparent" ? (
+                {hasActiveBackground ? (
                   <Button
                     variant="ghost"
                     size="icon-xs"
                     onClick={resetActiveBackground}
                     aria-label="Remove background"
                     title="Remove background"
-                    className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors [&_svg]:!size-4 cursor-pointer"
                   >
-                    <MinusIcon size={14} />
+                    <MinusIcon size={16} />
                   </Button>
                 ) : (
-                  <Popover open={isBgPopoverOpen} onOpenChange={setIsBgPopoverOpen}>
-                    <PopoverTrigger
-                      type="button"
-                      aria-label="Add background"
-                      title="Add background"
-                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                    >
-                      <PlusIcon size={14} />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      side="left"
-                      align="start"
-                      sideOffset={8}
-                      className="w-52 p-1.5 flex flex-col gap-0.5 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
-                    >
-                      <div className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
-                        Choose Background
-                      </div>
-                      {[
-                        { type: "solid", label: "Solid Color" },
-                        { type: "linear-gradient", label: "Linear Gradient" },
-                        { type: "radial-gradient", label: "Radial Gradient" },
-                        { type: "dots", label: "Dots Pattern" },
-                        { type: "grid", label: "Grid Pattern" },
-                      ].map((bgOption) => (
-                        <button
-                          key={bgOption.type}
-                          type="button"
-                          onClick={() => {
-                            updateActiveBackground({
-                              type: bgOption.type as BackgroundType,
-                              padding: activeBackground.padding ?? 32,
-                            });
-                            setIsBgPopoverOpen(false);
-                          }}
-                          className="w-full text-left px-2.5 py-1.5 text-xs rounded-md hover:bg-[color:var(--secondary)] text-[color:var(--foreground)] transition-colors"
-                        >
-                          {bgOption.label}
-                        </button>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => {
+                      updateActiveBackground({
+                        type: "solid",
+                        color: activeBackground.color && activeBackground.color !== "#000000" ? activeBackground.color : "#E20000",
+                        padding: 0,
+                        visible: true,
+                      });
+                      setIsBackgroundPanelOpen(true);
+                    }}
+                    aria-label="Add background"
+                    title="Add background"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
+                  >
+                    <PlusIcon size={16} />
+                  </Button>
                 )}
               </div>
 
-              {activeBackground && activeBackground.type !== "transparent" && (
-                <div className="px-4 pb-3">
-                  <BackgroundControls />
+              {/* Compact Active Background Row */}
+              {hasActiveBackground && (
+                <div className="px-4 pb-2.5">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    data-slot="background-row"
+                    data-testid="background-row"
+                    onClick={() => setIsBackgroundPanelOpen(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setIsBackgroundPanelOpen(true);
+                      }
+                    }}
+                    className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--foreground)_20%,transparent)] cursor-pointer transition-colors select-none"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {activeBackground.type === "solid" ? (
+                        <div
+                          className="size-4 rounded-xs shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]"
+                          style={{ backgroundColor: activeBackground.color || "#E20000" }}
+                        />
+                      ) : activeBackground.type === "linear-gradient" || activeBackground.type === "radial-gradient" ? (
+                        <div
+                          className="size-4 rounded-xs shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]"
+                          style={{
+                            background: `linear-gradient(${activeBackground.gradientAngle ?? 90}deg, ${activeBackground.color || "#000000"}, ${activeBackground.gradientEndColor || "#E20000"})`,
+                          }}
+                        />
+                      ) : activeBackground.type === "transparent" ? (
+                        <div className="size-4 rounded-xs shrink-0 flex items-center justify-center text-[color:var(--muted-foreground)] [&_svg]:!size-4">
+                          <CircleHalfIcon size={16} />
+                        </div>
+                      ) : activeBackground.type === "dots" ? (
+                        <div className="size-4 rounded-xs shrink-0 flex items-center justify-center text-[color:var(--muted-foreground)] [&_svg]:!size-4">
+                          <DotsNineIcon size={16} />
+                        </div>
+                      ) : (
+                        <div className="size-4 rounded-xs shrink-0 flex items-center justify-center text-[color:var(--muted-foreground)] [&_svg]:!size-4">
+                          <GridFourIcon size={16} />
+                        </div>
+                      )}
+
+                      <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
+                        {activeBackground.type === "solid"
+                          ? (activeBackground.color || "#E20000").toUpperCase()
+                          : activeBackground.type === "linear-gradient" || activeBackground.type === "radial-gradient"
+                          ? activeBackground.gradientType
+                            ? activeBackground.gradientType.charAt(0).toUpperCase() + activeBackground.gradientType.slice(1)
+                            : activeBackground.type === "radial-gradient"
+                            ? "Radial"
+                            : "Linear"
+                          : activeBackground.type === "transparent"
+                          ? "Alpha"
+                          : activeBackground.type === "dots"
+                          ? "Dot Pattern"
+                          : "Grid Pattern"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {activeBackground.type !== "transparent" && (
+                        <span className="text-xs text-[color:var(--muted-foreground)]">100%</span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => {
+                          updateActiveBackground({ visible: activeBackground.visible === false ? true : false });
+                        }}
+                        title={activeBackground.visible === false ? "Show background" : "Hide background"}
+                        aria-label={activeBackground.visible === false ? "Show background" : "Hide background"}
+                        className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer"
+                      >
+                        {activeBackground.visible === false ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

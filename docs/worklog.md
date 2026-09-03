@@ -958,6 +958,211 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
   - Pre-flight check verified Headroom proxy running on port 8787.
   - No Headroom proxy token savings metrics claimed.
 
+---
+
+## Correction 02.4 — Background Section + Draggable Floating Background Parameter Panel
+
+- **Date**: 2026-09-03
+- **Task**: Implement Figma-aligned Background section in the right Inspector panel and draggable floating background parameter panel (Figma nodes 113:4650, 113:4751, 113:4774), supporting Alpha, Solid, Gradient (Linear, Radial, Angular, Diamond), Dot Pattern, and Grid Pattern with single-active-background model, canonical accent tokens, and full drag-and-drop workspace capability.
+
+### 1. Key Accomplishments
+1. **Design System Accent Tokens (`src/styles.css`)**:
+   - Integrated canonical accent tokens matching Figma specifications:
+     - Light mode: `--accent: oklch(0.948 0.028 342.258)` (`pink-100`), `--accent-foreground: oklch(0.656 0.241 354.308)` (`pink-500`).
+     - Dark mode: `--accent: oklch(0.284 0.109 3.907)` (`pink-950`), `--accent-foreground: oklch(0.823 0.12 346.018)` (`pink-300`).
+   - Selected background type buttons and controls consume `bg-[color:var(--accent)] text-[color:var(--accent-foreground)]` without ad-hoc hex codes.
+2. **Single Active Background Model (`src/types/look.ts`, `src/context/studio-context.tsx`)**:
+   - Differentiated "No Background" (`backgrounds[activeImageId] === undefined`, `hasActiveBackground === false`) from "Alpha Background" (`type === "transparent"`, `hasActiveBackground === true`).
+   - Managed `isBackgroundPanelOpen` state in Studio Store.
+   - Preserved immutable non-destructive background state with IndexedDB persistence.
+   - Implemented `resetActiveBackground()` to delete the active background and restore `+` button.
+3. **Draggable Floating Background Parameter Panel (`src/components/layout/floating-background-panel.tsx`)**:
+   - Matches Figma nodes 113:4650, 113:4751, and 113:4774.
+   - Header with title "Add Background", draggable pointer capture with canvas clamping, and `X` close button that closes the editor without deleting the background.
+   - 5 background type buttons in exact order with tooltips: Alpha, Solid, Gradient, Dot Pattern, Grid Pattern.
+   - Switching type in-place updates the single active background.
+   - Contextual panels for Solid (Color swatch, hex, padding slider), Dot/Grid Patterns (color and spacing sliders), and Alpha (info state).
+   - Full Gradient editor: type dropdown (Linear, Radial, Angular, Diamond), Reverse gradient button, Reset gradient button, interactive gradient preview track, Steps list with add (`+`) and remove (`−`) buttons, position %, `ColorValueControl`, and opacity %.
+4. **Inspector Background Section (`src/components/layout/inspector-panel.tsx`)**:
+   - Header displays `Background +` when inactive, opening popover with 5 choices (Alpha, Solid, Gradient, Dot Pattern, Grid Pattern) in exact order.
+   - Header displays `Background −` when active (exactly one remove control per Figma 113:4650/113:4751).
+   - Compact row displays swatch/icon, label, opacity (100%), and Eye visibility toggle.
+   - Clicking row reopens the floating parameter panel.
+   - Inline parameter expansions removed from Inspector panel (delegated exclusively to the floating workspace panel).
+5. **Canvas Viewport Integration (`src/components/layout/canvas-viewport.tsx`)**:
+   - Mounted `FloatingBackgroundPanel` within canvas overlay.
+   - Render loop respects `activeBackground.visible !== false`.
+
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 180/180 tests passing across all 19 test suites (including 7 comprehensive tests in `background-workflow.test.tsx` and 14 tests in `inspector-panel.test.tsx`).
+- `pnpm build`: Clean production bundle built in 2.51s.
+- `pnpm check:no-competitor-refs`: 619 tracked files scanned, 0 violations.
+- `pnpm check:public-provenance`: Clean (0 external runtime/provenance references).
+- `pnpm verify:approvals`: All mechanical approval gates verified.
+- `pnpm graphify:update`: Updated knowledge graph (4,019 nodes, 10,611 edges, 134 communities).
+- Headless Chrome CDP Verification (`scripts/verify-correction-02-4-cdp.mjs`):
+  - `bg_01_empty_inspector.png`: Inactive Background section with `+` button.
+  - `bg_02_type_picker_popover.png`: Popover open with 5 options in exact order (Alpha, Solid, Gradient, Dot Pattern, Grid Pattern).
+  - `bg_03_solid_active_inspector.png`: Populated Inspector row (`#E20000`, 100%, eye toggle) and open floating panel.
+  - `bg_04_floating_panel_dragged.png`: Floating panel smoothly dragged across canvas without reflow, clamped within bounds.
+  - `bg_05_floating_gradient_panel.png`: Gradient editor matching Figma 113:4774 with type selector, Reverse, Reset, preview bar, and Steps list.
+  - `bg_06_gradient_stops_added.png`: Dynamic addition of 3rd stop at 50% updating preview track immediately.
+  - `bg_07_light_theme_accent_tokens.png`: Light theme verification showing pink-100 background and pink-500 foreground on active toolbar type button.
+  - `bg_08_dot_pattern_panel.png`: Dot pattern mode with dot spacing slider and updated Inspector row.
+  - `bg_09_alpha_panel.png`: Alpha background mode active with hatched icon and preserved canvas background.
+  - `bg_10_panel_closed_bg_intact.png`: `X` closed editor while preserving active background on canvas and in Inspector.
+  - `bg_11_removed_restores_plus.png`: Clicking `−` in header removes background and restores `+` button.
+
+### 3. Graphify & Headroom Actual-Use
+- **Graphify**:
+  - Investigated `FloatingBackgroundPanel`, `InspectorPanel`, `BackgroundState`, and `CanvasViewport` symbols and dependencies.
+  - Post-implementation AST synchronization executed (`pnpm graphify:update`), updating knowledge graph to 4,019 nodes and 10,611 edges across 134 communities.
+- **Headroom**:
+  - Pre-flight check verified Headroom proxy running on port 8787.
+  - No Headroom proxy token savings metrics claimed.
+
+---
+
+## Entry 2026-09-03 (Correction 02.4 — Final Background UX Requirements Pass)
+
+### 1. Architectural Changes & Refinements
+- **Direct Background + Flow**: Removed intermediate Popover picker when clicking `Background +`. Clicking `Background +` now immediately initializes the active background (default `#E20000` Solid, padding 0, visible: true) and opens the floating `Add Background` panel directly.
+- **Canonical Phosphor Icons (Toolbar & Rows)**:
+  - Exact Phosphor Icons in exact order in the floating toolbar:
+    1. `CircleHalfIcon` → Alpha
+    2. `CircleIcon` → Solid
+    3. `GradientIcon` → Gradient
+    4. `DotsNineIcon` → Dot Pattern
+    5. `GridFourIcon` → Grid Pattern
+  - Removed all custom SVGs and non-canonical icon substitutes.
+- **In-Place Background Type Switching**:
+  - Selecting another background type switches the type within the same floating panel without closing or reopening modals.
+  - Active background type button uses canonical `--accent` (`bg-[color:var(--accent)]`) and `--accent-foreground` (`text-[color:var(--accent-foreground)]`) tokens.
+- **Real Draggable Stop Nodes on Gradient Preview Track**:
+  - Stop nodes on the gradient track are real, interactive DOM elements mapped directly from `activeBackground.gradientStops`.
+  - Pointer capture enables smooth dragging of stop nodes along the track with real-time position percentage updates.
+  - Clicking `Steps +` adds a real stop that immediately appears as an interactive stop node on the track and as a new row in the Steps list.
+  - Stop rows feature a prominent minus button (`size-7`, `MinusIcon size={14}`) with an accessible hit target.
+  - Reversing and resetting gradients update both the preview track stop nodes and the Steps list simultaneously.
+- **Single Source of Truth & Clean Lifecycle**:
+  - Inspector header toggles between `+` (no background) and `−` (active background).
+  - Floating panel `X` button closes the editor while preserving the active background.
+  - Clicking the active background row in the Inspector reopens the floating panel.
+  - Clicking `−` in the Inspector removes the single active background and closes the floating panel.
+
+### 2. Verification Evidence (Rule 1)
+- `pnpm typecheck`: Passed with 0 errors (`tsc -p tsconfig.json --noEmit`).
+- `pnpm test`: 19 of 19 test suites passed, 180 of 180 tests passed (100% pass rate).
+- `pnpm build`: Built client bundle in 4.41s without errors.
+- `pnpm check:no-competitor-refs`: 619 tracked files scanned, 0 violations.
+- `pnpm check:public-provenance`: Clean (0 external runtime/provenance references).
+- `pnpm verify:approvals`: All mechanical approval gates verified.
+- `pnpm graphify:update`: Updated knowledge graph (4,019 nodes, 10,609 edges, 137 communities).
+- Headless Chrome CDP Verification (`scripts/verify-correction-02-4-cdp.mjs`):
+  - `bg_01_empty_inspector.png`: Inactive Background section with `+` button.
+  - `bg_02_direct_floating_panel_opened.png`: Direct open of `Add Background` floating panel and active row upon clicking `+`.
+  - `bg_03_floating_panel_dragged.png`: Floating panel smoothly dragged across canvas without panning canvas.
+  - `bg_04_floating_gradient_panel.png`: Gradient editor with Type dropdown, Reverse, Reset, preview track, and Steps list.
+  - `bg_05_gradient_stops_added_and_dragged.png`: Stop added with `Steps +`, stop node dragged on track with position % live update.
+  - `bg_06_light_theme_accent_tokens.png`: Light theme with pink-100 accent background and pink-500 accent foreground.
+  - `bg_07_dot_pattern_panel.png`: Dot pattern mode with dot spacing slider.
+  - `bg_08_alpha_panel.png`: Alpha mode with CircleHalf icon.
+  - `bg_09_panel_closed_bg_intact.png`: Close `X` closes editor while keeping background active.
+  - `bg_10_reopened_from_row.png`: Clicking active row reopens floating panel.
+  - `bg_11_removed_restores_plus.png`: Clicking `−` in Inspector removes background and restores `+`.
+
+### 3. Graphify & Headroom Actual-Use
+- **Graphify**:
+  - Investigated `FloatingBackgroundPanel`, `GradientStop`, `parseStopPosition`, and `inspector-panel` dependencies.
+  - Post-implementation AST synchronization executed (`pnpm graphify:update`), updating knowledge graph to 4,019 nodes, 10,609 edges, 137 communities.
+- **Headroom**:
+  - Pre-flight check verified Headroom proxy running on port 8787 (PID 24349).
+  - No Headroom proxy token savings metrics claimed.
+
+---
+
+## Control Panel Icon Consistency & Inter Font Standardization
+
+- **Date**: 2026-09-03
+- **Task**: Standardize control panel icon sizes across Effects, Looks, and Background rows/headers to eliminate tiny icons, and enforce Inter Variable as the authoritative font throughout while removing unwarranted monospace overrides.
+
+### 1. Root Cause Analysis
+- **Tiny Icons**:
+  - In `src/components/layout/inspector-panel.tsx`, the Background row visibility button used `size="icon-xxs"` with a `size-5` button and `<EyeIcon size={12} />`. The `buttonVariants` definition for `icon-xxs` applied `[&_svg]:size-2.5` (10px!), whereas the Effects rows above it used `size-6` buttons with `[&_svg]:!size-4` and `<EyeIcon size={16} />`.
+  - In section headers, `icon-xs` button variants similarly shrunk icons down to 10px (`size-2.5`) unless explicitly overridden.
+  - In `floating-background-panel.tsx`, `PlusIcon` was set to `size={12}`, `MinusIcon` was wrapped in `icon-xs` (10px), and drag handles were set to `size={14}`.
+- **Unwarranted Monospace**:
+  - The background opacity label had explicit `font-mono` (`<span className="text-xs text-[color:var(--muted-foreground)] font-mono">100%</span>`).
+  - `InputGroupText` in `src/components/ui/primitives/input-group.tsx` had `font-mono` hardcoded by default, forcing `%` and other units into monospace.
+  - Color opacity input in `color-opacity-input.tsx` and count badges in `panel-header.tsx` / `asset-panel.tsx` also used `font-mono`.
+
+### 2. Implementation & Standardization
+- **Icon Sizing Consistency**:
+  - In `src/components/layout/inspector-panel.tsx`:
+    - Updated the Background row visibility button to match `SortableEffectRow`: `size-6 flex items-center justify-center rounded-md ... [&_svg]:!size-4 cursor-pointer` with `<EyeSlashIcon size={16} />` / `<EyeIcon size={16} />`.
+    - Pattern icons (`CircleHalfIcon`, `DotsNineIcon`, `GridFourIcon`) upgraded to 16px with `[&_svg]:!size-4`.
+    - Section header action buttons (`Effects +`, `Looks +`/`−`, `Background +`/`−`) and panel close `X` standardized to `size-6` buttons with 16px icons and `[&_svg]:!size-4`.
+  - In `src/components/ui/primitives/button.tsx`:
+    - Upgraded `buttonVariants` default icon dimensions (`icon-sm` to `[&_svg]:size-4` (16px), `icon-xs` to `[&_svg]:size-3.5` (14px), `icon-xxs` to `[&_svg]:size-3` (12px)).
+  - In `src/components/layout/floating-background-panel.tsx`:
+    - Header close `XIcon` upgraded to 16px with `[&_svg]:!size-4`.
+    - Steps `PlusIcon`, `MinusIcon`, and drag handle `DotsSixVerticalIcon` upgraded to 16px with `[&_svg]:!size-4`.
+    - Gradient action buttons (`ArrowsLeftRightIcon`, `ArrowCounterClockwiseIcon`) upgraded to 16px with `[&_svg]:!size-4`.
+- **Inter Font Standardization**:
+  - Enforced `font-family: var(--font-sans)` on `body` in `src/styles.css`.
+  - Removed `font-mono` from Background opacity `100%` in `inspector-panel.tsx`, defaulting cleanly to Inter.
+  - Removed `font-mono` from step position and opacity readouts in `floating-background-panel.tsx`.
+  - Removed `font-mono` from default `InputGroupText` in `input-group.tsx`.
+  - Removed `font-mono` from `ColorOpacityInput` in `color-opacity-input.tsx`.
+  - Removed `font-mono` from count badges in `panel-header.tsx` and `asset-panel.tsx`.
+
+### 3. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 19 of 19 test suites passed, 180 of 180 tests passed (100% pass rate).
+- `pnpm check:no-competitor-refs`: Passed (619 files scanned, 0 competitor references).
+- `pnpm check:public-provenance`: Passed (0 external runtime/provenance references).
+- Headless Chrome CDP Evaluation (`control_panel_verified.png`):
+  - `opacityComputedFont`: `"Inter Variable", -apple-system, "system-ui", "Segoe UI", Roboto, sans-serif`.
+  - Background row eye icon: button 24px × 24px, SVG 16px × 16px.
+  - Effects row action icons: button 24px × 24px, SVG 16px × 16px.
+  - Section header buttons: button 24px × 24px, SVG 16px × 16px.
+---
+
+## Correction 02.4 Refinement — Effect Row Minus Icon, Gradient Padding Slider & Full-Width Divider
+
+- **Date**: 2026-09-03
+- **Task**: 
+  1. Replace trash icon with `MinusIcon` on effect layers to maintain strict iconography uniformity for removal actions across the application.
+  2. Add `Padding` property slider to the floating gradient background panel so users can configure asset padding identically to Solid, Dot Pattern, and Grid Pattern.
+  3. Ensure the border divider in the floating background parameter panel spans all the way from edge to edge.
+
+### 1. Implementation
+- **Effect Layer Removal Icon (`src/components/layout/inspector-panel.tsx`)**:
+  - Replaced `<TrashIcon size={16} />` with `<MinusIcon size={16} />` on `SortableEffectRow`.
+  - Removed unused `TrashIcon` import.
+  - Aligns with the project invariant that `MinusIcon` represents removal across Inspector sections (Looks, Background, and Effects).
+- **Gradient Background Padding Slider (`src/components/layout/floating-background-panel.tsx`)**:
+  - Added `SliderControl` for `Padding` (`min={0}`, `max={120}`, `step={1}`, `unit="px"`) in the Gradient parameters body.
+  - Preserved `padding` state in `handleSelectType` when activating `linear-gradient`.
+  - Canvas viewport and export renderer already support `activeBackground.padding` for all background types.
+- **Edge-to-Edge Divider (`src/components/layout/floating-background-panel.tsx`)**:
+  - Applied `-mx-3.5 border-b border-[color:var(--border)] my-1` to the divider above Steps, counteracting the container's `px-3.5` padding so the border spans edge-to-edge across the full width of the floating panel.
+
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 19 of 19 test suites passed, 180 of 180 tests passed (100% pass rate).
+- `pnpm build`: Completed in 4.16s without errors.
+- `pnpm check:no-competitor-refs`: Passed (619 files scanned, 0 violations).
+- `pnpm check:public-provenance`: Passed (0 external runtime/provenance references).
+- `pnpm graphify:update`: Knowledge graph updated (4,019 nodes, 10,594 edges, 136 communities).
+- Headless Chrome CDP Evaluation (`scripts/verify-correction-02-4-cdp.mjs`):
+  - `bg_01_empty_inspector.png`: Effect row renders with `MinusIcon` instead of `TrashIcon`.
+  - `bg_04_floating_gradient_panel.png`: Gradient panel renders with `Padding` slider and edge-to-edge divider.
+  - `bg_05_gradient_stops_added_and_dragged.png`: Interactive gradient stop dragging on track, Padding slider, full-width divider, and Steps list with `MinusIcon`.
+
+
+
 
 
 

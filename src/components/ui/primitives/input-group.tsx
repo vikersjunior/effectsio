@@ -111,7 +111,7 @@ function InputGroupText({
   return (
     <span
       data-slot="input-group-text"
-      className={cn("text-xs text-[color:var(--muted-foreground)] font-mono", className)}
+      className={cn("text-xs text-[color:var(--muted-foreground)]", className)}
       {...props}
     />
   );

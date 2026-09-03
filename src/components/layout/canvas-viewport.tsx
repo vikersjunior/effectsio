@@ -26,6 +26,7 @@ import { GPUEffectPipeline, canExecuteStackOnGPU } from "../../rendering/webgl/w
 import { GPUBackgroundRenderer, isGPUSupportedBackground } from "../../rendering/webgl/webgl-background";
 import { CanvasControlDock } from "./canvas-control-dock";
 import { FloatingEffectPanel } from "./floating-effect-panel";
+import { FloatingBackgroundPanel } from "./floating-background-panel";
 
 export interface CanvasViewportProps {
   onOpenAssets?: () => void;
@@ -292,8 +293,8 @@ export function CanvasViewport({
           ctx.translate(width / 2 + currentPanX, height / 2 + currentPanY);
           ctx.scale(scale, scale);
 
-          // 1. Draw Creative Background Layer (if not transparent)
-          if (activeBackground && activeBackground.type !== "transparent") {
+          // 1. Draw Creative Background Layer (if not transparent and visible)
+          if (activeBackground && activeBackground.type !== "transparent" && activeBackground.visible !== false) {
             const bgW = w + 2 * padding;
             const bgH = h + 2 * padding;
             const bgX = -bgW / 2;
@@ -1105,6 +1106,9 @@ export function CanvasViewport({
 
         {/* Contextual Floating Effect Customization Panel (when an effect instance is selected) */}
         <FloatingEffectPanel />
+
+        {/* Contextual Floating Background Customization Panel (when background is active and opened) */}
+        <FloatingBackgroundPanel />
 
         {/* Canonical Floating Canvas Control System (Timeline Bar + Viewport Dock) */}
         <CanvasControlDock

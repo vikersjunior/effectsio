@@ -123,7 +123,7 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
           <span className="text-xs font-semibold tracking-tight text-[color:var(--foreground)]">
             Assets
           </span>
-          <span className="text-xs font-mono text-[color:var(--muted-foreground)]">
+          <span className="text-xs text-[color:var(--muted-foreground)]">
             ({assets.length})
           </span>
         </div>

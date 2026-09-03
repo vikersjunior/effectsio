@@ -370,7 +370,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       );
     }
 
-    it("opens Background Type Picker when + is clicked and applies selection", async () => {
+    it("directly activates background and switches + to − when + is clicked", async () => {
       render(
         <StudioProvider>
           <BgTestHost />
@@ -387,17 +387,10 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
         expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
       });
 
+      // Directly click Add background (+)
       fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
 
-      await waitFor(() => {
-        expect(screen.getByText("Choose Background")).toBeDefined();
-        expect(screen.getByRole("button", { name: "Solid Color" })).toBeDefined();
-        expect(screen.getByRole("button", { name: "Linear Gradient" })).toBeDefined();
-      });
-
-      // Select Solid Color
-      fireEvent.click(screen.getByRole("button", { name: "Solid Color" }));
-
+      // Immediately switches to Remove background (-) without popover
       await waitFor(() => {
         expect(screen.getByRole("button", { name: /Remove background/i })).toBeDefined();
       });
@@ -420,20 +413,14 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
         expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
       });
 
-      // Open background picker and select Solid Color
+      // Directly click Add background (+)
       fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Solid Color" })).toBeDefined();
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: "Solid Color" }));
 
       await waitFor(() => {
         expect(screen.getByRole("button", { name: /Remove background/i })).toBeDefined();
       });
 
-      // Click Remove background
+      // Click Remove background (-)
       fireEvent.click(screen.getByRole("button", { name: /Remove background/i }));
 
       await waitFor(() => {

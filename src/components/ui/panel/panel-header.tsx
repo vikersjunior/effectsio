@@ -52,7 +52,7 @@ export function PanelHeader({
             {title}
           </p>
           {count !== undefined && (
-            <span className="font-mono text-2xs text-[color:var(--muted-foreground)]">
+            <span className="text-2xs text-[color:var(--muted-foreground)]">
               ({count})
             </span>
           )}

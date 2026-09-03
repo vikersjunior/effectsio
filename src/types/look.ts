@@ -30,6 +30,9 @@ export interface BackgroundState {
   borderRadius?: number;          // Framed image corner radius in pixels (0px to 48px)
   shadowBlur?: number;            // Drop shadow blur in pixels (0px to 64px)
   shadowOpacity?: number;         // Drop shadow opacity (0.0 to 1.0)
+  visible?: boolean;              // Background visibility toggle (eye icon)
+  gradientType?: "linear" | "radial" | "angular" | "diamond";
+  gradientStops?: readonly { color: string; position: string; opacity?: number }[];
 }
 
 export const DEFAULT_BACKGROUND_STATE: BackgroundState = {

@@ -48,6 +48,9 @@ export interface StudioContextType {
   activeEffectStack: EffectStack;
   backgrounds: Record<string, BackgroundState>;
   activeBackground: BackgroundState;
+  hasActiveBackground: boolean;
+  isBackgroundPanelOpen: boolean;
+  setIsBackgroundPanelOpen: (open: boolean) => void;
   userLooks: Look[];
   selectedInstanceId: string | null;
   selectedInstance: EffectInstance | null;
@@ -192,6 +195,7 @@ export function StudioProvider({
   );
   const [editorMode, setEditorMode] = React.useState<"design" | "animate">("design");
   const [isEffectBrowserOpen, setIsEffectBrowserOpen] = React.useState(false);
+  const [isBackgroundPanelOpen, setIsBackgroundPanelOpen] = React.useState(false);
   const [appliedLook, setAppliedLook] = React.useState<Look | null>(null);
 
   const clearAppliedLook = React.useCallback(() => {
@@ -411,6 +415,12 @@ export function StudioProvider({
   const activeBackground = React.useMemo(() => {
     if (!activeImageId) return DEFAULT_BACKGROUND_STATE;
     return backgrounds[activeImageId] || DEFAULT_BACKGROUND_STATE;
+  }, [activeImageId, backgrounds]);
+
+  // Whether the active asset has a configured background
+  const hasActiveBackground = React.useMemo(() => {
+    if (!activeImageId) return false;
+    return Boolean(backgrounds[activeImageId]);
   }, [activeImageId, backgrounds]);
 
   // Derived selected instance ID
@@ -1010,15 +1020,13 @@ export function StudioProvider({
   const resetActiveBackground = React.useCallback(() => {
     if (!activeImageId) return;
     recordDiscreteSnapshot();
+    setIsBackgroundPanelOpen(false);
 
     setBackgrounds((prev) => {
-      dbSaveBackground(activeImageId, DEFAULT_BACKGROUND_STATE).catch(
-        console.error
-      );
-      return {
-        ...prev,
-        [activeImageId]: DEFAULT_BACKGROUND_STATE,
-      };
+      const next = { ...prev };
+      delete next[activeImageId];
+      dbDeleteBackground(activeImageId).catch(console.error);
+      return next;
     });
   }, [activeImageId, recordDiscreteSnapshot]);
 
@@ -1358,6 +1366,9 @@ export function StudioProvider({
     deleteUserLook,
 
     // Background
+    hasActiveBackground,
+    isBackgroundPanelOpen,
+    setIsBackgroundPanelOpen,
     updateActiveBackground,
     resetActiveBackground,
 

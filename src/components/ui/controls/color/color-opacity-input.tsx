@@ -62,7 +62,7 @@ export function ColorOpacityInput({
       <InputGroupInput
         aria-label={`${label} opacity`}
         autoComplete="off"
-        className="pl-2 pr-1 text-right font-mono"
+        className="pl-2 pr-1 text-right"
         inputMode="numeric"
         name={name}
         onBlur={() => commitOpacity()}

@@ -71,10 +71,10 @@ export function BackgroundControls(): React.JSX.Element {
             variant="ghost"
             size="xs"
             onClick={resetActiveBackground}
-            className="gap-1 text-2xs"
+            className="gap-1 text-2xs [&_svg]:!size-3.5"
             title="Reset backdrop to default"
           >
-            <ArrowCounterClockwiseIcon size={11} />
+            <ArrowCounterClockwiseIcon size={14} />
             Reset
           </Button>
         }
