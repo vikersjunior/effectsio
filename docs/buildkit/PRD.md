@@ -1283,6 +1283,11 @@ Only after generative content is sufficiently mature:
 - keyframe curves
 - property-specific animation controls
 - richer timeline workflows
+- Video export (MP4/WebM) via the browser's native MediaRecorder and
+  captureStream APIs. Not deferred for technical difficulty — confirmed
+  as a zero-server, client-side-only pattern during this project's
+  generative-tooling research. Sequenced here because it requires Stage
+  4's real animated content to exist first, not because it's unsolved.
 
 ### Ongoing
 
@@ -1300,8 +1305,6 @@ Only after generative content is sufficiently mature:
 
 - video file ingestion
 - GIF export
-- WebM export
-- MP4 export
 - image-sequence export
 - per-effect masking
 - AI-generated layers

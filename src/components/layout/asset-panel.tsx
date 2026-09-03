@@ -98,8 +98,8 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
         onChange={handleFileSelect}
       />
 
-      {/* Top Section: Project Identity */}
-      <div className="h-12 min-h-12 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0">
+      {/* Top Section: Project Identity (Matching Inspector header height h-14) */}
+      <div className="h-14 min-h-14 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <BrandLogo size={22} />
           <ProjectNameInput />
@@ -117,8 +117,8 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
         )}
       </div>
 
-      {/* Assets Section Header */}
-      <div className="h-10 min-h-10 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0">
+      {/* Assets Section Header (Matching Design/Animate, Effects, Looks, Background height h-11) */}
+      <div className="h-11 min-h-11 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-semibold tracking-tight text-[color:var(--foreground)]">
             Assets

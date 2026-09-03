@@ -18,7 +18,11 @@ import { getAllLooks } from "../../looks/look-manager";
 import type { Look } from "../../types/look";
 import { SaveLookModal } from "./save-look-modal";
 
-export function LooksBrowser(): React.JSX.Element {
+export interface LooksBrowserProps {
+  onSelectLook?: (look: Look) => void;
+}
+
+export function LooksBrowser({ onSelectLook }: LooksBrowserProps = {}): React.JSX.Element {
   const {
     userLooks,
     activeAsset,
@@ -59,6 +63,7 @@ export function LooksBrowser(): React.JSX.Element {
       applyLookToActiveAsset(look);
     }
     setAppliedLookId(look.id);
+    onSelectLook?.(look);
     setTimeout(() => setAppliedLookId(null), 1500);
   };
 

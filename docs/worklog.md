@@ -697,6 +697,105 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
 ### 4. Known Limitations
 - Resize button acts as a structural entry point for upcoming Frame Size capability; full Frame/Layer architecture awaits Stage 1 mechanical approval per `docs/approvals/stage-1-frame-layer.md`.
 
+---
+
+## Correction 02.3: Rebuild Right Inspector Panel from Figma (Nodes 10:920 & 61:1306)
+
+- **Date**: 2026-09-03
+- **Task**: Faithfully rebuild right-side Inspector panel from Figma: Default/Empty Inspector (node `10:920`) and Populated/Design Inspector (node `61:1306`).
+
+### 1. Files Changed
+- `src/context/studio-context.tsx`:
+  - Added centralized `theme: "system" | "light" | "dark"` and `setTheme` to `StudioContextType` with `localStorage` persistence (`effectsio_theme`) and OS color-scheme listener via `window.matchMedia("(prefers-color-scheme: dark)")`.
+  - Added `appliedLook: Look | null`, `setAppliedLook`, and `clearAppliedLook` to track the applied preset.
+  - Enhanced hydration state protection so newly initialized in-memory assets are never clobbered by async hydration completion in testing or runtime environments.
+- `src/components/looks/looks-browser.tsx`:
+  - Added `onSelectLook?: (look: Look) => void` to `LooksBrowserProps`, auto-closing the popover upon selecting a preset.
+- `src/components/layout/asset-panel.tsx`:
+  - Updated Project Identity header height from `h-12 min-h-12` (48px) to `h-14 min-h-14` (56px), equalizing it with the right-side Inspector panel header (`h-14 min-h-14`).
+  - Updated Assets section header height from `h-10 min-h-10` (40px) to `h-11 min-h-11` (44px), giving it the exact same height as the Design/Animate mode row, Effects row, Looks row, and Background row.
+- `src/components/layout/inspector-panel.tsx`:
+  - Updated Design/Animate mode row height from `h-10 min-h-10` (40px) to `h-11 min-h-11` (44px), providing top and bottom breathing space around the mode buttons and establishing uniform 44px section heights across all five sections (Assets, Design/Animate, Effects, Looks, Background).
+  - Ensured `min-h-11` explicit constraints on Effects, Looks, and Background header rows.
+  - Rebuilt Inspector layout according to Figma node `10:920` (empty) and `61:1306` (populated):
+    - **56px Header (`h-14`)**:
+      - 32×32 (`size-8 rounded-full`) interactive `JD` avatar triggering canonical `Popover` for Account Menu:
+        - John Doe (`john@example.com`), Account Settings, Saved Projects.
+        - Appearance selector: System, Light, Dark with active checkmarks, synchronized with the application theme.
+      - Pink primary `Export` button (`Button variant="primary" size="sm"`) opening canonical `ExportModal`.
+    - **40px Editor Mode Row (`h-10`)**:
+      - `Design` and `Animate` tabs with 14px medium typography, with active surface `bg-[color:var(--secondary)] rounded-[4px] px-2.5 py-1`, bound to `editorMode`.
+    - **Empty State (`!activeAsset`)**:
+      - Exactly matches Figma node `10:920`: Header → Design/Animate → completely empty body space.
+      - Zero Page section, zero color control, zero placeholder content.
+    - **Populated Design State (`activeAsset && editorMode === "design"`)**:
+      - Matches Figma node `61:1306` with stacked sections separated by full-width border lines (`border-b border-[color:var(--border)]`):
+        1. **Effects**: Header `Effects +` (`+` opens `EffectBrowserModal`). Zero "No active effects" placeholder text when empty so the row looks identical to Looks and Background. Real draggable effect stack (`@dnd-kit`), title (12px medium), parameter disclosure (`SlidersIcon`), visibility toggle (`EyeIcon`/`EyeSlashIcon`), and remove (`TrashIcon`). Selected row styled with secondary surface. Parameter disclosure reveals inline drawer with `SliderControl`, `SelectControl`, `ColorControl`, and `BooleanControl`.
+        2. **Looks**: Header `Looks +` (`+` opens `LooksBrowser` in a Popover). When applied, displays `✨ {appliedLook.name}` and changes button to `−` (`MinusIcon`), which clears the applied look.
+        3. **Background**: Header `Background +` (`+` opens Background Type Picker Popover: Solid Color, Linear Gradient, Radial Gradient, Dots Pattern, Grid Pattern). When active, renders `<BackgroundControls />` and changes button to `−` (`MinusIcon`), which removes the active background. Closed with bottom border separating it from the clean canvas space below.
+    - **Animate State (`editorMode === "animate"`)**:
+      - Renders Animation Timeline with Duration, Loop toggle, and Playback Speed segmented buttons (0.5x, 1x, 2x).
+- `src/components/layout/inspector-panel.test.tsx`:
+  - Created comprehensive 14-test suite covering empty state constraints, avatar menu and theme switching, populated stack operations, inline parameter drawer toggling, Looks and Background `+`/`−` lifecycles, and Design/Animate mode switching.
+
+### 2. Behavior Changes
+- The empty Inspector now faithfully reflects Figma node `10:920`, showing only the 56px header and mode row with completely empty space below.
+- The previous unapproved Page / Color section was removed entirely.
+- The avatar provides a unified account and theme switcher supporting System, Light, and Dark without introducing duplicate theme logic.
+- Looks and Background now use standard plus/minus semantics:
+  - `+` initiates creation / selection via popovers.
+  - `−` removes / clears the active look or background layer.
+- Mode switching (`Design` vs `Animate`) synchronizes across the workspace through `StudioContext`.
+
+### 3. Verification Performed
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 173/173 tests passed across all 18 test suites (including all 14 `inspector-panel.test.tsx` tests).
+- `pnpm build`: Clean production bundle built in 4.18s (`dist/assets/index-FtYkTcmV.js` 843.11 kB).
+- `pnpm verify:approvals`: All mechanical approval gates verified.
+- `pnpm check:no-competitor-refs`: 618 tracked files scanned against deny-list, 0 violations.
+- `pnpm check:public-provenance`: Clean (0 external runtime/provenance references).
+- `pnpm graphify:update`: Knowledge graph updated (4,002 nodes, 10,565 edges, 140 communities).
+- Real Headless Chrome CDP Verification:
+  - Empty Inspector (Figma node `10:920`) at 1440×900, 1280×800, 1024×768: verified 56px header, 32px avatar, pink export button, Design/Animate tabs, and empty space without Page/Color controls.
+  - Populated Inspector (Figma node `61:1306`): verified stacked Effects, Looks, and Background sections with correct typography, icons, and density.
+  - Avatar Popover: verified Account info and System/Light/Dark appearance options.
+  - Inline Parameter Drawer: verified parameters disclosure under selected effect row.
+  - Looks Popover: verified `LooksBrowser` opening and preset application.
+  - Background Popover & Controls: verified type picker and `BackgroundControls`.
+  - Animate Mode: verified Animation Timeline controls.
+
+### 4. Graphify & Headroom Actual-Use
+- **Graphify**:
+  - Pre-implementation queries mapped `StudioContextType`, `InspectorPanel`, `LooksBrowser`, `EffectBrowserModal`, `BackgroundControls`, and `canvas-control-dock`.
+  - Post-implementation AST synchronization executed (`pnpm graphify:update`), updating knowledge graph to 4,002 nodes and 10,565 edges across 140 communities.
+- **Headroom**:
+  - Checked proxy availability; verified direct CLI execution.
+  - No Headroom proxy metrics claimed.
+
+### 5. Known Limitations
+- None. Frame/Layer architecture was strictly omitted per `docs/approvals/stage-1-frame-layer.md`.
+
+---
+
+## PRD Refinement: Video Export Scoping in Section 34
+
+- **Date**: 2026-09-03
+- **Task**: Scope client-side video export (MP4/WebM) into Section 34 Stage 9 ("Advanced Animation") and remove them from the Deferred list in `docs/buildkit/PRD.md`.
+
+### 1. Files Changed
+- `docs/buildkit/PRD.md`:
+  - Added video export (MP4/WebM) via native `MediaRecorder` and `captureStream` APIs to Section 34 Stage 9 ("Advanced Animation"), documenting that it is not deferred for technical difficulty but sequenced after Stage 4 motion.
+  - Removed `MP4 export` and `WebM export` from Section 34 "Deferred" list while preserving `GIF export`, `video file ingestion`, and `image-sequence export`.
+
+### 2. Verification Performed
+- Documentation-only change; ran verification suite per Rule 1 and Rule 6:
+  - `pnpm typecheck`: Clean (0 errors).
+  - `pnpm build`: Clean production build.
+  - `pnpm check:no-competitor-refs`: Verified clean (0 violations).
+  - `pnpm check:public-provenance`: Clean (0 violations).
+
+
+
 
 
 

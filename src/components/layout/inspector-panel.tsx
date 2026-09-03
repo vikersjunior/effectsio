@@ -1,22 +1,18 @@
 import * as React from "react";
 import {
-  SparkleIcon,
   PlusIcon,
+  MinusIcon,
   EyeIcon,
   EyeSlashIcon,
   TrashIcon,
   ArrowCounterClockwiseIcon,
-  CaretUpIcon,
-  CaretDownIcon,
-  CopyIcon,
-  StackIcon,
-  PaletteIcon,
-  InfoIcon,
   DotsSixVerticalIcon,
   DownloadSimpleIcon,
   XIcon,
   SlidersIcon,
   PlayIcon,
+  SparkleIcon,
+  CheckIcon,
 } from "@phosphor-icons/react";
 import {
   DndContext,
@@ -36,53 +32,42 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   Button,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
   PanelSurface,
-  PanelSection,
+  Separator,
+  ScrollFade,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
   SliderControl,
   SelectControl,
   ColorControl,
   BooleanControl,
-  Separator,
-  ScrollFade,
 } from "../ui";
 import { useStudioStore } from "../../context/studio-context";
 import { getEffectDefinition } from "../../effects/registry";
-import { formatFileSize } from "../../utils/image-ingestion";
 import { EffectBrowserModal } from "../effects/effect-browser-modal";
 import { LooksBrowser } from "../looks/looks-browser";
 import { BackgroundControls } from "../background/background-controls";
 import { ExportModal } from "../export/export-modal";
 import type { EffectInstance } from "../../types/asset";
+import type { BackgroundType } from "../../types/look";
 
-interface SortableEffectStackItemProps {
+interface SortableEffectRowProps {
   instance: EffectInstance;
   index: number;
   isSelected: boolean;
-  totalCount: number;
   onSelect: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
   onToggleEnabled: () => void;
-  onDuplicate: () => void;
   onRemove: () => void;
 }
 
-function SortableEffectStackItem({
+function SortableEffectRow({
   instance,
-  index,
   isSelected,
-  totalCount,
   onSelect,
-  onMoveUp,
-  onMoveDown,
   onToggleEnabled,
-  onDuplicate,
   onRemove,
-}: SortableEffectStackItemProps): React.JSX.Element {
+}: SortableEffectRowProps): React.JSX.Element {
   const {
     attributes,
     listeners,
@@ -105,76 +90,60 @@ function SortableEffectStackItem({
       ref={setNodeRef}
       style={style}
       onClick={onSelect}
-      className={`group relative flex items-center justify-between px-2.5 py-1.5 rounded-md border text-xs cursor-pointer transition-all duration-100 select-none ${
+      className={`group relative flex items-center justify-between h-8 px-2 py-1 rounded-lg gap-2 text-xs cursor-pointer transition-colors duration-100 select-none ${
         isSelected
-          ? "bg-[color:color-mix(in_oklab,var(--primary)_10%,var(--card))] border-[color:var(--primary)] text-[color:var(--foreground)]"
-          : "bg-[color:var(--card)] border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_35%,transparent)] text-[color:var(--foreground)]"
+          ? "bg-[color:var(--secondary)] border border-[color:color-mix(in_oklab,var(--border)_40%,transparent)] text-[color:var(--foreground)]"
+          : "hover:bg-[color:color-mix(in_oklab,var(--foreground)_4%,transparent)] text-[color:var(--muted-foreground)]"
       } ${!instance.enabled ? "opacity-50" : ""}`}
     >
       {/* Drag handle & Effect Name */}
-      <div className="flex items-center gap-1.5 min-w-0">
+      <div className="flex items-center gap-1.5 min-w-0 flex-1">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] -ml-1 p-0.5"
+          aria-label="Reorder effect"
+          className="cursor-grab active:cursor-grabbing text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] p-0.5 shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
-          <DotsSixVerticalIcon size={12} />
+          <DotsSixVerticalIcon size={14} />
         </button>
-        <span className="font-medium truncate text-2xs">
+        <span className="font-medium truncate text-xs text-[color:var(--foreground)]">
           {def?.name || instance.effectId}
         </span>
       </div>
 
       {/* Item Action Controls */}
-      <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
         <Button
           variant="ghost"
           size="icon-xxs"
-          onClick={onMoveUp}
-          disabled={index === 0}
-          title="Move effect up"
+          onClick={onSelect}
+          title="Toggle effect parameters"
+          aria-label="Toggle effect parameters"
           className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
         >
-          <CaretUpIcon size={10} />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-xxs"
-          onClick={onMoveDown}
-          disabled={index === totalCount - 1}
-          title="Move effect down"
-          className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
-        >
-          <CaretDownIcon size={10} />
+          <SlidersIcon size={12} />
         </Button>
         <Button
           variant="ghost"
           size="icon-xxs"
           onClick={onToggleEnabled}
           title={instance.enabled ? "Disable effect" : "Enable effect"}
+          aria-label={instance.enabled ? "Disable effect" : "Enable effect"}
           className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
         >
-          {instance.enabled ? <EyeIcon size={11} /> : <EyeSlashIcon size={11} />}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-xxs"
-          onClick={onDuplicate}
-          title="Duplicate effect"
-          className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
-        >
-          <CopyIcon size={10} />
+          {instance.enabled ? <EyeIcon size={12} /> : <EyeSlashIcon size={12} />}
         </Button>
         <Button
           variant="ghost"
           size="icon-xxs"
           onClick={onRemove}
           title="Remove effect"
+          aria-label="Remove effect"
           className="text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)]"
         >
-          <TrashIcon size={10} />
+          <TrashIcon size={12} />
         </Button>
       </div>
     </div>
@@ -192,6 +161,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     activeEffectStack,
     activeBackground,
     updateActiveBackground,
+    resetActiveBackground,
     selectedInstanceId,
     selectedInstance,
     addEffectToStack,
@@ -199,26 +169,25 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     resetInstanceParameters,
     toggleInstanceEnabled,
     removeInstanceFromStack,
-    removeAllInstancesFromStack,
     reorderEffectStack,
-    duplicateInstance,
     selectInstance,
-    viewport,
-    setViewport,
-    zoomViewport,
     timeline,
-    setTimelineDuration,
     setTimelineLoop,
     setTimelineSpeed,
     editorMode,
     setEditorMode,
     isEffectBrowserOpen,
     setIsEffectBrowserOpen,
+    theme,
+    setTheme,
+    appliedLook,
+    clearAppliedLook,
   } = useStudioStore();
 
-  const [activeTab, setActiveTab] = React.useState("effects");
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
-  const [isPageSectionOpen, setIsPageSectionOpen] = React.useState(true);
+  const [isAccountPopoverOpen, setIsAccountPopoverOpen] = React.useState(false);
+  const [isLooksPopoverOpen, setIsLooksPopoverOpen] = React.useState(false);
+  const [isBgPopoverOpen, setIsBgPopoverOpen] = React.useState(false);
 
   const selectedEffectDef = React.useMemo(() => {
     if (!selectedInstance) return null;
@@ -249,27 +218,83 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
   };
 
   return (
-    <PanelSurface id="inspector-panel" className="flex flex-col h-full w-full bg-[color:var(--sidebar)] border-l border-[color:var(--border)] overflow-hidden select-none @container/inspector">
-      {/* Top Header Row: [ JD ] Avatar on Left, [ Export ] Button on Right */}
-      <div className="h-12 min-h-12 px-3.5 border-b border-[color:var(--border)] flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <div
-            className="size-7 rounded-full bg-[color:var(--secondary)] border border-[color:var(--border)] flex items-center justify-center text-[11px] font-semibold text-[color:var(--foreground)] tracking-tight cursor-default"
-            title="User Profile: JD"
+    <PanelSurface
+      id="inspector-panel"
+      className="flex flex-col h-full w-full bg-[color:var(--sidebar)] border-l border-[color:var(--border)] overflow-hidden select-none"
+    >
+      {/* 1. Header (56px standard height matching Figma 10:920 & 61:1306) */}
+      <div className="h-14 min-h-14 px-4 py-3 border-b border-[color:var(--border)] flex items-center justify-between shrink-0 bg-[color:var(--sidebar)]">
+        {/* Account Avatar with Popover */}
+        <Popover open={isAccountPopoverOpen} onOpenChange={setIsAccountPopoverOpen}>
+          <PopoverTrigger
+            type="button"
+            aria-label="Account and appearance settings"
+            title="Account and appearance settings"
+            className="size-8 rounded-full bg-[color:var(--secondary)] border border-[color:var(--border)] flex items-center justify-center text-xs font-semibold text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--secondary)_80%,transparent)] transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
           >
             JD
-          </div>
-        </div>
+          </PopoverTrigger>
+          <PopoverContent
+            side="bottom"
+            align="start"
+            sideOffset={8}
+            className="w-56 p-2 flex flex-col gap-1 shadow-xl bg-[color:var(--card)] border border-[color:var(--border)]"
+          >
+            <div className="px-2 py-1.5 flex flex-col">
+              <span className="text-xs font-semibold text-[color:var(--foreground)]">John Doe</span>
+              <span className="text-2xs text-[color:var(--muted-foreground)]">john@example.com</span>
+            </div>
+            <Separator className="my-1 border-[color:var(--border)]" />
+            <button
+              type="button"
+              onClick={() => setIsAccountPopoverOpen(false)}
+              className="w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-[color:var(--secondary)] text-[color:var(--foreground)] transition-colors"
+            >
+              Account Settings
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsAccountPopoverOpen(false)}
+              className="w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-[color:var(--secondary)] text-[color:var(--foreground)] transition-colors"
+            >
+              Saved Projects
+            </button>
+            <Separator className="my-1 border-[color:var(--border)]" />
+            <div className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
+              Appearance
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {(["system", "light", "dark"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setTheme(t);
+                  }}
+                  className={`flex items-center justify-between w-full px-2 py-1.5 text-xs rounded-md transition-colors ${
+                    theme === t
+                      ? "bg-[color:var(--secondary)] text-[color:var(--foreground)] font-medium"
+                      : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_4%,transparent)]"
+                  }`}
+                >
+                  <span className="capitalize">{t}</span>
+                  {theme === t && <CheckIcon size={13} className="text-[color:var(--primary)]" />}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
+        {/* Export Action */}
         <div className="flex items-center gap-1.5">
           <Button
             variant="primary"
             size="sm"
             onClick={() => setIsExportModalOpen(true)}
             title="Export composition or batch library"
-            className="gap-1 px-2.5 h-6 text-xs font-semibold shadow-xs"
+            className="gap-1.5 px-3 h-7 text-xs font-medium rounded-md shadow-xs"
           >
-            <DownloadSimpleIcon size={13} />
+            <DownloadSimpleIcon size={14} className="shrink-0" />
             <span>Export</span>
           </Button>
 
@@ -287,13 +312,13 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
         </div>
       </div>
 
-      {/* Editor Mode Bar: [ Design ]  Animate           85% ˅ */}
-      <div className="h-10 min-h-10 px-3.5 border-b border-[color:var(--border)] flex items-center justify-between shrink-0 bg-[color:var(--sidebar)]">
+      {/* 2. Design / Animate Mode Bar (Matching Assets, Effects, Looks, Background height h-11) */}
+      <div className="h-11 min-h-11 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0 bg-[color:var(--sidebar)]">
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setEditorMode("design")}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+            className={`px-2.5 py-1 text-sm font-medium rounded-[4px] transition-colors ${
               editorMode === "design"
                 ? "bg-[color:var(--secondary)] text-[color:var(--foreground)]"
                 : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
@@ -304,7 +329,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
           <button
             type="button"
             onClick={() => setEditorMode("animate")}
-            className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+            className={`px-2.5 py-1 text-sm font-medium rounded-[4px] transition-colors ${
               editorMode === "animate"
                 ? "bg-[color:var(--secondary)] text-[color:var(--foreground)]"
                 : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
@@ -313,55 +338,12 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
             Animate
           </button>
         </div>
-
-        {/* Zoom display pill */}
-        <div className="flex items-center gap-1 text-xs text-[color:var(--muted-foreground)] font-mono">
-          <span>{Math.round(viewport.zoom)}%</span>
-          <CaretDownIcon size={11} className="opacity-70" />
-        </div>
       </div>
 
-      {/* Empty State: Page / Canvas Configuration (when !activeAsset) */}
+      {/* 3. Panel Body: Empty State vs Animate vs Populated Stack */}
       {!activeAsset ? (
-        <ScrollFade className="flex-1 overflow-y-auto p-4" containerClassName="flex-1 min-h-0">
-          <div className="flex flex-col gap-4">
-            {/* Page Section */}
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => setIsPageSectionOpen((prev) => !prev)}
-                className="flex items-center justify-between text-xs font-semibold text-[color:var(--foreground)] py-1"
-              >
-                <span>Page</span>
-                {isPageSectionOpen ? <CaretUpIcon size={12} /> : <CaretDownIcon size={12} />}
-              </button>
-
-              {isPageSectionOpen && (
-                <div className="flex flex-col gap-3 pt-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xs font-medium text-[color:var(--muted-foreground)]">
-                      Color
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={activeBackground.color || "#030303"}
-                        onChange={(e) =>
-                          updateActiveBackground({ type: "solid", color: e.target.value })
-                        }
-                        className="size-6 rounded-md border border-[color:var(--border)] cursor-pointer bg-transparent p-0"
-                        title="Canvas Background Color"
-                      />
-                      <span className="font-mono text-2xs text-[color:var(--foreground)] uppercase">
-                        {activeBackground.color || "#030303"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </ScrollFade>
+        /* Empty Inspector State (Figma node 10:920): Header -> Design/Animate -> Empty remaining space */
+        <div className="flex-1 min-h-0" data-testid="empty-inspector-space" />
       ) : editorMode === "animate" ? (
         /* Animate Mode Inspector */
         <ScrollFade className="flex-1 overflow-y-auto p-4" containerClassName="flex-1 min-h-0">
@@ -410,79 +392,27 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
           </div>
         </ScrollFade>
       ) : (
-        /* Design Mode Inspector (Asset Selected) */
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full gap-0">
-          {/* Sub Navigation Tabs */}
-          <div className="p-1.5 border-b border-[color:var(--border)] bg-[color:var(--sidebar)]">
-            <TabsList className="w-full grid grid-cols-4 gap-0.5 p-0.5" variant="control">
-              <TabsTrigger value="effects" className="flex items-center justify-center gap-1 text-[11px] px-1 py-1" title="Effect Stack">
-                <SparkleIcon size={13} className="shrink-0" />
-                <span className="hidden @[280px]/inspector:inline truncate">Effects</span>
-              </TabsTrigger>
-              <TabsTrigger value="looks" className="flex items-center justify-center gap-1 text-[11px] px-1 py-1" title="Looks & Presets">
-                <PaletteIcon size={13} className="shrink-0" />
-                <span className="hidden @[280px]/inspector:inline truncate">Looks</span>
-              </TabsTrigger>
-              <TabsTrigger value="backdrop" className="flex items-center justify-center gap-1 text-[11px] px-1 py-1" title="Background & Framing">
-                <StackIcon size={13} className="shrink-0" />
-                <span className="hidden @[280px]/inspector:inline truncate">Background</span>
-              </TabsTrigger>
-              <TabsTrigger value="details" className="flex items-center justify-center gap-1 text-[11px] px-1 py-1" title="Asset Details">
-                <InfoIcon size={13} className="shrink-0" />
-                <span className="hidden @[280px]/inspector:inline truncate">Details</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        /* Populated Design Mode Inspector (Figma node 61:1306): Stacked Sections */
+        <ScrollFade className="flex-1 overflow-y-auto" containerClassName="flex-1 min-h-0">
+          <div className="flex flex-col">
+            {/* Section 1: Effects */}
+            <div className="flex flex-col border-b border-[color:var(--border)]">
+              <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
+                <span className="text-sm font-medium text-[color:var(--foreground)]">Effects</span>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => setIsEffectBrowserOpen(true)}
+                  aria-label="Add effect"
+                  title="Add effect"
+                  className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors"
+                >
+                  <PlusIcon size={14} />
+                </Button>
+              </div>
 
-          {/* Tab 1: Effect Stack & Parameter Controls */}
-          <TabsContent value="effects" className="flex-1 flex flex-col min-h-0 overflow-hidden m-0 p-0">
-            <ScrollFade className="flex-1 overflow-y-auto" containerClassName="flex-1 min-h-0">
-              <div className="flex flex-col gap-3 p-4">
-                {/* Stack Header & Add Button */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground)]">
-                      Effect Stack
-                    </span>
-                    <span className="text-2xs font-mono text-[color:var(--muted-foreground)]">
-                      ({activeEffectStack.length})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {activeEffectStack.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => activeImageId && removeAllInstancesFromStack(activeImageId)}
-                        className="text-2xs text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)]"
-                        title="Clear all effects"
-                      >
-                        Clear
-                      </Button>
-                    )}
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setIsEffectBrowserOpen(true)}
-                      disabled={!activeAsset}
-                      className="gap-1 px-2.5 h-6 text-xs font-semibold shadow-xs"
-                    >
-                      <PlusIcon size={13} />
-                      <span>Add Effect</span>
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Effect Stack Items */}
-                {activeEffectStack.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-[color:color-mix(in_oklab,var(--border)_20%,transparent)] rounded-lg text-[color:var(--muted-foreground)] gap-2">
-                    <SparkleIcon size={24} className="opacity-40" />
-                    <span className="text-xs font-medium text-[color:var(--foreground)]">No effects in stack</span>
-                    <span className="text-2xs leading-relaxed max-w-[180px]">
-                      Click &quot;Add Effect&quot; or select a Look preset to begin.
-                    </span>
-                  </div>
-                ) : (
+              {activeEffectStack.length > 0 && (
+                <div className="flex flex-col gap-1 px-4 pb-2.5">
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -492,208 +422,286 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                       items={activeEffectStack.map((i) => i.instanceId)}
                       strategy={verticalListSortingStrategy}
                     >
-                      <div className="flex flex-col gap-1.5">
-                        {activeEffectStack.map((instance, index) => (
-                          <SortableEffectStackItem
-                            key={instance.instanceId}
-                            instance={instance}
-                            index={index}
-                            isSelected={selectedInstanceId === instance.instanceId}
-                            totalCount={activeEffectStack.length}
-                            onSelect={() => activeImageId && selectInstance(activeImageId, instance.instanceId)}
-                            onMoveUp={() => activeImageId && reorderEffectStack(activeImageId, index, index - 1)}
-                            onMoveDown={() => activeImageId && reorderEffectStack(activeImageId, index, index + 1)}
-                            onToggleEnabled={() => activeImageId && toggleInstanceEnabled(activeImageId, instance.instanceId)}
-                            onDuplicate={() => activeImageId && duplicateInstance(activeImageId, instance.instanceId)}
-                            onRemove={() => activeImageId && removeInstanceFromStack(activeImageId, instance.instanceId)}
-                          />
-                        ))}
-                      </div>
+                      {activeEffectStack.map((instance, index) => {
+                        const isSelected = selectedInstanceId === instance.instanceId;
+                        return (
+                          <div key={instance.instanceId} className="flex flex-col">
+                            <SortableEffectRow
+                              instance={instance}
+                              index={index}
+                              isSelected={isSelected}
+                              onSelect={() =>
+                                activeImageId &&
+                                selectInstance(
+                                  activeImageId,
+                                  isSelected ? null : instance.instanceId
+                                )
+                              }
+                              onToggleEnabled={() =>
+                                activeImageId &&
+                                toggleInstanceEnabled(activeImageId, instance.instanceId)
+                              }
+                              onRemove={() =>
+                                activeImageId &&
+                                removeInstanceFromStack(activeImageId, instance.instanceId)
+                              }
+                            />
+
+                            {/* Disclosed Parameters Drawer */}
+                            {isSelected && selectedEffectDef && (
+                              <div className="mt-1 mb-2 px-3 py-2.5 rounded-lg bg-[color:var(--secondary)] border border-[color:var(--border)] flex flex-col gap-3">
+                                <div className="flex items-center justify-between text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
+                                  <span>{selectedEffectDef.name} Parameters</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-xxs"
+                                    onClick={() =>
+                                      activeImageId &&
+                                      resetInstanceParameters(
+                                        activeImageId,
+                                        instance.instanceId
+                                      )
+                                    }
+                                    title="Reset parameters"
+                                    aria-label="Reset parameters"
+                                  >
+                                    <ArrowCounterClockwiseIcon size={12} />
+                                  </Button>
+                                </div>
+
+                                <div className="flex flex-col gap-2.5">
+                                  {selectedEffectDef.parameters.map((schema) => {
+                                    const paramName = schema.name;
+                                    const currentValue =
+                                      instance.parameters[paramName] !== undefined
+                                        ? instance.parameters[paramName]
+                                        : schema.defaultValue;
+
+                                    switch (schema.type) {
+                                      case "number":
+                                        return (
+                                          <SliderControl
+                                            key={paramName}
+                                            name={paramName}
+                                            value={Number(currentValue)}
+                                            min={schema.min ?? 0}
+                                            max={schema.max ?? 100}
+                                            step={schema.step ?? 1}
+                                            onValueChange={(val: number) => {
+                                              if (activeImageId) {
+                                                updateInstanceParameters(
+                                                  activeImageId,
+                                                  instance.instanceId,
+                                                  { [paramName]: val }
+                                                );
+                                              }
+                                            }}
+                                          />
+                                        );
+
+                                      case "select":
+                                        return (
+                                          <SelectControl
+                                            key={paramName}
+                                            name={paramName}
+                                            value={String(currentValue)}
+                                            options={(schema.options ?? []).map((opt) => ({
+                                              label: opt.label,
+                                              value: String(opt.value),
+                                            }))}
+                                            onValueChange={(val: string) => {
+                                              if (activeImageId) {
+                                                updateInstanceParameters(
+                                                  activeImageId,
+                                                  instance.instanceId,
+                                                  { [paramName]: val }
+                                                );
+                                              }
+                                            }}
+                                          />
+                                        );
+
+                                      case "color":
+                                        return (
+                                          <ColorControl
+                                            key={paramName}
+                                            name={paramName}
+                                            value={String(currentValue)}
+                                            onValueChange={(val) => {
+                                              if (activeImageId) {
+                                                updateInstanceParameters(
+                                                  activeImageId,
+                                                  instance.instanceId,
+                                                  {
+                                                    [paramName]:
+                                                      typeof val === "string" ? val : val?.hex,
+                                                  }
+                                                );
+                                              }
+                                            }}
+                                          />
+                                        );
+
+                                      case "boolean":
+                                        return (
+                                          <BooleanControl
+                                            key={paramName}
+                                            name={paramName}
+                                            value={Boolean(currentValue)}
+                                            onValueChange={(val: boolean) => {
+                                              if (activeImageId) {
+                                                updateInstanceParameters(
+                                                  activeImageId,
+                                                  instance.instanceId,
+                                                  { [paramName]: val }
+                                                );
+                                              }
+                                            }}
+                                          />
+                                        );
+
+                                      default:
+                                        return null;
+                                    }
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </SortableContext>
                   </DndContext>
-                )}
-
-                {/* Parameters Section for Selected Effect */}
-                {selectedInstance && selectedEffectDef && (
-                  <div className="flex flex-col gap-3 pt-2 border-t border-[color:var(--border)]">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <SlidersIcon size={14} className="text-[color:var(--primary)]" />
-                        <span className="text-xs font-semibold text-[color:var(--foreground)]">
-                          {selectedEffectDef.name} Parameters
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon-xxs"
-                        onClick={() => activeImageId && resetInstanceParameters(activeImageId, selectedInstance.instanceId)}
-                        title="Reset effect parameters"
-                        className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
-                      >
-                        <ArrowCounterClockwiseIcon size={11} />
-                      </Button>
-                    </div>
-
-                    {/* Parameter Controls */}
-                    <div className="flex flex-col gap-3.5">
-                      {selectedEffectDef.parameters.map((schema) => {
-                        const paramName = schema.name;
-                        const currentValue =
-                          selectedInstance.parameters[paramName] !== undefined
-                            ? selectedInstance.parameters[paramName]
-                            : schema.defaultValue;
-
-                        switch (schema.type) {
-                          case "number":
-                            return (
-                              <SliderControl
-                                key={paramName}
-                                name={paramName}
-                                value={Number(currentValue)}
-                                min={schema.min ?? 0}
-                                max={schema.max ?? 100}
-                                step={schema.step ?? 1}
-                                onValueChange={(val: number) => {
-                                  if (activeImageId && selectedInstanceId) {
-                                    updateInstanceParameters(activeImageId, selectedInstanceId, {
-                                      [paramName]: val,
-                                    });
-                                  }
-                                }}
-                              />
-                            );
-
-                          case "select":
-                            return (
-                              <SelectControl
-                                key={paramName}
-                                name={paramName}
-                                value={String(currentValue)}
-                                options={(schema.options ?? []).map((opt) => ({
-                                  label: opt.label,
-                                  value: String(opt.value),
-                                }))}
-                                onValueChange={(val: string) => {
-                                  if (activeImageId && selectedInstanceId) {
-                                    updateInstanceParameters(activeImageId, selectedInstanceId, {
-                                      [paramName]: val,
-                                    });
-                                  }
-                                }}
-                              />
-                            );
-
-                          case "color":
-                            return (
-                              <ColorControl
-                                key={paramName}
-                                name={paramName}
-                                value={String(currentValue)}
-                                onValueChange={(val) => {
-                                  if (activeImageId && selectedInstanceId) {
-                                    updateInstanceParameters(activeImageId, selectedInstanceId, {
-                                      [paramName]: typeof val === "string" ? val : val?.hex,
-                                    });
-                                  }
-                                }}
-                              />
-                            );
-
-                          case "boolean":
-                            return (
-                              <BooleanControl
-                                key={paramName}
-                                name={paramName}
-                                value={Boolean(currentValue)}
-                                onValueChange={(val: boolean) => {
-                                  if (activeImageId && selectedInstanceId) {
-                                    updateInstanceParameters(activeImageId, selectedInstanceId, {
-                                      [paramName]: val,
-                                    });
-                                  }
-                                }}
-                              />
-                            );
-
-                          default:
-                            return null;
-                        }
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ScrollFade>
-          </TabsContent>
-
-          {/* Tab 2: Looks & Presets */}
-          <TabsContent value="looks" className="flex-1 flex flex-col min-h-0 overflow-hidden m-0 p-0">
-            <ScrollFade className="flex-1 overflow-y-auto" containerClassName="flex-1 min-h-0">
-              <LooksBrowser />
-            </ScrollFade>
-          </TabsContent>
-
-          {/* Tab 3: Backdrop & Framing */}
-          <TabsContent value="backdrop" className="flex-1 flex flex-col min-h-0 overflow-hidden m-0 p-0">
-            <ScrollFade className="flex-1 overflow-y-auto" containerClassName="flex-1 min-h-0">
-              <BackgroundControls />
-            </ScrollFade>
-          </TabsContent>
-
-          {/* Tab 4: Asset Details */}
-          <TabsContent value="details" className="flex-1 flex flex-col min-h-0 overflow-hidden m-0 p-0">
-            <ScrollFade className="flex-1 overflow-y-auto" containerClassName="flex-1 min-h-0">
-              <div className="flex flex-col gap-3 p-4">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground)]">
-                  Active Asset Details
-                </span>
-                <div className="flex flex-col gap-2 rounded-md border border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] bg-[color:var(--card)] p-3 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-[color:var(--muted-foreground)]">File Name:</span>
-                    <span className="font-medium text-[color:var(--foreground)] truncate max-w-[140px]" title={activeAsset.filename}>
-                      {activeAsset.filename}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[color:var(--muted-foreground)]">Dimensions:</span>
-                    <span className="font-mono text-[color:var(--foreground)]">
-                      {activeAsset.width} × {activeAsset.height} px
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[color:var(--muted-foreground)]">File Size:</span>
-                    <span className="font-mono text-[color:var(--foreground)]">
-                      {formatFileSize(activeAsset.fileSize)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[color:var(--muted-foreground)]">MIME Type:</span>
-                    <span className="uppercase font-medium text-[color:var(--foreground)]">
-                      {activeAsset.mimeType}
-                    </span>
-                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* Section 2: Looks */}
+            <div className="flex flex-col border-b border-[color:var(--border)]">
+              <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
+                <span className="text-sm font-medium text-[color:var(--foreground)]">Looks</span>
+                {appliedLook ? (
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={clearAppliedLook}
+                    aria-label="Remove applied look"
+                    title="Remove applied look"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors"
+                  >
+                    <MinusIcon size={14} />
+                  </Button>
+                ) : (
+                  <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
+                    <PopoverTrigger
+                      type="button"
+                      aria-label="Open looks browser"
+                      title="Open looks browser"
+                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                    >
+                      <PlusIcon size={14} />
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="left"
+                      align="start"
+                      sideOffset={8}
+                      className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col shadow-xl bg-[color:var(--card)] border border-[color:var(--border)]"
+                    >
+                      <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
-            </ScrollFade>
-          </TabsContent>
-        </Tabs>
+
+              {appliedLook && (
+                <div className="px-4 pb-3 flex items-center gap-2 text-xs font-medium text-[color:var(--foreground)]">
+                  <SparkleIcon size={14} className="text-[color:var(--primary)] shrink-0" />
+                  <span className="truncate">{appliedLook.name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Section 3: Background */}
+            <div className="flex flex-col border-b border-[color:var(--border)]">
+              <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
+                <span className="text-sm font-medium text-[color:var(--foreground)]">Background</span>
+                {activeBackground && activeBackground.type !== "transparent" ? (
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={resetActiveBackground}
+                    aria-label="Remove background"
+                    title="Remove background"
+                    className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+                  >
+                    <MinusIcon size={14} />
+                  </Button>
+                ) : (
+                  <Popover open={isBgPopoverOpen} onOpenChange={setIsBgPopoverOpen}>
+                    <PopoverTrigger
+                      type="button"
+                      aria-label="Add background"
+                      title="Add background"
+                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                    >
+                      <PlusIcon size={14} />
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="left"
+                      align="start"
+                      sideOffset={8}
+                      className="w-52 p-1.5 flex flex-col gap-0.5 shadow-xl bg-[color:var(--card)] border border-[color:var(--border)]"
+                    >
+                      <div className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
+                        Choose Background
+                      </div>
+                      {[
+                        { type: "solid", label: "Solid Color" },
+                        { type: "linear-gradient", label: "Linear Gradient" },
+                        { type: "radial-gradient", label: "Radial Gradient" },
+                        { type: "dots", label: "Dots Pattern" },
+                        { type: "grid", label: "Grid Pattern" },
+                      ].map((bgOption) => (
+                        <button
+                          key={bgOption.type}
+                          type="button"
+                          onClick={() => {
+                            updateActiveBackground({
+                              type: bgOption.type as BackgroundType,
+                              padding: activeBackground.padding ?? 32,
+                            });
+                            setIsBgPopoverOpen(false);
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 text-xs rounded-md hover:bg-[color:var(--secondary)] text-[color:var(--foreground)] transition-colors"
+                        >
+                          {bgOption.label}
+                        </button>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+
+              {activeBackground && activeBackground.type !== "transparent" && (
+                <div className="px-4 pb-3">
+                  <BackgroundControls />
+                </div>
+              )}
+            </div>
+          </div>
+        </ScrollFade>
       )}
 
-      {/* Modals */}
+      {/* Global Modals: Export Modal & Effect Browser Modal */}
+      <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
       <EffectBrowserModal
         isOpen={isEffectBrowserOpen}
         onClose={() => setIsEffectBrowserOpen(false)}
         onSelectEffect={(effectId) => {
           if (activeImageId) {
             addEffectToStack(activeImageId, effectId);
-            setIsEffectBrowserOpen(false);
           }
         }}
-      />
-
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
       />
     </PanelSurface>
   );

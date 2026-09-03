@@ -780,10 +780,10 @@
     "semantic_hash": "cae97fcc671f4b6cdbe29d26bbea5c68"
   },
   "src/components/layout/asset-panel.tsx": {
-    "mtime": 1788385232.43,
-    "seen": 1788385644.118817,
-    "ast_hash": "593857ef1f6c646b55ee79ef363d4000",
-    "semantic_hash": "593857ef1f6c646b55ee79ef363d4000"
+    "mtime": 1788428886.56,
+    "seen": 1788429152.204371,
+    "ast_hash": "53c3ff9985bdeb43f05a5aa7bbc7f3ed",
+    "semantic_hash": "53c3ff9985bdeb43f05a5aa7bbc7f3ed"
   },
   "src/components/layout/canvas-viewport.tsx": {
     "mtime": 1788374304.96,
@@ -798,16 +798,16 @@
     "semantic_hash": "59961f853238ad21a28ee498762dadd2"
   },
   "src/components/layout/inspector-panel.tsx": {
-    "mtime": 1788387899.47,
-    "seen": 1788388891.696075,
-    "ast_hash": "4ffbb4832fc67172cda0cd7f700c5faa",
-    "semantic_hash": "4ffbb4832fc67172cda0cd7f700c5faa"
+    "mtime": 1788428924.0,
+    "seen": 1788429152.2081542,
+    "ast_hash": "328229909c5d21abd220a41b00a9ae3e",
+    "semantic_hash": "328229909c5d21abd220a41b00a9ae3e"
   },
   "src/components/looks/looks-browser.tsx": {
-    "mtime": 1788126821.68,
-    "seen": 1788342347.3274,
-    "ast_hash": "3743ef7a0d4b426af6872dc7dc4f0fc7",
-    "semantic_hash": "3743ef7a0d4b426af6872dc7dc4f0fc7"
+    "mtime": 1788397230.73,
+    "seen": 1788426119.411078,
+    "ast_hash": "34339e08b3225b32acb57d8c3fe9c833",
+    "semantic_hash": "34339e08b3225b32acb57d8c3fe9c833"
   },
   "src/components/looks/save-look-modal.tsx": {
     "mtime": 1788127062.48,
@@ -1350,10 +1350,10 @@
     "semantic_hash": "a9a343aad73dc75af2fd0b8a250f7630"
   },
   "src/context/studio-context.tsx": {
-    "mtime": 1788387862.31,
-    "seen": 1788388891.7673721,
-    "ast_hash": "0c37b8ba2312c341da94aab2010dfd40",
-    "semantic_hash": "0c37b8ba2312c341da94aab2010dfd40"
+    "mtime": 1788397673.62,
+    "seen": 1788426119.418166,
+    "ast_hash": "d93a48946edfbfa2be41a25af8a0d540",
+    "semantic_hash": "d93a48946edfbfa2be41a25af8a0d540"
   },
   "src/context/studio-history.test.tsx": {
     "mtime": 1788044654.32,
@@ -1894,5 +1894,11 @@
     "seen": 1788388891.6939058,
     "ast_hash": "ac6d6b5bcf58b453c5b6ffb480ea0503",
     "semantic_hash": "ac6d6b5bcf58b453c5b6ffb480ea0503"
+  },
+  "src/components/layout/inspector-panel.test.tsx": {
+    "mtime": 1788427931.87,
+    "seen": 1788428241.131159,
+    "ast_hash": "2ec7350d8d0fbbdc21b1a08619871a62",
+    "semantic_hash": "2ec7350d8d0fbbdc21b1a08619871a62"
   }
 }

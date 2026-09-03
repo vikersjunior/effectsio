@@ -58,6 +58,11 @@ export interface StudioContextType {
   setEditorMode: (mode: "design" | "animate") => void;
   isEffectBrowserOpen: boolean;
   setIsEffectBrowserOpen: (open: boolean) => void;
+  theme: "system" | "light" | "dark";
+  setTheme: (theme: "system" | "light" | "dark") => void;
+  appliedLook: Look | null;
+  setAppliedLook: (look: Look | null) => void;
+  clearAppliedLook: () => void;
 
   // History & Undo / Redo
   canUndo: boolean;
@@ -187,6 +192,66 @@ export function StudioProvider({
   );
   const [editorMode, setEditorMode] = React.useState<"design" | "animate">("design");
   const [isEffectBrowserOpen, setIsEffectBrowserOpen] = React.useState(false);
+  const [appliedLook, setAppliedLook] = React.useState<Look | null>(null);
+
+  const clearAppliedLook = React.useCallback(() => {
+    setAppliedLook(null);
+  }, []);
+
+  const [theme, setThemeState] = React.useState<"system" | "light" | "dark">(() => {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const saved = window.localStorage.getItem("effectsio_theme");
+      if (saved === "light" || saved === "dark" || saved === "system") return saved;
+    }
+    return "system";
+  });
+
+  const setTheme = React.useCallback((nextTheme: "system" | "light" | "dark") => {
+    setThemeState(nextTheme);
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem("effectsio_theme", nextTheme);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+
+    const updateRootTheme = () => {
+      let effectiveTheme: "light" | "dark" = "dark";
+      if (theme === "system") {
+        const prefersDark =
+          typeof window.matchMedia === "function" &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches;
+        effectiveTheme = prefersDark ? "dark" : "light";
+      } else {
+        effectiveTheme = theme;
+      }
+
+      if (effectiveTheme === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+        document.documentElement.classList.add("light");
+        document.documentElement.classList.remove("dark");
+      } else {
+        document.documentElement.setAttribute("data-theme", "dark");
+        document.documentElement.classList.add("dark");
+        document.documentElement.classList.remove("light");
+      }
+    };
+
+    updateRootTheme();
+
+    if (theme === "system" && typeof window.matchMedia === "function") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handler = () => updateRootTheme();
+      if (typeof mediaQuery.addEventListener === "function") {
+        mediaQuery.addEventListener("change", handler);
+        return () => mediaQuery.removeEventListener("change", handler);
+      } else if (typeof (mediaQuery as any).addListener === "function") {
+        (mediaQuery as any).addListener(handler);
+        return () => (mediaQuery as any).removeListener(handler);
+      }
+    }
+  }, [theme]);
 
   // History state: past & future
   const [past, setPast] = React.useState<StudioHistorySnapshot[]>([]);
@@ -295,14 +360,18 @@ export function StudioProvider({
       try {
         const state = await loadHydratedProject();
         if (mounted) {
-          setAssets(state.assets);
-          setActiveImageIdState(state.activeImageId);
+          setAssets((prev) => (prev.length > 0 ? prev : state.assets));
+          setActiveImageIdState((prev) => (prev ? prev : state.activeImageId));
           if (state.projectName) {
             setProjectNameState(state.projectName);
           }
-          setEffectStacks(state.effectStacks);
-          setBackgrounds(state.backgrounds);
-          setUserLooks(state.userLooks);
+          setEffectStacks((prev) =>
+            Object.keys(prev).length > 0 ? prev : state.effectStacks
+          );
+          setBackgrounds((prev) =>
+            Object.keys(prev).length > 0 ? prev : state.backgrounds
+          );
+          setUserLooks((prev) => (prev.length > 0 ? prev : state.userLooks));
           setIsHydrated(true);
         }
       } catch (err) {
@@ -837,6 +906,8 @@ export function StudioProvider({
             ? clonedStack[clonedStack.length - 1].instanceId
             : null,
       }));
+
+      setAppliedLook(look);
     },
     [activeImageId, recordDiscreteSnapshot]
   );
@@ -1303,6 +1374,11 @@ export function StudioProvider({
     setEditorMode,
     isEffectBrowserOpen,
     setIsEffectBrowserOpen,
+    theme,
+    setTheme,
+    appliedLook,
+    setAppliedLook,
+    clearAppliedLook,
   };
 
   if (typeof window !== "undefined") {
