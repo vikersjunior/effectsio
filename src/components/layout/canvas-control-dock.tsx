@@ -55,13 +55,18 @@ export function CanvasControlDock({
     <div
       role="toolbar"
       aria-label="Canvas Workspace Controls"
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
       className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-3 max-w-[calc(100%-2rem)] select-none pointer-events-auto"
     >
       {/* Contextual Upper Bar: Timeline Playback Controls (rendered ONLY in Animate context) */}
       {editorMode === "animate" && <TimelineBar />}
 
       {/* Persistent Bottom Tool Dock: matching Figma node 61:1277 */}
-      <div className="floating-popup-surface flex items-center gap-2 rounded-[16px] border border-[color:var(--border)] p-2 dark:shadow-2xl shadow-none backdrop-blur-2xl text-[color:var(--foreground)] max-w-full">
+      <div
+        onPointerDown={(e) => e.stopPropagation()}
+        className="floating-popup-surface flex items-center gap-2 rounded-[16px] border border-[color:var(--border)] p-2 dark:shadow-2xl shadow-none backdrop-blur-2xl text-[color:var(--foreground)] max-w-full"
+      >
         {/* GROUP 1: [ Hand ] [ Resize ] [ Magic Wand ] [ Compare ] */}
         <div className="flex items-center gap-1">
           {/* 1. Hand / Pan Tool */}
@@ -85,10 +90,14 @@ export function CanvasControlDock({
             variant="ghost"
             size="icon-md"
             aria-label="Frame size"
-            title="Frame size"
+            title="Frame size (Fit to canvas)"
             className="!size-8 rounded-lg [&_svg]:!size-[18px]"
             onClick={() => {
-              // Frame size entry point: preserved structurally for upcoming Frame capability
+              if (containerRef?.current) {
+                resetViewportFit(containerRef.current.clientWidth, containerRef.current.clientHeight);
+              } else {
+                resetViewportFit();
+              }
             }}
           >
             <FrameCornersIcon size={18} className="shrink-0" />

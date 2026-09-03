@@ -133,7 +133,7 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
           onClick={() => fileInputRef.current?.click()}
           title="Import media"
           aria-label="Import media"
-          className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+          className="hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
         >
           <PlusIcon size={14} className="shrink-0 !size-3.5" />
         </Button>

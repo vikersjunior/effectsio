@@ -85,7 +85,7 @@ function SortableEffectRow({
       ref={setNodeRef}
       style={style}
       onClick={onSelect}
-      className={`group relative flex items-center justify-between h-9 px-2.5 py-1 rounded-lg gap-2 text-xs cursor-pointer transition-colors duration-100 select-none ${
+      className={`group relative flex items-center justify-between p-2 rounded-lg gap-2 text-xs cursor-pointer transition-colors duration-100 select-none ${
         isSelected
           ? "bg-[color:var(--secondary)] border border-[color:var(--border)] text-[color:var(--foreground)]"
           : "hover:bg-[color:color-mix(in_oklab,var(--foreground)_4%,transparent)] text-[color:var(--muted-foreground)]"
@@ -109,14 +109,14 @@ function SortableEffectRow({
       </div>
 
       {/* Item Action Controls */}
-      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
         {/* Blending Mode Button (Phosphor DropSimpleIcon) */}
         <Button
           variant="ghost"
           size="icon-xs"
           title="Blending mode"
           aria-label="Blending mode"
-          className="size-7 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors"
+          className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4"
         >
           <DropSimpleIcon size={16} />
         </Button>
@@ -127,7 +127,7 @@ function SortableEffectRow({
           onClick={onToggleEnabled}
           title={instance.enabled ? "Disable effect" : "Enable effect"}
           aria-label={instance.enabled ? "Disable effect" : "Enable effect"}
-          className="size-7 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors"
+          className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4"
         >
           {instance.enabled ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
         </Button>
@@ -138,7 +138,7 @@ function SortableEffectRow({
           onClick={onRemove}
           title="Remove effect"
           aria-label="Remove effect"
-          className="size-7 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-colors"
+          className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-colors [&_svg]:!size-4"
         >
           <TrashIcon size={16} />
         </Button>
@@ -391,16 +391,15 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
             <div className="flex flex-col border-b border-[color:var(--border)]">
               <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
                 <span className="text-sm font-medium text-[color:var(--foreground)]">Effects</span>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
+                <button
+                  type="button"
                   onClick={() => setIsEffectBrowserOpen(true)}
                   aria-label="Add effect"
                   title="Add effect"
-                  className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors"
+                  className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer"
                 >
                   <PlusIcon size={14} />
-                </Button>
+                </button>
               </div>
 
               {activeEffectStack.length > 0 && (

@@ -853,6 +853,59 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
   - Checked proxy availability; verified direct CLI execution.
   - No Headroom proxy metrics claimed.
 
+---
+
+## 2026-09-03: Inspector Plus Button Harmonization, Uniform Layer Padding, Draggable Floating Panel & Dock Tool Toggles Fix
+
+### 1. Code Changes
+- `src/components/layout/inspector-panel.tsx`:
+  - Standardized Effects section plus button (`button[aria-label="Add effect"]`) using the exact canonical button styling and 14px Phosphor `PlusIcon` matching Looks and Background, eliminating unwanted SVG downscaling.
+  - Standardized `SortableEffectRow` padding to uniform 8px on all 4 sides (`p-2`), equalizing top and bottom padding with left and right padding (`paddingTop: 8px`, `paddingBottom: 8px`, `paddingLeft: 8px`, `paddingRight: 8px`).
+  - Standardized internal row action buttons (Blending mode `DropSimpleIcon`, Visibility toggle `EyeIcon`, Remove `TrashIcon`) to `size-6` with 16px icons.
+- `src/components/layout/floating-effect-panel.tsx`:
+  - Removed `<SlidersIcon>` settings icon to the left of `${definition.name} Parameters` in the header per user directive.
+  - Implemented smooth, performant pointer-capture dragging on the header (`onPointerDown`, `setPointerCapture`, `onPointerMove`, `onPointerUp`) with coordinate clamping within canvas container bounds.
+  - Added `onPointerDown={(e) => e.stopPropagation()}` on the root floating panel and header button containers to prevent control interactions from bubbling to canvas panning.
+- `src/components/layout/canvas-viewport.tsx`:
+  - Fixed click interception bug in `handlePointerDown`: added guard ignoring clicks on interactive UI controls (`[role="toolbar"]`, `[role="dialog"]`, `[data-slot="popover"]`, `button`, `input`, `select`, `textarea`), preventing canvas panning from hijacking mouse events on bottom dock tools.
+- `src/components/layout/canvas-control-dock.tsx`:
+  - Added `onPointerDown={(e) => e.stopPropagation()}` and `onMouseDown={(e) => e.stopPropagation()}` to the toolbar container and floating dock surface.
+  - Connected the Frame Size button (`FrameCornersIcon`) to `resetViewportFit`, providing immediate visual feedback by fitting the active frame/asset to the viewport.
+  - Ensured Hand tool (`HandIcon`), Compare (`ArrowsOutLineHorizontalIcon`), Frame Size (`FrameCornersIcon`), and Magic Wand (`MagicWandIcon`) toggle effortlessly without getting trapped in Pan mode.
+
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 173/173 tests passed across all 18 test suites.
+- `pnpm build`: Clean production bundle built in 1.94s (`dist/assets/index-eOdKbI09.js` 845.84 kB).
+- `pnpm verify:approvals`: All mechanical approval gates verified.
+- `pnpm check:no-competitor-refs`: 619 tracked files scanned, 0 violations.
+- `pnpm check:public-provenance`: Clean (0 external runtime/provenance references).
+- `pnpm graphify:update`: Knowledge graph refreshed (4,002 nodes, 10,558 edges, 141 communities).
+- Real Headless Chrome CDP Measurements:
+  - **Plus Button Metrics Across All 4 Sections**:
+    - Effects: 24×24px button, 14×14px SVG (`{"width":24,"height":24,"svgWidth":14,"svgHeight":14}`)
+    - Looks: 24×24px button, 14×14px SVG (`{"width":24,"height":24,"svgWidth":14,"svgHeight":14}`)
+    - Background: 24×24px button, 14×14px SVG (`{"width":24,"height":24,"svgWidth":14,"svgHeight":14}`)
+    - Assets: 24×24px button, 14×14px SVG (`{"width":24,"height":24,"svgWidth":14,"svgHeight":14}`)
+  - **Effect Layer Padding**:
+    - `paddingTop: "8px"`, `paddingBottom: "8px"`, `paddingLeft: "8px"`, `paddingRight: "8px"` (100% uniform on all 4 sides)
+  - **Floating Panel Dragging**:
+    - Initial position: `{ x: 287.5, y: 18.7 }`
+    - Dragged position: `{ x: 537.5, y: 138.7 }` (delta +250px X, +120px Y across canvas)
+  - **Dock Tool Toggles**:
+    - `handActiveAfterClick: true` (Pan tool activates)
+    - `compareActiveWhileHandActive: true` (Compare activates while Pan is active without getting swallowed)
+    - `handInactiveAfterSecondClick: true` (Pan tool deselects easily)
+    - `frameClickedSuccessfully: true` (Frame size fires and fits viewport)
+
+### 3. Graphify & Headroom Actual-Use
+- **Graphify**:
+  - Pre-implementation queries analyzed `CanvasViewport` pointer event dispatching and `FloatingEffectPanel` positioning.
+  - Post-implementation AST synchronization executed (`pnpm graphify:update`), updating knowledge graph to 4,002 nodes and 10,558 edges across 141 communities.
+- **Headroom**:
+  - Pre-flight check determined Headroom proxy was responding on port 8787 (PID 24349).
+  - No Headroom proxy token savings metrics claimed.
+
 
 
 

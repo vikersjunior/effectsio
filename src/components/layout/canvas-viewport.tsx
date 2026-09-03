@@ -801,6 +801,15 @@ export function CanvasViewport({
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isDraggingSplit) return;
 
+    // Critical: Do NOT initiate canvas panning if the click was on a toolbar, button, dialog, popover, or interactive element
+    if (
+      (e.target as HTMLElement).closest(
+        '[role="toolbar"], [role="dialog"], [data-slot="popover"], button, input, select, textarea, [data-floating-surface]'
+      )
+    ) {
+      return;
+    }
+
     const isMiddleClick = e.button === 1;
     const isLeftClick = e.button === 0;
     const shouldPan = isMiddleClick || (isLeftClick && (isHandToolActive || isSpacePressed));

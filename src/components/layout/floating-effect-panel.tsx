@@ -2,7 +2,6 @@ import * as React from 'react';
 import {
   ArrowCounterClockwiseIcon,
   XIcon,
-  SlidersIcon,
 } from '@phosphor-icons/react';
 import {
   Button,
@@ -25,6 +24,16 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     selectInstance,
   } = useStudioStore();
 
+  const [position, setPosition] = React.useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const panelRef = React.useRef<HTMLDivElement | null>(null);
+  const dragStartRef = React.useRef<{
+    pointerX: number;
+    pointerY: number;
+    posX: number;
+    posY: number;
+  } | null>(null);
+
   if (!activeAsset || !activeImageId || !selectedInstance) {
     return null;
   }
@@ -44,24 +53,87 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     }
   };
 
+  const handleHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('button')) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+
+    const currentX = position?.x ?? 16;
+    const currentY = position?.y ?? 16;
+
+    dragStartRef.current = {
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      posX: currentX,
+      posY: currentY,
+    };
+
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
+  };
+
+  const handleHeaderPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging || !dragStartRef.current) return;
+    e.preventDefault();
+
+    const deltaX = e.clientX - dragStartRef.current.pointerX;
+    const deltaY = e.clientY - dragStartRef.current.pointerY;
+
+    const parent = panelRef.current?.parentElement;
+    const parentWidth = parent ? parent.clientWidth : window.innerWidth;
+    const parentHeight = parent ? parent.clientHeight : window.innerHeight;
+    const panelWidth = panelRef.current?.offsetWidth ?? 300;
+    const panelHeight = panelRef.current?.offsetHeight ?? 200;
+
+    const newX = Math.max(8, Math.min(parentWidth - panelWidth - 8, dragStartRef.current.posX + deltaX));
+    const newY = Math.max(8, Math.min(parentHeight - panelHeight - 8, dragStartRef.current.posY + deltaY));
+
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleHeaderPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging) {
+      setIsDragging(false);
+      dragStartRef.current = null;
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+    }
+  };
+
+  const currentX = position?.x ?? 16;
+  const currentY = position?.y ?? 16;
+
   return (
     <div
+      ref={panelRef}
       role="dialog"
       aria-label={`${definition.name} Parameters`}
-      className="floating-popup-surface absolute top-4 left-4 z-20 flex flex-col w-[300px] max-h-[calc(100%-6rem)] rounded-xl border border-[color:var(--border)] dark:shadow-2xl shadow-none backdrop-blur-2xl text-[color:var(--foreground)] select-none pointer-events-auto transition-all duration-150 animate-in fade-in zoom-in-95"
+      onPointerDown={(e) => e.stopPropagation()}
+      style={{
+        left: `${currentX}px`,
+        top: `${currentY}px`,
+      }}
+      className="floating-popup-surface absolute z-20 flex flex-col w-[300px] max-h-[calc(100%-6rem)] rounded-xl border border-[color:var(--border)] dark:shadow-2xl shadow-none backdrop-blur-2xl text-[color:var(--foreground)] select-none pointer-events-auto transition-shadow duration-150 animate-in fade-in zoom-in-95"
     >
-      {/* Panel Header */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[color:var(--border)] shrink-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <SlidersIcon
-            size={14}
-            className="text-[color:var(--primary)] shrink-0"
-          />
+      {/* Draggable Panel Header */}
+      <div
+        onPointerDown={handleHeaderPointerDown}
+        onPointerMove={handleHeaderPointerMove}
+        onPointerUp={handleHeaderPointerUp}
+        onPointerCancel={handleHeaderPointerUp}
+        className="flex items-center justify-between px-3.5 py-2.5 border-b border-[color:var(--border)] shrink-0 cursor-grab active:cursor-grabbing select-none"
+      >
+        <div className="flex items-center min-w-0">
           <span className="text-xs font-semibold tracking-tight text-[color:var(--foreground)] truncate">
             {definition.name} Parameters
           </span>
         </div>
-        <div className="flex items-center gap-0.5 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0" onPointerDown={(e) => e.stopPropagation()}>
           <Button
             variant="ghost"
             size="icon-xxs"
