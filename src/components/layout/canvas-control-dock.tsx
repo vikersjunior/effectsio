@@ -1,7 +1,7 @@
 import * as React from "react";
 import {
   HandIcon,
-  FrameCornersIcon,
+  ResizeIcon,
   MagicWandIcon,
   ArrowsOutLineHorizontalIcon,
   ArrowUUpLeftIcon,
@@ -90,17 +90,13 @@ export function CanvasControlDock({
             variant="ghost"
             size="icon-md"
             aria-label="Frame size"
-            title="Frame size (Fit to canvas)"
+            title="Resize"
             className="!size-8 rounded-lg [&_svg]:!size-[18px]"
             onClick={() => {
-              if (containerRef?.current) {
-                resetViewportFit(containerRef.current.clientWidth, containerRef.current.clientHeight);
-              } else {
-                resetViewportFit();
-              }
+              // Frame size selection entry point: preserved structurally for upcoming feature
             }}
           >
-            <FrameCornersIcon size={18} className="shrink-0" />
+            <ResizeIcon size={18} className="shrink-0" />
           </Button>
 
           {/* 3. Magic Wand / Effects */}

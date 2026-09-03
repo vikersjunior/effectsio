@@ -906,6 +906,23 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
   - Pre-flight check determined Headroom proxy was responding on port 8787 (PID 24349).
   - No Headroom proxy token savings metrics claimed.
 
+---
+
+## 2026-09-03: Revert Initial Resize Icon on Bottom Dock
+
+### 1. Code Changes
+- `src/components/layout/canvas-control-dock.tsx`:
+  - Reverted the frame size button icon from `FrameCornersIcon` back to the canonical initial Phosphor `ResizeIcon` (`<ResizeIcon size={18} className="shrink-0" />`).
+  - Retained `aria-label="Frame size"` and `title="Resize"`.
+  - Removed all unsolicited click handler logic (`resetViewportFit`), keeping the button strictly as a structural placeholder for the upcoming frame size selection feature.
+
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 173/173 tests passing across all 18 test suites.
+- `pnpm build`: Clean production bundle in 1.58s.
+- Real Headless Chrome CDP Verification:
+  - Captured `dock_tool_toggles.png` showing the initial Phosphor `ResizeIcon` (dashed bounding box with solid bottom-left square).
+
 
 
 
