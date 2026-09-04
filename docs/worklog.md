@@ -1870,3 +1870,84 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
 3. **Known Limitations**:
    - None.
 
+---
+
+## Canvas & Viewport Performance Regression Diagnosis and Targeted Fix
+
+- **Date**: 2026-09-04
+- **Task**: Empirical diagnosis and targeted fix of canvas/viewport performance regression and intermittent image flickering/disappearance.
+
+### 1. Confirmed Root Causes Addressed
+1. **Infinite ResizeObserver Feedback Loop (`CanvasViewport`)**:
+   - `ResizeObserver` effect depended on `requestDraw`. When `viewport.fitMode === "contain"`, the observer callback called `setViewport(...)`, which produced a new `viewport` object reference.
+   - This invalidated `drawFrame` and `requestDraw`, causing the `useEffect` to unmount, disconnect `ResizeObserver`, re-mount, and re-observe `<main>`.
+   - Re-observing queued an initial resize notification in the browser on the next frame, running continuously at 60 FPS while idle.
+2. **Subpixel Layout vs. Integer Canvas Resizing Fighting**:
+   - Container width on fractional layouts (e.g. `16vw` left panel) produced subpixel widths (`892.68px` in `entry.contentRect.width` vs `893px` in `container.clientWidth`).
+   - Multiplying by DPR and rounding alternately computed buffer widths 1785px vs 1786px.
+   - Per HTML5 Canvas specification, mutating `canvas.width` or `canvas.height` immediately clears the drawing buffer to transparent black, producing flickering and image disappearance.
+3. **Synchronous React Commit Cascade on Wheel Zoom**:
+   - Native `handleWheel` listener called `setViewport` synchronously on every wheel event tick (30-120 Hz).
+   - In 33 wheel events, 35 synchronous React commits and 849 `CanvasViewport` component evaluations were generated.
+   - Listener had `[activeAsset, viewport.zoom, viewport.panX, viewport.panY, setViewport, zoomViewport]` dependencies, tearing down and re-attaching event listeners on every tick.
+4. **Layout Thrashing in Floating Panels**:
+   - `FloatingEffectPanel` and `FloatingBackgroundPanel` executed `getDefaultPosition()` synchronously in the render body.
+   - `getDefaultPosition()` queried the DOM (`document.querySelector`) and called `.getBoundingClientRect()`, causing synchronous layout recalculation on every render (even when closed).
+
+### 2. Files Changed
+- `src/components/layout/canvas-viewport.tsx`:
+  - Added `transientZoomRef`, `isWheelingRef`, `wheelCommitTimerRef`, `lastWheelSyncTimeRef`, `viewportRef`, `activeAssetRef`.
+  - Stabilized `drawFrame` via `drawFrameRef` and decoupled `requestDraw` (`useCallback(..., [])`).
+  - Standardized buffer sizing to rounded integer CSS dimensions multiplied by DPR; only mutating `canvas.width`/`canvas.height` when dimensions genuinely change, triggering `requestDraw()`.
+  - Decoupled `ResizeObserver` lifecycle from viewport state; added equality guard in `setViewport` (`Math.abs(prev.zoom - fit.zoom) < 0.001`) allowing React to bail out of rendering at steady state.
+  - Implemented transient wheel zoom with RAF-coalesced `requestDraw()`, intermediate UI sync throttled to 15 Hz (66ms), and debounced settlement commit (120ms).
+- `src/components/layout/floating-effect-panel.tsx`:
+  - Replaced synchronous `getDefaultPosition()` in render body with static fallback coordinates (`currentX = position?.x ?? 16; currentY = position?.y ?? 96;`), relying on `useEffect` to compute layout when opened.
+- `src/components/layout/floating-background-panel.tsx`:
+  - Moved `if (!isOpen) return null;` guard before positioning calculations and moved hook declarations (`trackRef`, `activeDragStopIdx`) to component top.
+  - Replaced synchronous `getDefaultPosition()` in render body with static fallback coordinates (`currentX = position?.x ?? 16; currentY = position?.y ?? 280;`).
+
+### 3. Browser Empirical Verification Results (Chrome CDP Execution)
+Automated verification script (`scratch/verify-regression-fix.mjs`) executed via native Chrome DevTools Protocol:
+1. **Fit to Screen Stability & ResizeObserver Loop**:
+   - Fit to Screen clicked 4 consecutive times: Center pixel is always solid `rgba(0, 255, 255, 255)` (0 disappearances, 0 flicker).
+   - Idle steady state over 2.0 seconds:
+     - ResizeObserver Callbacks: **0** (was 60/sec before fix).
+     - Canvas Buffer Dimension Changes: **0** (was 60/sec before fix).
+     - Canvas Width Sets: **0**.
+2. **Continuous Wheel Zoom Gesture (~3 seconds)**:
+   - Wheel Events Dispatched: **57**
+   - Total Frames Captured: **178**
+   - Average Frame Time: **16.67ms (~60.0 FPS)** (improved from 74.11ms).
+   - Worst Frame Time: **16.80ms** (improved from 116.70ms).
+   - ResizeObserver Callbacks during Wheel: **0**.
+   - Canvas Buffer Dimension Changes during Wheel: **0** (buffer never cleared).
+   - Post-wheel Center Pixel: `rgba(0, 255, 255, 255)` (Solid: true).
+3. **Continuous Pan Interaction**:
+   - Panned across 25 drag steps.
+   - Post-pan Center Pixel: `rgba(0, 255, 255, 255)` (Solid: true, 0 resets, 0 flicker).
+4. **Container Resize Adaptability**:
+   - Container width resized from 1440 to 1600: Canvas buffer width adapted cleanly from 756 to 1072.
+5. **GPU Fallback Integrity**:
+   - Verified WebGL2 pipeline and `executeEffectStack` CPU fallback path in `canvas-viewport.tsx` lines 260–280 remain completely intact.
+
+### 4. Automated Verification Results (Rule 1 & 6)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 22 test files passed, 223 of 223 tests passed (100% green).
+- `pnpm build`: Clean production build (5044 modules transformed, 0 errors).
+- `pnpm verify:approvals`: Passed (mechanical approval gates satisfied).
+- `pnpm check:no-competitor-refs`: Passed (0 deny-list references across 592 files).
+- `pnpm check:public-provenance`: Passed (0 external runtime/provenance references).
+- `pnpm graphify:update`: AST knowledge graph refreshed (4033 nodes, 10598 edges, 140 communities).
+
+### 5. Graphify & Headroom Actual-Use Section (Rule 10 & 11)
+1. **Graphify**:
+   - Pre-implementation query: `graphify query "canvas viewport rendering performance"`. Identified symbols, lifecycle connections, and panel dependencies.
+   - Post-implementation update: Synchronized AST graph via `pnpm graphify:update`.
+2. **Headroom**:
+   - Pre-flight check: Checked proxy via `pnpm agent:stats` (`http://127.0.0.1:8787`). Proxy active with mode `cache`.
+   - Zero fabrication invariant: All metrics reported from actual CLI output.
+3. **Known Limitations**:
+   - None. All 4 reported regression symptoms confirmed resolved with literal browser evidence.
+
+

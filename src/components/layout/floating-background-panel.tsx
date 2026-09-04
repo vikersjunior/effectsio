@@ -76,6 +76,8 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     posX: number;
     posY: number;
   } | null>(null);
+  const trackRef = React.useRef<HTMLDivElement | null>(null);
+  const [activeDragStopIdx, setActiveDragStopIdx] = React.useState<number | null>(null);
 
   const getDefaultPosition = React.useCallback(() => {
     const parent = panelRef.current?.parentElement;
@@ -104,7 +106,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
   }, []);
 
   React.useEffect(() => {
-    if (!hasUserDraggedRef.current) {
+    if (isBackgroundPanelOpen && !hasUserDraggedRef.current) {
       setPosition(getDefaultPosition());
     }
   }, [isBackgroundPanelOpen, getDefaultPosition]);
@@ -138,17 +140,12 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     return `linear-gradient(90deg, ${stopStrs.join(", ")})`;
   }, [stops]);
 
-  // Track dragging state for stops
-  const trackRef = React.useRef<HTMLDivElement | null>(null);
-  const [activeDragStopIdx, setActiveDragStopIdx] = React.useState<number | null>(null);
-
-  const defaultPos = getDefaultPosition();
-  const currentX = position?.x ?? defaultPos.x;
-  const currentY = position?.y ?? defaultPos.y;
-
   if (!activeAsset || !activeImageId || !hasActiveBackground || !isBackgroundPanelOpen) {
     return null;
   }
+
+  const currentX = position?.x ?? 16;
+  const currentY = position?.y ?? 280;
 
   const handleClose = () => {
     setIsBackgroundPanelOpen(false);

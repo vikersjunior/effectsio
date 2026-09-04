@@ -77,9 +77,17 @@ export function CanvasViewport({
   const [isDraggingSplit, setIsDraggingSplit] = React.useState(false);
   const [isSplitHovered, setIsSplitHovered] = React.useState(false);
 
-  // Refs for high-frequency RAF coalescing, render versioning, and transient drag values
+  // Refs for high-frequency RAF coalescing, render versioning, and transient drag/zoom values
   const pointerStartRef = React.useRef<{ x: number; y: number; initialPanX: number; initialPanY: number } | null>(null);
   const transientPanRef = React.useRef<{ panX: number; panY: number }>({ panX: viewport.panX, panY: viewport.panY });
+  const transientZoomRef = React.useRef<number>(viewport.zoom);
+  const isWheelingRef = React.useRef<boolean>(false);
+  const wheelCommitTimerRef = React.useRef<number | null>(null);
+  const lastWheelSyncTimeRef = React.useRef<number>(0);
+  const viewportRef = React.useRef(viewport);
+  viewportRef.current = viewport;
+  const activeAssetRef = React.useRef(activeAsset);
+  activeAssetRef.current = activeAsset;
   const rafIdRef = React.useRef<number | null>(null);
   const activePointerIdRef = React.useRef<number | null>(null);
 
@@ -135,12 +143,13 @@ export function CanvasViewport({
     };
   }, []);
 
-  // Sync transientPanRef with viewport.panX/panY when not actively dragging
+  // Sync transientPanRef and transientZoomRef with viewport when not actively dragging/wheeling
   React.useEffect(() => {
-    if (!isPanning) {
+    if (!isPanning && !isWheelingRef.current) {
       transientPanRef.current = { panX: viewport.panX, panY: viewport.panY };
+      transientZoomRef.current = viewport.zoom;
     }
-  }, [viewport.panX, viewport.panY, isPanning]);
+  }, [viewport.zoom, viewport.panX, viewport.panY, isPanning]);
 
   // Asynchronously load active asset original source image
   React.useEffect(() => {
@@ -233,7 +242,7 @@ export function CanvasViewport({
 
       const currentPanX = sanitizeNumber(transientPanRef.current.panX, viewport.panX);
       const currentPanY = sanitizeNumber(transientPanRef.current.panY, viewport.panY);
-      const currentZoom = sanitizeNumber(viewport.zoom, 100);
+      const currentZoom = sanitizeNumber(transientZoomRef.current, viewport.zoom);
 
       // 5. Render Transformed Active Image & Processed Effect Stack Layer
       const isSourceLoaded = activeAsset && loadedSourceImage && loadedSourceImage.id === activeAsset.id;
@@ -420,14 +429,17 @@ export function CanvasViewport({
     [activeAsset, loadedSourceImage, activeEffectStack, activeBackground, viewport]
   );
 
-  // Request single RAF draw pass for static updates
+  const drawFrameRef = React.useRef(drawFrame);
+  drawFrameRef.current = drawFrame;
+
+  // Request single RAF draw pass for static updates (stable identity across all renders)
   const requestDraw = React.useCallback(() => {
     if (rafIdRef.current !== null) return;
     rafIdRef.current = requestAnimationFrame(() => {
       rafIdRef.current = null;
-      drawFrame(currentTimeRef.current);
+      drawFrameRef.current(currentTimeRef.current);
     });
-  }, [drawFrame]);
+  }, []);
 
   // Sync currentTimeRef when timeline.currentTime changes externally (seek / step)
   React.useEffect(() => {
@@ -513,35 +525,53 @@ export function CanvasViewport({
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
-    const updateCanvasBufferSize = (width: number, height: number) => {
+    const updateCanvasBufferSize = (rawWidth: number, rawHeight: number) => {
       const dpr = window.devicePixelRatio || 1;
-      const targetW = Math.round(width * dpr);
-      const targetH = Math.round(height * dpr);
+      const cssW = Math.round(rawWidth);
+      const cssH = Math.round(rawHeight);
+      const targetW = Math.round(cssW * dpr);
+      const targetH = Math.round(cssH * dpr);
 
-      if (canvas.width !== targetW || canvas.height !== targetH) {
+      if (targetW > 0 && targetH > 0 && (canvas.width !== targetW || canvas.height !== targetH)) {
         canvas.width = targetW;
         canvas.height = targetH;
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
+        canvas.style.width = `${cssW}px`;
+        canvas.style.height = `${cssH}px`;
+        requestDraw();
       }
     };
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const width = entry.contentRect.width;
-        const height = entry.contentRect.height;
+        const rawW = entry.contentRect.width;
+        const rawH = entry.contentRect.height;
+        const cssW = Math.round(rawW);
+        const cssH = Math.round(rawH);
 
-        if (width > 0 && height > 0) {
-          updateCanvasBufferSize(width, height);
+        if (cssW > 0 && cssH > 0) {
+          updateCanvasBufferSize(cssW, cssH);
 
-          if (activeAsset && viewport.fitMode === "contain") {
-            const fit = calculateFitZoom(width, height, activeAsset.width, activeAsset.height);
-            setViewport((prev) => ({
-              ...prev,
-              zoom: fit.zoom,
-              panX: 0,
-              panY: 0,
-            }));
+          const asset = activeAssetRef.current;
+          const vp = viewportRef.current;
+
+          if (asset && vp.fitMode === "contain") {
+            const fit = calculateFitZoom(cssW, cssH, asset.width, asset.height);
+            setViewport((prev) => {
+              if (
+                prev.fitMode === "contain" &&
+                Math.abs(prev.zoom - fit.zoom) < 0.001 &&
+                prev.panX === 0 &&
+                prev.panY === 0
+              ) {
+                return prev;
+              }
+              return {
+                ...prev,
+                zoom: fit.zoom,
+                panX: 0,
+                panY: 0,
+              };
+            });
           } else {
             requestDraw();
           }
@@ -559,7 +589,35 @@ export function CanvasViewport({
     return () => {
       observer.disconnect();
     };
-  }, [activeAsset, viewport.fitMode, setViewport, requestDraw]);
+  }, [setViewport, requestDraw]);
+
+  // Adjust fit zoom when activeAsset dimensions or fitMode change to contain
+  React.useEffect(() => {
+    if (activeAsset && viewport.fitMode === "contain" && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const cssW = Math.round(rect.width);
+      const cssH = Math.round(rect.height);
+      if (cssW > 0 && cssH > 0) {
+        const fit = calculateFitZoom(cssW, cssH, activeAsset.width, activeAsset.height);
+        setViewport((prev) => {
+          if (
+            prev.fitMode === "contain" &&
+            Math.abs(prev.zoom - fit.zoom) < 0.001 &&
+            prev.panX === 0 &&
+            prev.panY === 0
+          ) {
+            return prev;
+          }
+          return {
+            ...prev,
+            zoom: fit.zoom,
+            panX: 0,
+            panY: 0,
+          };
+        });
+      }
+    }
+  }, [activeAsset?.id, activeAsset?.width, activeAsset?.height, viewport.fitMode, setViewport]);
 
   // Trigger RAF render whenever activeAsset, loadedSourceImage, activeEffectStack, activeBackground, or viewport changes
   React.useEffect(() => {
@@ -609,7 +667,7 @@ export function CanvasViewport({
     };
   }, [isHandToolActive, togglePlayback]);
 
-  // Non-passive wheel zoom
+  // Non-passive wheel zoom with transient RAF coalescing
   React.useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -623,41 +681,87 @@ export function CanvasViewport({
 
       const isPinch = e.ctrlKey || e.metaKey;
       const zoomFactor = isPinch ? 1 - e.deltaY * 0.01 : e.deltaY < 0 ? 1.15 : 0.85;
-      const targetZoom = viewport.zoom * zoomFactor;
 
-      if (!activeAsset) {
-        zoomViewport(e.deltaY < 0 ? 10 : -10);
-        return;
+      const currentTransientZoom = transientZoomRef.current;
+      const currentTransientPan = transientPanRef.current;
+      const targetZoom = currentTransientZoom * zoomFactor;
+
+      const asset = activeAssetRef.current;
+
+      if (!asset) {
+        const clampedZoom = Math.min(1000, Math.max(10, Math.round(targetZoom)));
+        transientZoomRef.current = clampedZoom;
+        requestDraw();
+      } else {
+        const result = calculateFocalZoom(
+          targetZoom,
+          mouseX,
+          mouseY,
+          rect.width,
+          rect.height,
+          asset.width,
+          asset.height,
+          currentTransientZoom,
+          currentTransientPan.panX,
+          currentTransientPan.panY
+        );
+
+        transientZoomRef.current = result.newZoom;
+        transientPanRef.current = {
+          panX: Math.round(result.newPanX),
+          panY: Math.round(result.newPanY),
+        };
+        requestDraw();
       }
 
-      const result = calculateFocalZoom(
-        targetZoom,
-        mouseX,
-        mouseY,
-        rect.width,
-        rect.height,
-        activeAsset.width,
-        activeAsset.height,
-        viewport.zoom,
-        viewport.panX,
-        viewport.panY
-      );
+      isWheelingRef.current = true;
 
-      setViewport((prev) => ({
-        ...prev,
-        zoom: result.newZoom,
-        panX: Math.round(result.newPanX),
-        panY: Math.round(result.newPanY),
-        fitMode: "custom",
-      }));
+      // Throttle intermediate React UI synchronization to ~15 Hz (66ms) so controls stay in sync
+      const now = performance.now();
+      if (now - lastWheelSyncTimeRef.current > 66) {
+        lastWheelSyncTimeRef.current = now;
+        const currentZ = transientZoomRef.current;
+        const currentPX = transientPanRef.current.panX;
+        const currentPY = transientPanRef.current.panY;
+        setViewport((prev) => ({
+          ...prev,
+          zoom: currentZ,
+          panX: currentPX,
+          panY: currentPY,
+          fitMode: "custom",
+        }));
+      }
+
+      // Settle commit: commit final transient zoom and pan when wheeling stops
+      if (wheelCommitTimerRef.current !== null) {
+        window.clearTimeout(wheelCommitTimerRef.current);
+      }
+      wheelCommitTimerRef.current = window.setTimeout(() => {
+        wheelCommitTimerRef.current = null;
+        isWheelingRef.current = false;
+        const finalZ = transientZoomRef.current;
+        const finalPX = transientPanRef.current.panX;
+        const finalPY = transientPanRef.current.panY;
+        setViewport((prev) => ({
+          ...prev,
+          zoom: finalZ,
+          panX: finalPX,
+          panY: finalPY,
+          fitMode: "custom",
+        }));
+      }, 120);
     };
 
     container.addEventListener("wheel", handleWheel, { passive: false });
 
     return () => {
       container.removeEventListener("wheel", handleWheel);
+      if (wheelCommitTimerRef.current !== null) {
+        window.clearTimeout(wheelCommitTimerRef.current);
+        wheelCommitTimerRef.current = null;
+      }
     };
-  }, [activeAsset, viewport.zoom, viewport.panX, viewport.panY, setViewport, zoomViewport]);
+  }, [setViewport, requestDraw]);
 
   // Clean up pointer drag and commit transient pan coordinates
   const stopPanDrag = React.useCallback(

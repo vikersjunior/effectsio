@@ -63,7 +63,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
   }, []);
 
   React.useEffect(() => {
-    if (!hasUserDraggedRef.current) {
+    if (!hasUserDraggedRef.current && selectedInstance) {
       setPosition(getDefaultPosition());
     }
   }, [selectedInstance?.instanceId, getDefaultPosition]);
@@ -138,9 +138,8 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     }
   };
 
-  const defaultPos = getDefaultPosition();
-  const currentX = position?.x ?? defaultPos.x;
-  const currentY = position?.y ?? defaultPos.y;
+  const currentX = position?.x ?? 16;
+  const currentY = position?.y ?? 96;
 
   const handleHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
