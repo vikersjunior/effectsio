@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as React from 'react';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { StudioProvider } from '../../context/studio-context';
+import { loadHydratedProject } from '../../storage/db';
 import { AssetPanel } from './asset-panel';
 
 const { mockSampleAsset } = vi.hoisted(() => ({
@@ -44,6 +45,14 @@ vi.mock('../../storage/db', () => ({
 describe('AssetPanel: Add Asset Controls (Correction 02)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(loadHydratedProject).mockResolvedValue({
+      assets: [mockSampleAsset],
+      activeImageId: 'asset-1',
+      projectName: 'Project Name',
+      effectStacks: {},
+      backgrounds: {},
+      userLooks: [],
+    });
   });
 
   afterEach(() => {
@@ -171,6 +180,194 @@ describe('AssetPanel: Add Asset Controls (Correction 02)', () => {
     expect(headerButton.className).toContain(
       'hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]',
     );
+  });
+});
+
+describe('AssetPanel: Empty State (Correction 02.7 — Figma 50:1165)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(loadHydratedProject).mockResolvedValue({
+      assets: [],
+      activeImageId: null,
+      projectName: 'Project Name',
+      effectStacks: {},
+      backgrounds: {},
+      userLooks: [],
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('1. Empty state renders CloudArrowUp icon', async () => {
+    const { container } = render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    await screen.findByText('Add media');
+    const cloudIcon = container.querySelector('[data-slot="cloud-upload-icon"]');
+    expect(cloudIcon).toBeDefined();
+    expect(cloudIcon?.tagName.toLowerCase()).toBe('svg');
+  });
+
+  it('2. "Add media" renders', async () => {
+    render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    const title = await screen.findByText('Add media');
+    expect(title).toBeDefined();
+    expect(title.className).toContain('text-base');
+    expect(title.className).toContain('font-medium');
+  });
+
+  it('3. Description renders exact text', async () => {
+    render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    const desc = await screen.findByText(
+      'Drag here, import from your computer or choose from a stock image',
+    );
+    expect(desc).toBeDefined();
+    expect(desc.className).toContain('text-xs');
+  });
+
+  it('4. "Stock library" renders', async () => {
+    render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    const stockBtn = await screen.findByRole('button', { name: 'Stock library' });
+    expect(stockBtn).toBeDefined();
+  });
+
+  it('5. "Import media" renders in empty state', async () => {
+    const { container } = render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    await screen.findByText('Add media');
+    const emptyStateImportBtn = container.querySelector(
+      '[data-slot="asset-empty-state"] button[data-variant="primary"]',
+    );
+    expect(emptyStateImportBtn).toBeDefined();
+    expect(emptyStateImportBtn?.textContent).toContain('Import media');
+  });
+
+  it('6. Stock library retains current behavior (file input fallback)', async () => {
+    const { container } = render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    const stockBtn = await screen.findByRole('button', { name: 'Stock library' });
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const clickSpy = vi.spyOn(fileInput, 'click');
+
+    fireEvent.click(stockBtn);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('7. Import media retains current behavior (opens file input)', async () => {
+    const { container } = render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    await screen.findByText('Add media');
+    const emptyStateImportBtn = container.querySelector(
+      '[data-slot="asset-empty-state"] button[data-variant="primary"]',
+    ) as HTMLButtonElement;
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const clickSpy = vi.spyOn(fileInput, 'click');
+
+    fireEvent.click(emptyStateImportBtn);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('8. Empty state contains no dashed outer dropzone', async () => {
+    const { container } = render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    await screen.findByText('Add media');
+    const emptyState = container.querySelector('[data-slot="asset-empty-state"]');
+    expect(emptyState).toBeDefined();
+    expect(emptyState?.querySelector('.border-dashed')).toBeNull();
+    expect(emptyState?.className).not.toContain('border-dashed');
+  });
+
+  it('9. Empty state contains no extra wrapper card styling', async () => {
+    const { container } = render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    await screen.findByText('Add media');
+    const emptyState = container.querySelector('[data-slot="asset-empty-state"]');
+    expect(emptyState?.className).not.toContain('border');
+    expect(emptyState?.className).not.toContain('rounded-lg');
+    expect(emptyState?.querySelector('.rounded-lg')).toBeNull();
+  });
+
+  it('10. Both buttons use equal/full width', async () => {
+    const { container } = render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    const stockBtn = await screen.findByRole('button', { name: 'Stock library' });
+    const importBtn = container.querySelector(
+      '[data-slot="asset-empty-state"] button[data-variant="primary"]',
+    ) as HTMLButtonElement;
+
+    expect(stockBtn.className).toContain('w-full');
+    expect(importBtn.className).toContain('w-full');
+  });
+
+  it('11. Stock library uses the soft/muted variant', async () => {
+    render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    const stockBtn = await screen.findByRole('button', { name: 'Stock library' });
+    expect(stockBtn.getAttribute('data-variant')).toBe('secondary');
+    expect(stockBtn.className).toContain('bg-[color:var(--secondary)]');
+  });
+
+  it('12. Import media uses the primary variant', async () => {
+    const { container } = render(
+      <StudioProvider>
+        <AssetPanel />
+      </StudioProvider>,
+    );
+
+    await screen.findByText('Add media');
+    const importBtn = container.querySelector(
+      '[data-slot="asset-empty-state"] button[data-variant="primary"]',
+    ) as HTMLButtonElement;
+
+    expect(importBtn.getAttribute('data-variant')).toBe('primary');
   });
 });
 

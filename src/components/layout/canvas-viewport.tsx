@@ -27,6 +27,7 @@ import { GPUBackgroundRenderer, isGPUSupportedBackground } from "../../rendering
 import { CanvasControlDock } from "./canvas-control-dock";
 import { FloatingEffectPanel } from "./floating-effect-panel";
 import { FloatingBackgroundPanel } from "./floating-background-panel";
+import emptyStateSvgUrl from "../../assets/empty_state.svg";
 
 export interface CanvasViewportProps {
   onOpenAssets?: () => void;
@@ -408,45 +409,8 @@ export function CanvasViewport({
           drawTransformedImage(renderProcessed);
         }
       } else {
-        // Render Empty Viewport State
-        const cardWidth = Math.min(width * 0.7, 440);
-        const cardHeight = Math.min(height * 0.5, 240);
-        const cardX = (width - cardWidth) / 2;
-        const cardY = (height - cardHeight) / 2;
-
-        ctx.fillStyle = computedStyle.getPropertyValue("--card").trim() || "oklch(0.205 0 0)";
-        if (typeof (ctx as unknown as { roundRect?: unknown }).roundRect === "function") {
-          ctx.beginPath();
-          (ctx as unknown as { roundRect: (x: number, y: number, w: number, h: number, r: number) => void }).roundRect(
-            cardX,
-            cardY,
-            cardWidth,
-            cardHeight,
-            10
-          );
-          ctx.fill();
-          ctx.strokeStyle = borderVal;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        } else {
-          ctx.fillRect(cardX, cardY, cardWidth, cardHeight);
-          ctx.strokeStyle = borderVal;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(cardX, cardY, cardWidth, cardHeight);
-        }
-
-        ctx.fillStyle = computedStyle.getPropertyValue("--foreground").trim() || "oklch(0.977 0 0)";
-        ctx.font = "600 14px var(--font-sans, sans-serif)";
-        ctx.textAlign = "center";
-        ctx.fillText("No Image Selected", width / 2, cardY + cardHeight / 2 - 12);
-
-        ctx.fillStyle = computedStyle.getPropertyValue("--muted-foreground").trim() || "oklch(0.708 0 0)";
-        ctx.font = "12px var(--font-sans, sans-serif)";
-        ctx.fillText(
-          "Import an image in the Library or drop a file here",
-          width / 2,
-          cardY + cardHeight / 2 + 12
-        );
+        // Empty Viewport State is rendered via DOM overlay (Figma node 137:6167)
+        // Canvas buffer remains cleanly cleared to system background
       }
 
       ctx.restore();
@@ -958,6 +922,33 @@ export function CanvasViewport({
             display: "block",
           }}
         />
+
+        {/* Main Canvas Empty State (Correction 02.8 — Figma node 137:6167) */}
+        {!activeAsset && isHydrated && (
+          <div
+            data-slot="canvas-empty-state"
+            className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-2 select-none z-10"
+          >
+            <div
+              className="w-16 h-8 flex items-center justify-center overflow-visible"
+              data-slot="empty-state-illustration"
+            >
+              <img
+                src={emptyStateSvgUrl}
+                alt=""
+                width={70}
+                height={38}
+                className="w-[70px] h-[38px] max-w-none select-none pointer-events-none"
+              />
+            </div>
+            <h2 className="font-medium text-base leading-6 text-[color:var(--foreground)] text-center tracking-tight">
+              No image selected
+            </h2>
+            <p className="font-normal text-xs leading-4 text-[color:var(--muted-foreground)] text-center whitespace-normal max-w-[440px]">
+              Import an image or drag and drop one here to start editing.
+            </p>
+          </div>
+        )}
 
         {/* Viewport HUD Overlay: Split View Divider & Draggable Handle */}
         {viewport.splitView && activeAsset && (

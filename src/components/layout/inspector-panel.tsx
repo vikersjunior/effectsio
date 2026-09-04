@@ -190,6 +190,11 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
   const [isAccountPopoverOpen, setIsAccountPopoverOpen] = React.useState(false);
   const [isLooksPopoverOpen, setIsLooksPopoverOpen] = React.useState(false);
+  const [isLookVisible, setIsLookVisible] = React.useState(true);
+
+  React.useEffect(() => {
+    setIsLookVisible(true);
+  }, [appliedLook?.id]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -408,7 +413,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
               </div>
 
               {activeEffectStack.length > 0 && (
-                <div className="flex flex-col gap-1 px-4 pb-2.5">
+                <div className="flex flex-col gap-1 px-2 pb-2.5">
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -488,9 +493,54 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
               </div>
 
               {appliedLook && (
-                <div className="px-4 pb-3 flex items-center gap-2 text-xs font-medium text-[color:var(--foreground)]">
-                  <SparkleIcon size={16} className="text-[color:var(--primary)] shrink-0" />
-                  <span className="truncate">{appliedLook.name}</span>
+                <div className="px-4 pb-2.5 flex items-center gap-1.5">
+                  <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
+                    <PopoverTrigger
+                      data-slot="look-row"
+                      data-testid="look-row"
+                      className="group flex-1 min-w-0 flex items-center gap-2 px-2.5 h-8 rounded-[6px] border border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--foreground)_20%,transparent)] cursor-pointer transition-colors select-none text-left outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                    >
+                      <div className="size-4 shrink-0 flex items-center justify-center text-[color:var(--foreground)] [&_svg]:!size-4">
+                        <SparkleIcon size={16} />
+                      </div>
+                      <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
+                        {appliedLook.name}
+                      </span>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="left"
+                      align="start"
+                      sideOffset={8}
+                      className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
+                    >
+                      <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Eye control sits OUTSIDE the bordered Look control */}
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => {
+                      setIsLookVisible((prev) => {
+                        const next = !prev;
+                        if (activeImageId && appliedLook) {
+                          activeEffectStack.forEach((inst) => {
+                            if (inst.enabled !== next) {
+                              toggleInstanceEnabled(activeImageId, inst.instanceId);
+                            }
+                          });
+                        }
+                        return next;
+                      });
+                    }}
+                    title={isLookVisible ? "Hide look" : "Show look"}
+                    aria-label={isLookVisible ? "Hide look" : "Show look"}
+                    data-testid="look-eye-button"
+                    className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer shrink-0"
+                  >
+                    {isLookVisible ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
+                  </Button>
                 </div>
               )}
             </div>
@@ -534,7 +584,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
 
               {/* Compact Active Background Row */}
               {hasActiveBackground && (
-                <div className="px-4 pb-2.5">
+                <div className="px-4 pb-2.5 flex items-center gap-1.5">
                   <div
                     role="button"
                     tabIndex={0}
@@ -547,9 +597,9 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                         setIsBackgroundPanelOpen(true);
                       }
                     }}
-                    className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--foreground)_20%,transparent)] cursor-pointer transition-colors select-none"
+                    className="group flex-1 min-w-0 flex items-center justify-between px-2.5 h-8 rounded-[6px] border border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--foreground)_20%,transparent)] cursor-pointer transition-colors select-none"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       {activeBackground.type === "solid" ? (
                         <div
                           className="size-4 rounded-xs shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]"
@@ -593,24 +643,27 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {activeBackground.type !== "transparent" && (
-                        <span className="text-xs text-[color:var(--muted-foreground)]">100%</span>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => {
-                          updateActiveBackground({ visible: activeBackground.visible === false ? true : false });
-                        }}
-                        title={activeBackground.visible === false ? "Show background" : "Hide background"}
-                        aria-label={activeBackground.visible === false ? "Show background" : "Hide background"}
-                        className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer"
-                      >
-                        {activeBackground.visible === false ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
-                      </Button>
-                    </div>
+                    {activeBackground.type !== "transparent" && (
+                      <span className="text-xs text-[color:var(--muted-foreground)] tabular-nums shrink-0 ml-2">
+                        {activeBackground.opacity !== undefined ? `${activeBackground.opacity}%` : "100%"}
+                      </span>
+                    )}
                   </div>
+
+                  {/* Eye control sits OUTSIDE the bordered Background control */}
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => {
+                      updateActiveBackground({ visible: activeBackground.visible === false ? true : false });
+                    }}
+                    title={activeBackground.visible === false ? "Show background" : "Hide background"}
+                    aria-label={activeBackground.visible === false ? "Show background" : "Hide background"}
+                    data-testid="background-eye-button"
+                    className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer shrink-0"
+                  >
+                    {activeBackground.visible === false ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
+                  </Button>
                 </div>
               )}
             </div>

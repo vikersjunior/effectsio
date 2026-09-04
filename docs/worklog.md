@@ -1378,4 +1378,264 @@ Executed `git rm` on 18 competitor-specific scraping, downloading, and reverse-e
 - `pnpm check:public-provenance`: PASSED (0 external runtime/provenance references found in tracked files).
 - `pnpm graphify:update`: AST knowledge graph refreshed.
 
+---
 
+## EffectsIO — Correction 02.5b Pass
+### Align Effect Row Minus Controls With Effects Header Plus
+
+- **Date**: 2026-09-03
+- **Reference**: Figma node `131:5102` (`https://www.figma.com/design/FSceb4nMe6gmcp2xo1iGLW/Effectsio-Draft?node-id=131-5102&m=dev`)
+- **Task**: Align the effect-row minus controls horizontally with the Effects header plus button so that the header `+` and all row `−` controls form one straight vertical column sharing the exact same horizontal axis, resolved cleanly at the container level.
+
+### 1. Root Cause & Solution
+- **Root Cause**: The Effects section header used `px-4` (16px right margin to `+` button), while the effect list container also used `px-4` and each row card had `p-2` (8px right padding). This pushed the row minus button to `16px + 8px = 24px` from the panel edge, creating an 8px horizontal offset from the header `+` button (center 28px vs 36px from right edge).
+- **Container-Level Solution**: Set `px-2` on the effect list container in `src/components/layout/inspector-panel.tsx`. Combined with `p-2` on `SortableEffectRow`, the total horizontal inset of the row content is `8px + 8px = 16px`, exactly matching `px-4` on the header. The card pill maintains an 8px gutter to the panel boundary on both sides, matching Figma node `131:5102`.
+- **Zero Layout Shift**: The hover reveal of `Drop` and `Eye` icons preserves the minus button position with 0.0px movement.
+
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 19 test files passed, 180 of 180 tests passing (100% pass rate).
+- `pnpm build`: Production build succeeded in 8.11s.
+- `pnpm verify:approvals`: Verified (all mechanical approval gates satisfied).
+- `pnpm check:no-competitor-refs`: PASSED (622 tracked files scanned against 16 deny-list terms; 0 violations).
+- `pnpm check:public-provenance`: PASSED (0 external runtime/provenance references found in tracked files).
+- `pnpm graphify:update`: AST knowledge graph refreshed (4,022 nodes, 10,597 edges, 142 communities).
+- **Multi-Viewport Headless Chrome CDP Verification (`scratch/verify-alignment.mjs`)**:
+  - **1440 × 900**:
+    - Header `+` center: `1411px`
+    - Row 0 (Halftone) `−` center: `1411px` (Diff = `0px`)
+    - Row 1 (Duotone, selected) `−` center: `1411px` (Diff = `0px`)
+    - Row 2 (Film Grain) `−` center: `1411px` (Diff = `0px`)
+    - Hovered Row 0: `−` center remains `1411px` (Diff = `0px`, Drop opacity: 1, Eye opacity: 1)
+    - Artifact: `alignment_1440x900.png`
+  - **1280 × 800**:
+    - Header `+` center: `1251px`
+    - Row 0 (Halftone) `−` center: `1251px` (Diff = `0px`)
+    - Row 1 (Duotone, selected) `−` center: `1251px` (Diff = `0px`)
+    - Row 2 (Film Grain) `−` center: `1251px` (Diff = `0px`)
+    - Hovered Row 0: `−` center remains `1251px` (Diff = `0px`, Drop opacity: 1, Eye opacity: 1)
+    - Artifact: `alignment_1280x800.png`
+  - **1024 × 768**:
+    - Header `+` center: `995px`
+    - Row 0 (Halftone) `−` center: `995px` (Diff = `0px`)
+    - Row 1 (Duotone, selected) `−` center: `995px` (Diff = `0px`)
+    - Row 2 (Film Grain) `−` center: `995px` (Diff = `0px`)
+    - Hovered Row 0: `−` center remains `995px` (Diff = `0px`, Drop opacity: 1, Eye opacity: 1)
+    - Artifact: `alignment_1024x768.png`
+
+---
+
+## EffectsIO — Correction 02.6 Pass
+### Rework Looks + Background Section to Match Figma (Nodes 135:5361 & 135:5478)
+
+- **Date**: 2026-09-03
+- **References**:
+  - Looks: Figma node `135:5361` (`https://www.figma.com/design/FSceb4nMe6gmcp2xo1iGLW/Effectsio-Draft?node-id=135-5361&m=dev`)
+  - Background: Figma node `135:5478` (`https://www.figma.com/design/FSceb4nMe6gmcp2xo1iGLW/Effectsio-Draft?node-id=135-5478&m=dev`)
+- **Task**: Rework the Looks and Background sections to match Figma density and geometry:
+  1. Looks section: Empty state shows `+` (opens existing Looks Popover); applied state shows header `−` (clears Look) and a compact row `[ ✦ Lookname ] [ Eye ]` where Eye sits outside the bordered Look control.
+  2. Background section: Empty state shows `+` (activates background & opens floating editor); active state shows header `−` (removes background) and a compact row `[ icon/swatch  value  opacity ] [ Eye ]` where Eye sits outside the bordered content control.
+  3. Visual alignment: Headers and rows share identical padding (`px-4`, `pb-2.5`, `gap-1.5`), `rounded-[6px]`, `h-8` row height, and exact vertical column alignment on the right (header `−`/`+` and row `Eye` icons align on the exact same axis, diff = 0.0px).
+
+### 1. Implementation Details
+- **Looks Section (`InspectorPanel` in `src/components/layout/inspector-panel.tsx`)**:
+  - Header: Left title `Looks`, right action `+` (opens `LooksBrowser` in Popover) or `−` (`clearAppliedLook`).
+  - Applied Look row: Compact bordered control `[data-slot="look-row"]` (`flex-1 min-w-0 h-8 rounded-[6px] border border-[color:var(--border)] bg-[color:var(--card)] px-2.5`) with 16px Phosphor `SparkleIcon` slot and 12px truncated text.
+  - External Eye control: Sits outside the bordered pill (`size-6` Button `data-testid="look-eye-button"`) with `EyeIcon` / `EyeSlashIcon` toggling look visibility on the canvas.
+- **Background Section (`InspectorPanel` in `src/components/layout/inspector-panel.tsx`)**:
+  - Header: Left title `Background`, right action `+` (activates background and opens floating panel) or `−` (`resetActiveBackground`).
+  - Active Background row: Compact bordered control `[data-slot="background-row"]` (`flex-1 min-w-0 h-8 rounded-[6px] border border-[color:var(--border)] bg-[color:var(--card)] px-2.5`) with 16px visual slot (`Solid` color swatch, `Gradient` gradient swatch, `Alpha` `CircleHalfIcon`, `Dot Pattern` `DotsNineIcon`, `Grid Pattern` `GridFourIcon`), label, and tabular opacity percentage (`100%`, omitted for Alpha).
+  - External Eye control: Sits outside the bordered pill (`size-6` Button `data-testid="background-eye-button"`) with `EyeIcon` / `EyeSlashIcon` toggling existing `activeBackground.visible` state.
+- **Component & Geometry Unification**:
+  - Both sections share identical container padding (`px-4 pb-2.5 flex items-center gap-1.5`).
+  - Right action controls (`size-6`) form a single vertical column with the header action buttons (`size-6`) at `panelWidth - 28px` center X.
+
+### 2. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 19 test files passed, 192 of 192 tests passing (100% pass rate).
+- `pnpm build`: Production build succeeded in 6.78s.
+- `pnpm verify:approvals`: Verified (all mechanical approval gates satisfied).
+- `pnpm check:no-competitor-refs`: PASSED (622 tracked files scanned against 16 deny-list terms; 0 violations).
+- `pnpm check:public-provenance`: PASSED (0 external runtime/provenance references found in tracked files).
+- `pnpm graphify:update`: AST knowledge graph refreshed (4,023 nodes, 10,599 edges, 133 communities).
+- **Multi-Viewport Headless Chrome CDP Verification (`scratch/verify-looks-and-background.mjs`)**:
+  - **1440 × 900**:
+    - Effects Header `+` Center: `1411.0px`
+    - Looks Header `−` Center: `1411.0px` (Diff = `0.0px`)
+    - Look Row `Eye` Center: `1411.0px` (Diff = `0.0px`)
+    - Background Header `−` Center: `1411.0px` (Diff = `0.0px`)
+    - Background Row `Eye` Center: `1411.0px` (Diff = `0.0px`)
+    - Look Row Height: `32.0px`, Look Eye Outside: `true`
+    - Background Row Height: `32.0px`, Background Eye Outside: `true`
+    - Artifact: `rework_looks_and_bg_solid_1440x900.png`
+  - **1280 × 800**:
+    - Effects Header `+` Center: `1251.0px`
+    - Looks Header `−` Center: `1251.0px` (Diff = `0.0px`)
+    - Look Row `Eye` Center: `1251.0px` (Diff = `0.0px`)
+    - Background Header `−` Center: `1251.0px` (Diff = `0.0px`)
+    - Background Row `Eye` Center: `1251.0px` (Diff = `0.0px`)
+    - All diffs = `0.0px`
+    - Artifact: `rework_looks_and_bg_solid_1280x800.png`
+  - **1024 × 768**:
+    - Effects Header `+` Center: `995.0px`
+    - Looks Header `−` Center: `995.0px` (Diff = `0.0px`)
+    - Look Row `Eye` Center: `995.0px` (Diff = `0.0px`)
+    - Background Header `−` Center: `995.0px` (Diff = `0.0px`)
+    - Background Row `Eye` Center: `995.0px` (Diff = `0.0px`)
+    - All diffs = `0.0px`
+    - Artifact: `rework_looks_and_bg_solid_1024x768.png`
+  - **Background Types Verified**:
+    - Solid: `#E20000 100%` (`rework_looks_and_bg_solid_1440x900.png`)
+    - Linear Gradient: `Linear 100%` (`bg_gradient.png`)
+    - Alpha: `Alpha` (opacity omitted) (`bg_alpha.png`)
+    - Dot Pattern: `Dot Pattern 100%` (`bg_dots.png`)
+    - Grid Pattern: `Grid Pattern 100%` (`bg_grid.png`)
+  - **Eye Visibility Toggle**:
+    - Look Eye toggles between `Hide look` / `Show look`
+    - Background Eye toggles between `Hide background` / `Show background`
+    - Artifact: `rework_both_hidden.png`
+
+---
+
+## Correction 02.7 — Asset Panel Empty State (Exact Figma 50:1165 Implementation)
+
+- **Date**: 2026-09-03
+- **Task**: Rebuild the Asset Panel empty state to match Figma node 50:1165 cleanly without surrounding card or dashed border.
+
+### 1. Implementation Details
+- **Outer Layout & Surface**:
+  - Removed old outer dashed dropzone (`border border-dashed`), rounded card background (`bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)]`), and circular icon container.
+  - Implemented exact Figma container rhythm: `p-4` (16px padding), `flex flex-col`, `gap-[14px]` (14px group gap), spanning full available panel width (`w-full`).
+  - Panel surface (`bg-[color:var(--sidebar)]`) provides the clean surface without nested card elevation.
+- **Main Content Group**:
+  - Vertically stacked with `gap-2` (8px), centered alignment (`items-center text-center`).
+  - Phosphor icon: `<CloudArrowUpIcon size={24} className="text-[color:var(--foreground)] shrink-0" data-slot="cloud-upload-icon" />`.
+  - Title: `<h3 className="text-base font-medium leading-6 text-[color:var(--foreground)] text-center">Add media</h3>`.
+  - Description: `<p className="text-xs font-normal leading-4 text-[color:var(--muted-foreground)] text-center max-w-[210px]">Drag here, import from your computer or choose from a stock image</p>` wrapping across 3 lines matching Figma.
+- **Button Group**:
+  - Vertically stacked with `gap-2` (8px), `w-full`.
+  - Stock library: Canonical `Button` with `variant="secondary"`, soft filled `bg-[color:var(--secondary)]`, `text-[color:var(--secondary-foreground)]`, `border-0`, `h-8`, `rounded-[6px]`, `px-3 py-2 text-xs font-medium`.
+  - Import media: Canonical `Button` with `variant="primary"`, canonical pink accent `bg-[color:var(--primary)]`, `text-[color:var(--primary-foreground)]`, `h-8`, `rounded-[6px]`, `px-3 py-2 text-xs font-medium shadow-xs`.
+  - Both buttons share identical height (32px), width (230px), padding (px 12px, py 8px), radius (6px), and font size (12px medium).
+- **Existing Behavior Preserved**:
+  - `Stock library` retains fallback click on native hidden file input (`handleStockSample`).
+  - `Import media` continues to open native hidden file input.
+  - `isImporting` state gracefully renders centered loading spinner.
+  - Drag-and-drop on empty state container delegates to `addAssets`.
+  - Populated 4-column asset grid and search behavior untouched.
+
+### 2. Files Changed
+- `src/components/layout/asset-panel.tsx`: Replaced legacy dashed-box upload card with exact Figma 50:1165 empty state composition.
+- `src/components/layout/asset-panel.test.tsx`: Added 12 new dedicated unit tests verifying all acceptance criteria.
+- `docs/worklog.md`: Documented implementation and verification evidence.
+
+### 3. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 19 test files passed, 204 of 204 tests passing (100% pass rate).
+- `pnpm build`: Production build succeeded in 2.91s.
+- `pnpm verify:approvals`: Verified (all mechanical approval gates satisfied).
+- `pnpm check:no-competitor-refs`: PASSED (622 tracked files scanned against 16 deny-list terms; 0 violations).
+- `pnpm check:public-provenance`: PASSED (0 external runtime/provenance references found in tracked files).
+- `pnpm graphify:update`: AST knowledge graph refreshed (4,023 nodes, 10,604 edges, 136 communities).
+- **Multi-Viewport Headless Chrome CDP Verification (`scratch/verify-asset-empty-state.mjs`)**:
+  - Empty state container padding: `16px`, gap: `14px`.
+  - Has dashed border: `false`.
+  - Has card border: `false`.
+  - Cloud icon: `24px × 24px`, centered at `x: 120` in 264px panel width, color: `zinc-50` (`oklch(0.985 0 0)`).
+  - Title: "Add media", `fontSize: 16px`, `fontWeight: 500`, `lineHeight: 24px`, text-align: `center`.
+  - Description: `fontSize: 12px`, `fontWeight: 400`, `lineHeight: 16px`, text-align: `center`, color: `zinc-400`.
+  - Stock library button: `variant: secondary`, width: `230px`, height: `32px`, radius: `6px`, background: `oklch(0.274 0.006 286.033)` (`zinc-800` / `var(--secondary)`).
+  - Import media button: `variant: primary`, width: `230px`, height: `32px`, radius: `6px`, background: `oklch(0.823 0.12 346.018)` (`pink-300` / `var(--primary)`).
+  - Verified across 1440×900, 1280×800, and 1024×768.
+  - Screenshots: `asset_panel_empty_crop_1440x900.png`, `asset_panel_empty_crop_1280x800.png`, `asset_panel_empty_crop_1024x768.png`.
+
+### 4. Graphify & Headroom Actual-Use Section (Rule 10 & 11)
+1. **Graphify**:
+   - Pre-implementation query: `graphify query "AssetPanel empty state and Button component"` identified `AssetPanel()` in `src/components/layout/asset-panel.tsx` and `Button` in `src/components/ui/primitives/button.tsx`.
+   - Post-implementation update: `pnpm graphify:update` updated AST graph to 4,023 nodes, 10,604 edges, and 136 communities.
+2. **Headroom**:
+   - Checked proxy at `http://127.0.0.1:8787/health`.
+   - Proxy responded with `status: unhealthy`, `ready: false` (local memory backend uninitialized, kompress degraded).
+   - No Headroom proxy usage, compression ratios, or token savings are claimed.
+3. **Known Limitations**:
+   - Stock library remains a fallback trigger to native file picker until a remote stock photo service is integrated.
+
+---
+
+## Correction 02.8 — Main Canvas Empty State (Exact Figma 137:6167 Implementation)
+
+- **Date**: 2026-09-04
+- **Task**: Replace the current main-canvas empty state with the exact empty-state composition shown in Figma node 137:6167.
+
+### 1. Implementation Details
+- **Supplied SVG Asset Reuse**:
+  - Reused user-supplied `empty_state.svg` directly from the repository root, copying to `src/assets/empty_state.svg` and `public/empty_state.svg`.
+  - Used in `<img src={emptyStateSvgUrl} alt="" className="w-16 h-8 shrink-0 select-none pointer-events-none object-contain" />`.
+  - Nominal frame: 64px × 32px (`w-16 h-8`); natural SVG bounds (70px × 38px) preserved without arbitrary cropping.
+- **Canvas Output Separation (Rule 3 Compliance)**:
+  - Removed legacy canvas buffer empty-state rendering from `drawFrame` in `src/components/layout/canvas-viewport.tsx` (`ctx.roundRect`, `ctx.fillText("No Image Selected")`).
+  - Implemented the empty state cleanly as a React DOM overlay (`data-slot="canvas-empty-state"`) with `pointer-events-none`, keeping the canvas buffer dedicated strictly to image/effect/background output.
+- **Text & Visual Rhythm**:
+  - Vertically stacked with `flex flex-col items-center justify-center gap-2` (8px gap):
+    1. Illustration: 64px × 32px frame displaying `empty_state.svg`.
+    2. Title: Exact copy `"No image selected"`, Geist font token (`font-sans`), Medium weight (`font-medium`), 16px font size (`text-base`), 24px line height (`leading-6`), centered, foreground color (`text-[color:var(--foreground)]`).
+    3. Description: Exact copy `"Import an image or drag and drop one here to start editing."`, Inter font token (`font-sans`), Regular weight (`font-normal`), 12px font size (`text-xs`), 16px line height (`leading-4`), centered, muted foreground color (`text-[color:var(--muted-foreground)]`), single centered sentence with `max-w-[420px]`.
+- **Canvas Surface & Isolation**:
+  - Sits directly on the current canvas surface (`var(--background)` / theme background).
+  - No card, container, border, shadow, translucent backdrop, or canvas color picker.
+  - No import buttons, "Stock library", or "Import media" buttons inside the canvas empty state (those belong exclusively to the Asset Panel).
+- **Positioning & Responsive Centering**:
+  - Centered strictly within the available canvas viewport region (between Asset Panel, Inspector, and above the bottom toolbar dock).
+  - Maintained at all viewports (1440×900, 1280×800, 1024×768) with 0px vertical collision and exact subpixel horizontal centering.
+- **Existing Functionality Preserved**:
+  - Drag-and-drop image ingestion on the main canvas preserved via existing `onDragOver`, `onDragLeave`, `onDrop` handlers delegating to `addAssets`.
+  - Canvas viewport controls and floating toolbar dock (`CanvasControlDock`) completely unaffected.
+
+### 2. Files Changed
+- `src/components/layout/canvas-viewport.tsx`: Replaced legacy 2D canvas buffer empty-state drawing with the exact Figma 137:6167 React overlay; integrated `empty_state.svg`.
+- `src/components/layout/canvas-viewport.test.tsx`: Added 8 dedicated unit tests verifying all acceptance criteria.
+- `src/assets/empty_state.svg`: Added supplied SVG asset for Vite module resolution.
+- `public/empty_state.svg`: Added supplied SVG asset for static web serving.
+- `docs/worklog.md`: Documented implementation details, browser measurements, and verification logs.
+
+### 3. Empirical Verification Evidence (Rule 1)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 20 test files passed, 212 of 212 tests passing (100% pass rate).
+- `pnpm build`: Production build succeeded in 3.44s (`dist/assets/index-BMdaiKeb.js`).
+- `pnpm verify:approvals`: Verified (all mechanical approval gates satisfied).
+- `pnpm check:no-competitor-refs`: PASSED (622 tracked files scanned against 16 deny-list terms; 0 violations).
+- `pnpm check:public-provenance`: PASSED (0 external runtime/provenance references found in tracked files).
+- `pnpm graphify:update`: AST knowledge graph refreshed (4,024 nodes, 10,610 edges, 135 communities).
+- **Multi-Viewport Headless Chrome CDP Verification (`scratch/verify-canvas-empty-state.mjs`)**:
+  - **1440 × 900**:
+    - Canvas area: `x: 264px`, `width: 912px`, `height: 900px`. Canvas Center X: `720px`.
+    - Illustration Center X: `720.0px`, Title Center X: `719.5px`, Description Center X: `720.5px`.
+    - Spacing gap: `8px`. Illustration size: `64px × 32px`.
+    - Card wrapper / border: `false`.
+    - Bottom toolbar collision: `false` (gap > 300px).
+    - Screenshot: `canvas_empty_crop_1440x900.png`.
+  - **1280 × 800**:
+    - Canvas area: `x: 264px`, `width: 752px`, `height: 800px`. Canvas Center X: `640px`.
+    - Illustration Center X: `640.0px`, Title Center X: `639.5px`, Description Center X: `640.5px`.
+    - Spacing gap: `8px`. Illustration size: `64px × 32px`.
+    - Card wrapper / border: `false`.
+    - Bottom toolbar collision: `false` (gap > 250px).
+    - Screenshot: `canvas_empty_crop_1280x800.png`.
+  - **1024 × 768**:
+    - Canvas area: `x: 264px`, `width: 496px`, `height: 768px`. Canvas Center X: `512px`.
+    - Illustration Center X: `512.0px`, Title Center X: `511.5px`, Description Center X: `512.5px`.
+    - Spacing gap: `8px`. Illustration size: `64px × 32px`.
+    - Card wrapper / border: `false`.
+    - Bottom toolbar collision: `false` (gap > 230px).
+    - Screenshot: `canvas_empty_crop_1024x768.png`.
+
+### 4. Graphify & Headroom Actual-Use Section (Rule 10 & 11)
+1. **Graphify**:
+   - Pre-implementation query: `graphify query "canvas viewport empty state"` identified `CanvasViewport()` in `src/components/layout/canvas-viewport.tsx` and its relationship with `CanvasControlDock` and `StudioContext`.
+   - Post-implementation update: `pnpm graphify:update` updated AST graph to 4,024 nodes, 10,610 edges, and 135 communities.
+2. **Headroom**:
+   - Checked proxy at `http://127.0.0.1:8787/health`.
+   - Proxy responded with `status: unhealthy`, `ready: false` (local memory backend uninitialized, kompress degraded).
+   - No Headroom proxy usage, compression ratios, or token savings are claimed.
+3. **Known Limitations**:
+   - None. The canvas empty state matches Figma node 137:6167 with 100% fidelity.
