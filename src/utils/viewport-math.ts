@@ -97,7 +97,7 @@ export function imageToScreen(
   };
 }
 
-export function clampInteractiveZoom(zoom: number, minZoom = 25, maxZoom = 800): number {
+export function clampInteractiveZoom(zoom: number, minZoom = 10, maxZoom = 800): number {
   const z = sanitizeNumber(zoom, 100);
   return Math.max(minZoom, Math.min(maxZoom, z));
 }
@@ -139,7 +139,7 @@ export function calculateFocalZoom(
 
   return {
     newZoom,
-    newPanX: sanitizeNumber(Math.round(newPanX), cPanX),
-    newPanY: sanitizeNumber(Math.round(newPanY), cPanY),
+    newPanX: sanitizeNumber(newPanX, cPanX),
+    newPanY: sanitizeNumber(newPanY, cPanY),
   };
 }

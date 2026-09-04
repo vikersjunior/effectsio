@@ -19,7 +19,7 @@ import {
 import { Button, Separator, Tooltip, TooltipTrigger, TooltipContent } from "../ui";
 import { useStudioStore } from "../../context/studio-context";
 import { executeEffectStack } from "../../effects/engine";
-import { calculateFitZoom, calculateFocalZoom, sanitizeNumber } from "../../utils/viewport-math";
+import { calculateFitZoom, calculateFocalZoom, clampInteractiveZoom, sanitizeNumber } from "../../utils/viewport-math";
 import { renderBackgroundToCanvas } from "../../export/image-encoder";
 import { createWebGL2Context } from "../../rendering/webgl/webgl-context";
 import { GPUEffectPipeline, canExecuteStackOnGPU } from "../../rendering/webgl/webgl-effect-pipeline";
@@ -680,7 +680,14 @@ export function CanvasViewport({
       const mouseY = e.clientY - rect.top;
 
       const isPinch = e.ctrlKey || e.metaKey;
-      const zoomFactor = isPinch ? 1 - e.deltaY * 0.01 : e.deltaY < 0 ? 1.15 : 0.85;
+      let delta = e.deltaY;
+      if (e.deltaMode === 1) delta *= 16;
+      else if (e.deltaMode === 2) delta *= 100;
+
+      // Continuous exponential zoom factor: symmetric, smooth, proportional to scroll delta
+      const clampedDelta = Math.max(-120, Math.min(120, delta));
+      const sensitivity = isPinch ? 0.008 : 0.0018;
+      const zoomFactor = Math.exp(-clampedDelta * sensitivity);
 
       const currentTransientZoom = transientZoomRef.current;
       const currentTransientPan = transientPanRef.current;
@@ -689,7 +696,7 @@ export function CanvasViewport({
       const asset = activeAssetRef.current;
 
       if (!asset) {
-        const clampedZoom = Math.min(1000, Math.max(10, Math.round(targetZoom)));
+        const clampedZoom = clampInteractiveZoom(targetZoom);
         transientZoomRef.current = clampedZoom;
         requestDraw();
       } else {
@@ -708,8 +715,8 @@ export function CanvasViewport({
 
         transientZoomRef.current = result.newZoom;
         transientPanRef.current = {
-          panX: Math.round(result.newPanX),
-          panY: Math.round(result.newPanY),
+          panX: result.newPanX,
+          panY: result.newPanY,
         };
         requestDraw();
       }
@@ -725,9 +732,9 @@ export function CanvasViewport({
         const currentPY = transientPanRef.current.panY;
         setViewport((prev) => ({
           ...prev,
-          zoom: currentZ,
-          panX: currentPX,
-          panY: currentPY,
+          zoom: Math.round(currentZ * 10) / 10,
+          panX: Math.round(currentPX),
+          panY: Math.round(currentPY),
           fitMode: "custom",
         }));
       }
@@ -744,9 +751,9 @@ export function CanvasViewport({
         const finalPY = transientPanRef.current.panY;
         setViewport((prev) => ({
           ...prev,
-          zoom: finalZ,
-          panX: finalPX,
-          panY: finalPY,
+          zoom: Math.round(finalZ * 10) / 10,
+          panX: Math.round(finalPX),
+          panY: Math.round(finalPY),
           fitMode: "custom",
         }));
       }, 120);

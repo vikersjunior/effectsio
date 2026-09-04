@@ -786,10 +786,10 @@
     "semantic_hash": "da14c372fe4b7f952ff7712c4390abe6"
   },
   "src/components/layout/canvas-viewport.tsx": {
-    "mtime": 1788525577.5,
-    "seen": 1788525852.931499,
-    "ast_hash": "1f2f40559444ecf37d8896ac884264dd",
-    "semantic_hash": "1f2f40559444ecf37d8896ac884264dd"
+    "mtime": 1788530286.75,
+    "seen": 1788530403.812073,
+    "ast_hash": "7086bb8faa735f71ab2408b54f5d65d5",
+    "semantic_hash": "7086bb8faa735f71ab2408b54f5d65d5"
   },
   "src/components/layout/index.ts": {
     "mtime": 1788443342.29,
@@ -1812,16 +1812,16 @@
     "semantic_hash": "e3964cb44d773618615641aca86ca6b7"
   },
   "src/utils/viewport-math.test.ts": {
-    "mtime": 1787777611.22,
-    "seen": 1788342347.3277051,
-    "ast_hash": "26756b247d3240811558b346f6ed770e",
-    "semantic_hash": "26756b247d3240811558b346f6ed770e"
+    "mtime": 1788530252.59,
+    "seen": 1788530403.875916,
+    "ast_hash": "f6c85b7bc3ee2523e0b5283cf5284b3e",
+    "semantic_hash": "f6c85b7bc3ee2523e0b5283cf5284b3e"
   },
   "src/utils/viewport-math.ts": {
-    "mtime": 1787777606.26,
-    "seen": 1788342347.3277068,
-    "ast_hash": "060ccb98edf02312fb8bdbd97a17fe00",
-    "semantic_hash": "060ccb98edf02312fb8bdbd97a17fe00"
+    "mtime": 1788530242.3,
+    "seen": 1788530403.875923,
+    "ast_hash": "28b9865fde333811be5280822fd92f44",
+    "semantic_hash": "28b9865fde333811be5280822fd92f44"
   },
   "tsconfig.json": {
     "mtime": 1787252985.56,

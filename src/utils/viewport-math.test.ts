@@ -51,8 +51,10 @@ describe("viewport-math unit tests & stability guards", () => {
     expect(screenPt.y).toBeCloseTo(screenY, 5);
   });
 
-  it("clampInteractiveZoom clamps manual zoom strictly to 25%-800%", () => {
-    expect(clampInteractiveZoom(10)).toBe(25);
+  it("clampInteractiveZoom clamps manual zoom strictly to 10%-800%", () => {
+    expect(clampInteractiveZoom(5)).toBe(10);
+    expect(clampInteractiveZoom(10)).toBe(10);
+    expect(clampInteractiveZoom(25)).toBe(25);
     expect(clampInteractiveZoom(500)).toBe(500);
     expect(clampInteractiveZoom(1000)).toBe(800);
     expect(clampInteractiveZoom(NaN)).toBe(100);

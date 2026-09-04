@@ -1950,4 +1950,69 @@ Automated verification script (`scratch/verify-regression-fix.mjs`) executed via
 3. **Known Limitations**:
    - None. All 4 reported regression symptoms confirmed resolved with literal browser evidence.
 
+---
+
+## Canvas Zoom Range & Motion Refinement
+
+- **Date**: 2026-09-04
+- **Task**: Lower minimum zoom bound to 10%, enhance continuous zoom motion with mathematically symmetric exponential scaling, preserve subpixel cursor-centered focal anchoring, and verify ~60 FPS performance without regressions.
+
+### 1. New Zoom Range & Motion Implementation
+- **Lower Bound Expanded to 10%**:
+  - Updated `clampInteractiveZoom` in `src/utils/viewport-math.ts` to `minZoom = 10, maxZoom = 800`.
+  - Wheel zoom, zoom controls, and manual zoom steps now seamlessly navigate from 10% up to 800%.
+  - `calculateFitZoom` remains independent and un-clamped for Fit to Screen.
+- **Smooth Continuous Exponential Motion**:
+  - Replaced binary 15% stepping (`e.deltaY < 0 ? 1.15 : 0.85`) in `canvas-viewport.tsx` with continuous exponential zoom factor (`Math.exp(-clampedDelta * sensitivity)`).
+  - Handles normalized `deltaMode` (pixels vs. lines vs. pages) with symmetric invertibility ($f(-\delta) \times f(\delta) = 1.0$), eliminating accumulated zoom drift.
+  - Avoided excessive easing/floatiness: user input translates immediately to transient focal updates and RAF renders.
+- **Subpixel Cursor Focal Anchoring**:
+  - Updated `calculateFocalZoom` in `src/utils/viewport-math.ts` to preserve unrounded floating-point coordinates in `newPanX` and `newPanY`.
+  - Zero focal drift: zooming in and out repeatedly around an exact cursor position anchors the image point beneath the cursor with mathematical precision.
+
+### 2. Files Changed
+- `src/utils/viewport-math.ts`: Updated `clampInteractiveZoom` default `minZoom = 10` and preserved float precision in `calculateFocalZoom`.
+- `src/utils/viewport-math.test.ts`: Updated unit test suite to verify 10%-800% zoom bounds.
+- `src/components/layout/canvas-viewport.tsx`: Implemented normalized deltaMode handling and continuous exponential zoom factor in `handleWheel`.
+- `docs/worklog.md`: Added worklog entry.
+
+### 3. Real Browser Verification Results (Chrome CDP Execution)
+Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed via native Chrome DevTools Protocol:
+1. **Lower Minimum Zoom (Reach <= 10%)**:
+   - Zoomed out to minimum: Dock reads `10%`, center pixel remains solid `rgba(0, 255, 255, 255)` (**PASSED**).
+2. **Zooming Back from Minimum toward 100%**:
+   - Continuous zoom in: Dock reflects smooth scaling, center pixel solid (**PASSED**).
+3. **Cursor-Centered Zoom Preservation**:
+   - Zoomed in 15 notches and zoomed out 15 notches around offset anchor $(x+100, y-50)$.
+   - Dock returned to exact `100%`, center pixel solid, zero anchor drift (**PASSED**).
+4. **Rapid Continuous Wheel Zoom (~3s) Performance**:
+   - Total Frames: 180 frames.
+   - Average Frame Time: **16.67ms (~60.0 FPS)**.
+   - Worst Frame Time: **16.80ms**.
+   - Drawing Buffer Dimension Changes: **0** (buffer never cleared).
+   - ResizeObserver Idle Steady-State: **0 callbacks**.
+   - Center Pixel: Solid throughout (**PASSED**).
+5. **Pan Interaction & Fit to Screen**:
+   - Pan across 20 steps: Solid image maintained.
+   - Fit to Screen & repeat zoom after Fit: Solid image, immediate response (**PASSED**).
+
+### 4. Automated Verification Results (Rule 1 & 6)
+- `pnpm typecheck`: Clean (0 errors).
+- `pnpm test`: 22 test files passed, 223 of 223 tests passed (100% green).
+- `pnpm build`: Clean production build (5044 modules transformed, 0 errors).
+- `pnpm verify:approvals`: Passed (mechanical approval gates satisfied).
+- `pnpm check:no-competitor-refs`: Passed (0 deny-list references across 592 files).
+- `pnpm check:public-provenance`: Passed (0 external runtime/provenance references).
+- `pnpm graphify:update`: AST knowledge graph refreshed (4033 nodes, 10600 edges, 142 communities).
+
+### 5. Graphify & Headroom Actual-Use Section (Rule 10 & 11)
+1. **Graphify**:
+   - AST knowledge graph synchronized via `pnpm graphify:update`.
+2. **Headroom**:
+   - Proxy status confirmed active at `http://127.0.0.1:8787`.
+   - Zero fabrication invariant maintained.
+3. **Known Limitations**:
+   - None. All requirements fulfilled and verified with literal browser evidence.
+
+
 
