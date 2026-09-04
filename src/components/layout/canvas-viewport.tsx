@@ -323,8 +323,9 @@ export function CanvasViewport({
             ctx.restore();
           }
 
-          // 2. Draw Image Shadow (if framing padding > 0 or default shadow)
-          if (padding > 0 && shadowOpacity > 0 && shadowBlur > 0) {
+          // 2. Draw Image Shadow (if framing padding > 0 or background is added)
+          const hasVisibleBg = activeBackground && activeBackground.type !== "transparent";
+          if ((padding > 0 || hasVisibleBg) && shadowOpacity > 0 && shadowBlur > 0) {
             ctx.save();
             ctx.shadowColor = `rgba(0, 0, 0, ${shadowOpacity})`;
             ctx.shadowBlur = shadowBlur / scale;
@@ -340,11 +341,12 @@ export function CanvasViewport({
               ctx.drawImage(imgSource, drawX, drawY, w, h);
             }
             ctx.restore();
-          } else if (padding === 0) {
+          } else {
             ctx.shadowColor = "transparent";
             ctx.shadowBlur = 0;
             ctx.shadowOffsetY = 0;
           }
+
 
           // 3. Draw Image Bitmap (with optional corner radius clipping)
           ctx.save();

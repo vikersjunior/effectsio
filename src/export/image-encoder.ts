@@ -299,12 +299,14 @@ export async function encodeImageDataToBlob(
 
       ctx.save();
 
-      // Render drop shadow if framing padding is active
-      if (padding > 0 && shadowOpacity > 0 && shadowBlur > 0) {
+      // Render drop shadow if framing padding is active or background is active
+      const hasVisibleBg = background && background.type !== "transparent";
+      if ((padding > 0 || hasVisibleBg) && shadowOpacity > 0 && shadowBlur > 0) {
         ctx.shadowColor = `rgba(0, 0, 0, ${shadowOpacity})`;
         ctx.shadowBlur = shadowBlur;
         ctx.shadowOffsetY = shadowBlur / 2;
       }
+
 
       // Clip image corners if borderRadius is active
       if (borderRadius > 0) {

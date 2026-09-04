@@ -441,7 +441,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
       </div>
 
       {/* 5 Background Type Toolbar (Figma 113:4657) */}
-      <div className="flex items-center justify-between px-3.5 py-2 border-b border-[color:var(--border)] bg-[color:color-mix(in_oklab,var(--background)_40%,transparent)] shrink-0">
+      <div className="flex items-center justify-between px-3.5 py-2 border-b border-[color:var(--border)] shrink-0">
         {/* 1. Alpha */}
         <Tooltip>
           <TooltipTrigger
@@ -543,16 +543,27 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
               {/* Full-width Border Divider spanning to the edges */}
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
 
-              {/* Sliders Section: Padding */}
-              <SliderControl
-                name="Padding"
-                value={activeBackground.padding ?? 0}
-                min={0}
-                max={120}
-                step={1}
-                unit="px"
-                onValueChange={(val) => updateActiveBackground({ padding: val })}
-              />
+              {/* Sliders Section: Padding & Shadow */}
+              <div className="flex flex-col gap-3">
+                <SliderControl
+                  name="Padding"
+                  value={activeBackground.padding ?? 0}
+                  min={0}
+                  max={120}
+                  step={1}
+                  unit="px"
+                  onValueChange={(val) => updateActiveBackground({ padding: val })}
+                />
+                <SliderControl
+                  name="Shadow"
+                  value={Math.round((activeBackground.shadowOpacity ?? 0.4) * 100)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                  onValueChange={(val) => updateActiveBackground({ shadowOpacity: val / 100 })}
+                />
+              </div>
             </div>
           )}
 
@@ -579,16 +590,27 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
               {/* Full-width Border Divider spanning to the edges */}
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
 
-              {/* Sliders Section: Padding */}
-              <SliderControl
-                name="Padding"
-                value={activeBackground.padding ?? 0}
-                min={0}
-                max={120}
-                step={1}
-                unit="px"
-                onValueChange={(val) => updateActiveBackground({ padding: val })}
-              />
+              {/* Sliders Section: Padding & Shadow */}
+              <div className="flex flex-col gap-3">
+                <SliderControl
+                  name="Padding"
+                  value={activeBackground.padding ?? 0}
+                  min={0}
+                  max={120}
+                  step={1}
+                  unit="px"
+                  onValueChange={(val) => updateActiveBackground({ padding: val })}
+                />
+                <SliderControl
+                  name="Shadow"
+                  value={Math.round((activeBackground.shadowOpacity ?? 0.4) * 100)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                  onValueChange={(val) => updateActiveBackground({ shadowOpacity: val / 100 })}
+                />
+              </div>
             </div>
           )}
 
@@ -752,16 +774,27 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
               {/* Full-width Border Divider below Steps Section */}
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
 
-              {/* Sliders Section: Padding */}
-              <SliderControl
-                name="Padding"
-                value={activeBackground.padding ?? 0}
-                min={0}
-                max={120}
-                step={1}
-                unit="px"
-                onValueChange={(val) => updateActiveBackground({ padding: val })}
-              />
+              {/* Sliders Section: Padding & Shadow */}
+              <div className="flex flex-col gap-3">
+                <SliderControl
+                  name="Padding"
+                  value={activeBackground.padding ?? 0}
+                  min={0}
+                  max={120}
+                  step={1}
+                  unit="px"
+                  onValueChange={(val) => updateActiveBackground({ padding: val })}
+                />
+                <SliderControl
+                  name="Shadow"
+                  value={Math.round((activeBackground.shadowOpacity ?? 0.4) * 100)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                  onValueChange={(val) => updateActiveBackground({ shadowOpacity: val / 100 })}
+                />
+              </div>
             </div>
           )}
 
@@ -811,7 +844,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
               {/* Full-width Border Divider spanning to the edges */}
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
 
-              {/* Sliders Section: Dot Spacing and Padding */}
+              {/* Sliders Section: Dot Spacing, Padding & Shadow */}
               <div className="flex flex-col gap-3">
                 <SliderControl
                   name="Dot Spacing"
@@ -830,6 +863,15 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   step={1}
                   unit="px"
                   onValueChange={(val) => updateActiveBackground({ padding: val })}
+                />
+                <SliderControl
+                  name="Shadow"
+                  value={Math.round((activeBackground.shadowOpacity ?? 0.4) * 100)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                  onValueChange={(val) => updateActiveBackground({ shadowOpacity: val / 100 })}
                 />
               </div>
             </div>
@@ -881,7 +923,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
               {/* Full-width Border Divider spanning to the edges */}
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
 
-              {/* Sliders Section: Grid Spacing and Padding */}
+              {/* Sliders Section: Grid Spacing, Padding & Shadow */}
               <div className="flex flex-col gap-3">
                 <SliderControl
                   name="Grid Spacing"
@@ -900,6 +942,15 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   step={1}
                   unit="px"
                   onValueChange={(val) => updateActiveBackground({ padding: val })}
+                />
+                <SliderControl
+                  name="Shadow"
+                  value={Math.round((activeBackground.shadowOpacity ?? 0.4) * 100)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                  onValueChange={(val) => updateActiveBackground({ shadowOpacity: val / 100 })}
                 />
               </div>
             </div>
