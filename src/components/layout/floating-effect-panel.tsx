@@ -10,9 +10,12 @@ import {
   ColorControl,
   BooleanControl,
   ScrollFade,
+  GradientControl,
+  type GradientStop,
 } from '../ui';
 import { useStudioStore } from '../../context/studio-context';
 import { getEffectDefinition } from '../../effects/registry';
+import { parseStopPosition } from '../ui/controls/gradient/gradient-control-utils';
 
 export function FloatingEffectPanel(): React.JSX.Element | null {
   const {
@@ -65,12 +68,63 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     }
   }, [selectedInstance?.instanceId, getDefaultPosition]);
 
-  if (!activeAsset || !activeImageId || !selectedInstance) {
+  const definition = selectedInstance
+    ? getEffectDefinition(selectedInstance.effectId)
+    : undefined;
+  const gradientConfig = definition?.gradientColorParams;
+  const startColor =
+    gradientConfig && selectedInstance
+      ? String(
+          selectedInstance.parameters[gradientConfig.startColorParam] ??
+            definition?.defaultParameters[gradientConfig.startColorParam] ??
+            "#0f172a"
+        )
+      : "";
+  const endColor =
+    gradientConfig && selectedInstance
+      ? String(
+          selectedInstance.parameters[gradientConfig.endColorParam] ??
+            definition?.defaultParameters[gradientConfig.endColorParam] ??
+            "#38bdf8"
+        )
+      : "";
+
+  const shadowPos =
+    gradientConfig?.startPositionParam && selectedInstance
+      ? typeof selectedInstance.parameters[gradientConfig.startPositionParam] === "number"
+        ? Number(selectedInstance.parameters[gradientConfig.startPositionParam])
+        : Number(definition?.defaultParameters[gradientConfig.startPositionParam] ?? 0)
+      : 0;
+  const highlightPos =
+    gradientConfig?.endPositionParam && selectedInstance
+      ? typeof selectedInstance.parameters[gradientConfig.endPositionParam] === "number"
+        ? Number(selectedInstance.parameters[gradientConfig.endPositionParam])
+        : Number(definition?.defaultParameters[gradientConfig.endPositionParam] ?? 100)
+      : 100;
+
+  const gradientStops: readonly GradientStop[] = React.useMemo(() => {
+    if (!gradientConfig) return [];
+    return [
+      { color: startColor, position: `${shadowPos}%`, opacity: 100 },
+      { color: endColor, position: `${highlightPos}%`, opacity: 100 },
+    ];
+  }, [gradientConfig, startColor, endColor, shadowPos, highlightPos]);
+
+  const parametersToRender = React.useMemo(() => {
+    if (!definition) return [];
+    if (!gradientConfig) return definition.parameters;
+    return definition.parameters.filter(
+      (p) =>
+        p.name !== gradientConfig.startColorParam &&
+        p.name !== gradientConfig.endColorParam &&
+        p.name !== gradientConfig.startPositionParam &&
+        p.name !== gradientConfig.endPositionParam
+    );
+  }, [definition, gradientConfig]);
+
+  if (!activeAsset || !activeImageId || !selectedInstance || !definition) {
     return null;
   }
-
-  const definition = getEffectDefinition(selectedInstance.effectId);
-  if (!definition) return null;
 
   const handleClose = () => {
     if (activeImageId) {
@@ -193,7 +247,61 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
         containerClassName="flex-1 min-h-0"
       >
         <div className="flex flex-col gap-3.5">
-          {definition.parameters.map((schema) => {
+          {gradientConfig && (
+            <GradientControl
+              name={gradientConfig.label ?? "Gradient"}
+              mode="tonal-ramp"
+              stops={gradientStops}
+              stopLabels={[
+                gradientConfig.startLabel ?? "Shadow",
+                gradientConfig.endLabel ?? "Highlight",
+              ]}
+              onReverse={() => {
+                if (activeImageId && selectedInstance) {
+                  updateInstanceParameters(
+                    activeImageId,
+                    selectedInstance.instanceId,
+                    {
+                      [gradientConfig.startColorParam]: endColor,
+                      [gradientConfig.endColorParam]: startColor,
+                    }
+                  );
+                }
+              }}
+              onValueChange={({ stops: nextStops }) => {
+                if (activeImageId && selectedInstance) {
+                  const nextStart = nextStops[0]?.color;
+                  const nextEnd = nextStops[nextStops.length - 1]?.color;
+                  const nextStartPos =
+                    nextStops[0]?.position !== undefined
+                      ? Math.round(parseStopPosition(nextStops[0].position) * 100)
+                      : undefined;
+                  const nextEndPos =
+                    nextStops[nextStops.length - 1]?.position !== undefined
+                      ? Math.round(parseStopPosition(nextStops[nextStops.length - 1].position) * 100)
+                      : undefined;
+
+                  const updates: Record<string, unknown> = {};
+                  if (nextStart) updates[gradientConfig.startColorParam] = nextStart;
+                  if (nextEnd) updates[gradientConfig.endColorParam] = nextEnd;
+                  if (gradientConfig.startPositionParam && nextStartPos !== undefined) {
+                    updates[gradientConfig.startPositionParam] = nextStartPos;
+                  }
+                  if (gradientConfig.endPositionParam && nextEndPos !== undefined) {
+                    updates[gradientConfig.endPositionParam] = nextEndPos;
+                  }
+
+                  updateInstanceParameters(
+                    activeImageId,
+                    selectedInstance.instanceId,
+                    updates
+                  );
+                }
+              }}
+            />
+          )}
+
+          {parametersToRender.map((schema) => {
             const paramName = schema.name;
             const currentValue =
               selectedInstance.parameters[paramName] !== undefined

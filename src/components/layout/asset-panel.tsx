@@ -11,7 +11,7 @@ import {
   CaretDownIcon,
   CaretUpIcon,
 } from '@phosphor-icons/react';
-import { Button, Input, ScrollFade, PanelSurface } from '../ui';
+import { Button, Input, ScrollFade, PanelSurface, ICON_SIZES } from '../ui';
 import { cn } from '../ui/lib/utils';
 import { selectedAssetRingClassName } from '../ui/primitives/selection-state';
 import { useStudioStore } from '../../context/studio-context';
@@ -134,9 +134,9 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
           onClick={() => fileInputRef.current?.click()}
           title="Import media"
           aria-label="Import media"
-          className="hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+          className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] [&_svg]:!size-4"
         >
-          <PlusIcon size={14} className="shrink-0 !size-3.5" />
+          <PlusIcon size={ICON_SIZES.md} className="shrink-0" />
         </Button>
       </div>
 

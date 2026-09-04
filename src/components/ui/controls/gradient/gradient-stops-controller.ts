@@ -264,7 +264,9 @@ export function useGradientStopsController(
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.focus();
-    event.currentTarget.setPointerCapture(event.pointerId);
+    try {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    } catch {}
     dragHistoryGroupRef.current = createControlHistoryGroupId(
       `gradient:${options.name}`,
     );

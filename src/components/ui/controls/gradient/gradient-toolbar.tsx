@@ -1,4 +1,5 @@
 import {
+  Button,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -11,13 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../primitives";
+import { ArrowsLeftRightIcon } from "@phosphor-icons/react";
 import * as React from "react";
 import type { GradientType } from "../control-types";
 import { ControlFieldLabel } from "../../control-layout";
+import { ICON_SIZES } from "../../lib/icon-sizes";
 import {
   gradientTypeOptions,
   normalizeGradientAngle,
 } from "./gradient-control-utils";
+
+export type GradientControlMode = "spatial" | "tonal-ramp";
 
 function GradientTypeSelect({
   onTypeChange,
@@ -58,12 +63,16 @@ export function GradientToolbar({
   onAngleChange,
   onTypeChange,
   type,
+  mode = "spatial",
+  onReverse,
 }: {
   angle: number;
   name: string;
   onAngleChange: (nextAngle: number) => void;
   onTypeChange: (nextType: GradientType) => void;
   type: GradientType;
+  mode?: GradientControlMode;
+  onReverse?: () => void;
 }): React.JSX.Element {
   const [angleDraft, setAngleDraft] = React.useState<string | null>(null);
   const angleBeforeEditRef = React.useRef(angle);
@@ -94,6 +103,31 @@ export function GradientToolbar({
     }
 
     setAngleDraft(null);
+  }
+
+  if (mode === "tonal-ramp") {
+    return (
+      <div
+        className="flex items-center justify-between w-full h-7 mb-0.5"
+        data-slot="gradient-toolbar-ramp"
+      >
+        <span className="text-xs font-medium text-[color:var(--foreground)]">
+          {name}
+        </span>
+        {onReverse && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={onReverse}
+            title="Reverse colors"
+            aria-label="Reverse gradient"
+            className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:var(--secondary)] transition-colors cursor-pointer [&_svg]:!size-4"
+          >
+            <ArrowsLeftRightIcon size={ICON_SIZES.md} />
+          </Button>
+        )}
+      </div>
+    );
   }
 
   return (

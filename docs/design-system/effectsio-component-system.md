@@ -302,6 +302,15 @@ Compact panel action.
 
 Page-level layout components must use these where their semantic roles match.
 
+#### Icon Sizing Rule (`ICON_SIZES`)
+Icons used within `Button`, `PanelIconButton`, or control headers must follow the canonical EffectsIO icon sizing standard (`src/components/ui/lib/icon-sizes.ts`):
+- `ICON_SIZES.micro` (11px): Micro actions & clear buttons
+- `ICON_SIZES.xs` (12px) / `ICON_SIZES.compact` (13px): Input accessories & contextual help
+- `ICON_SIZES.sm` (14px): Inline controls & modal close triggers
+- `ICON_SIZES.md` (16px): Shell & panel actions (headers, row actions, reset, reverse)
+- `ICON_SIZES.lg` (18px): Canvas dock viewport controls
+
+
 ---
 
 ## 13. Control Layout

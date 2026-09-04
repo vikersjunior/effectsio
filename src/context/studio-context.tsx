@@ -709,7 +709,7 @@ export function StudioProvider({
           clearTimeout(debounceTimersRef.current[timerKey]);
         }
         debounceTimersRef.current[timerKey] = setTimeout(() => {
-          dbSaveEffectStack(assetId, nextStack).catch(console.error);
+          Promise.resolve(dbSaveEffectStack(assetId, nextStack)).catch(console.error);
         }, 500);
 
         return {
@@ -1005,7 +1005,7 @@ export function StudioProvider({
           clearTimeout(debounceTimersRef.current[timerKey]);
         }
         debounceTimersRef.current[timerKey] = setTimeout(() => {
-          dbSaveBackground(activeImageId, nextBg).catch(console.error);
+          Promise.resolve(dbSaveBackground(activeImageId, nextBg)).catch(console.error);
         }, 500);
 
         return {

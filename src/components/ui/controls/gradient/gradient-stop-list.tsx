@@ -20,8 +20,10 @@ import {
   parseStopPosition,
   type IndexedGradientStop,
 } from "./gradient-control-utils";
+import type { GradientControlMode } from "./gradient-toolbar";
 import { ColorValueControl } from "../color";
 import { ControlFieldLabel } from "../../control-layout";
+import { ICON_SIZES } from "../../lib/icon-sizes";
 
 function GradientStopsHeader({
   canAdd,
@@ -41,7 +43,7 @@ function GradientStopsHeader({
         type="button"
         variant="ghost"
       >
-        <PlusIcon size={12} />
+        <PlusIcon size={ICON_SIZES.sm} />
       </Button>
     </div>
   );
@@ -53,12 +55,14 @@ function GradientStopColorControls({
   stop,
   stopLabel,
   stopName,
+  showOpacity = true,
 }: {
   onColorChange: (nextColor: string) => void;
   onOpacityChange: (nextOpacity: number) => void;
   stop: IndexedGradientStop;
   stopLabel: string;
   stopName: string;
+  showOpacity?: boolean;
 }): React.JSX.Element {
   return (
     <ColorValueControl
@@ -69,12 +73,14 @@ function GradientStopColorControls({
       nativeInputName={`${stopName}-native-color`}
       onColorChange={onColorChange}
     >
-      <GradientStopOpacityInput
-        onOpacityChange={onOpacityChange}
-        stop={stop}
-        stopLabel={stopLabel}
-        stopName={stopName}
-      />
+      {showOpacity ? (
+        <GradientStopOpacityInput
+          onOpacityChange={onOpacityChange}
+          stop={stop}
+          stopLabel={stopLabel}
+          stopName={stopName}
+        />
+      ) : null}
     </ColorValueControl>
   );
 }
@@ -335,7 +341,7 @@ function GradientStopRow({
               type="button"
               variant="ghost"
             >
-              <MinusIcon size={12} />
+              <MinusIcon size={ICON_SIZES.sm} />
             </Button>
           </div>
         </div>
@@ -353,6 +359,8 @@ export function GradientStopsList({
   onSelect,
   selectedIndex,
   stops,
+  mode = "spatial",
+  stopLabels,
 }: {
   onAdd: () => void;
   onColorChange: (index: number, nextColor: string) => void;
@@ -362,7 +370,51 @@ export function GradientStopsList({
   onSelect: (index: number) => void;
   selectedIndex: number | null;
   stops: readonly IndexedGradientStop[];
+  mode?: GradientControlMode;
+  stopLabels?: readonly string[];
 }): React.JSX.Element {
+  if (mode === "tonal-ramp") {
+    return (
+      <div
+        className="flex min-w-0 flex-col gap-2.5 w-full pt-1.5"
+        data-slot="gradient-stops-list-ramp"
+      >
+        {stops.map((stop) => {
+          const label =
+            stopLabels?.[stop.originalIndex] ??
+            (stop.originalIndex === 0 ? "Shadow" : "Highlight");
+
+          return (
+            <div
+              key={stop.originalIndex}
+              className="flex items-center justify-between gap-3"
+              data-slot="gradient-ramp-stop-row"
+              onClick={() => onSelect(stop.originalIndex)}
+            >
+              <span className="text-xs font-normal text-[color:var(--foreground)] w-16 shrink-0">
+                {label}
+              </span>
+              <div className="flex-1 min-w-0">
+                <GradientStopColorControls
+                  onColorChange={(nextColor) =>
+                    onColorChange(stop.originalIndex, nextColor)
+                  }
+                  onOpacityChange={(nextOpacity) =>
+                    onOpacityChange(stop.originalIndex, nextOpacity)
+                  }
+                  showOpacity={false}
+                  stop={stop}
+                  stopLabel={label}
+                  stopName={`tonal-stop-${label.toLowerCase()}`}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   const canAdd = stops.length < maxGradientStops;
   const canRemove = stops.length > minGradientStops;
 

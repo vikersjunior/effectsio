@@ -36,6 +36,7 @@ import {
   gradientTypeOptions,
   parseStopPosition,
 } from "../ui/controls/gradient/gradient-control-utils";
+import { GradientStopsTrack } from "../ui/controls/gradient/gradient-stops-track";
 
 function hexToRgba(hex: string, alpha = 1): string {
   const cleanHex = (hex || "#000000").replace(/^#/, "");
@@ -671,45 +672,24 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 </div>
               </div>
 
-              {/* Gradient Preview Strip with Real Interactive Draggable Stop Nodes */}
-              <div
-                ref={trackRef}
+              {/* Canonical Gradient Stops Track */}
+              <GradientStopsTrack
+                gradient={gradientCssString}
+                stops={stops.map((s, idx) => ({ ...s, originalIndex: idx }))}
+                trackRef={trackRef}
+                draggingIndex={activeDragStopIdx}
+                selectedIndex={null}
+                allowDrag={true}
+                allowAdd={stops.length < 8}
+                allowRemove={stops.length > 2}
                 onPointerDown={handleTrackPointerDown}
-                className="relative pt-3 pb-1 cursor-pointer select-none"
-              >
-                {/* Visual Track */}
-                <div
-                  className="h-6 w-full rounded-md border border-[color:var(--border)] shadow-xs overflow-hidden"
-                  style={{ background: gradientCssString }}
-                />
-
-                {/* Real interactive draggable stop nodes on track */}
-                {stops.map((stop, idx) => {
-                  const posPercent = Math.round(parseStopPosition(stop.position) * 100);
-                  const isDraggingThis = activeDragStopIdx === idx;
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      aria-label={`Gradient stop ${idx + 1}`}
-                      onPointerDown={(e) => handleStopPinPointerDown(idx, e)}
-                      onPointerMove={(e) => handleStopPinPointerMove(idx, e)}
-                      onPointerUp={(e) => handleStopPinPointerUp(idx, e)}
-                      onPointerCancel={(e) => handleStopPinPointerUp(idx, e)}
-                      className={`absolute top-1.5 -translate-x-1/2 size-4 rounded-[3px] border-2 border-white shadow-md transition-[box-shadow,transform] touch-none ${
-                        isDraggingThis ? "cursor-grabbing ring-2 ring-[color:var(--ring)] scale-110 z-20" : "cursor-grab hover:scale-105 z-10"
-                      }`}
-                      style={{
-                        left: `${posPercent}%`,
-                        backgroundColor: hexToRgba(
-                          stop.color,
-                          typeof stop.opacity === "number" ? stop.opacity / 100 : 1
-                        ),
-                      }}
-                    />
-                  );
-                })}
-              </div>
+                onStartDrag={(idx, e) => handleStopPinPointerDown(idx, e)}
+                onPinPointerMove={(idx, e) => handleStopPinPointerMove(idx, e)}
+                onPinPointerUp={(idx, e) => handleStopPinPointerUp(idx, e)}
+                onDragEnd={() => setActiveDragStopIdx(null)}
+                onRemoveStop={(idx) => handleRemoveStop(idx)}
+                onRemoveStopByKey={(idx) => handleRemoveStop(idx)}
+              />
 
               {/* Full-width Border Divider spanning to the edges */}
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />

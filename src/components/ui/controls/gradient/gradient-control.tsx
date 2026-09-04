@@ -1,7 +1,7 @@
 "use client";
 
 import type * as React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Field } from "../../primitives";
 import {
@@ -18,12 +18,17 @@ import {
 import { GradientStopsList } from "./gradient-stop-list";
 import { useGradientStopsController } from "./gradient-stops-controller";
 import { GradientStopsTrack } from "./gradient-stops-track";
-import { GradientToolbar } from "./gradient-toolbar";
+import { GradientToolbar, type GradientControlMode } from "./gradient-toolbar";
+
+export type { GradientControlMode };
 
 export type GradientControlProps = {
   angle?: number;
   gradientType?: GradientType;
   name?: string;
+  mode?: GradientControlMode;
+  stopLabels?: readonly string[];
+  onReverse?: () => void;
   onValueChange?: ControlValueChangeHandler<{
     angle: number;
     gradientType: GradientType;
@@ -36,6 +41,9 @@ export function GradientControl({
   angle: angleProp,
   gradientType: gradientTypeProp,
   name = "Gradient",
+  mode = "spatial",
+  stopLabels,
+  onReverse,
   onValueChange,
   stops,
 }: GradientControlProps): React.JSX.Element {
@@ -100,16 +108,30 @@ export function GradientControl({
     trackRef,
   });
 
+  const handleReverse = useCallback(() => {
+    if (onReverse) {
+      onReverse();
+      return;
+    }
+    const reversedStops = stops.map((stop, idx) => ({
+      ...stop,
+      color: stops[stops.length - 1 - idx]?.color ?? stop.color,
+    }));
+    handleValueChange({ angle, gradientType, stops: reversedStops });
+  }, [onReverse, stops, angle, gradientType, handleValueChange]);
+
   return (
     <Field className="min-w-0 !gap-[3px] w-full">
       <div
-        className="flex min-w-0 flex-col gap-3 w-full"
+        className="flex min-w-0 flex-col gap-2 w-full"
         data-slot="gradient-stops-control-main"
       >
         <div className="flex h-fit min-w-0 items-center justify-start w-full">
           <GradientToolbar
             angle={angle}
             name={name}
+            mode={mode}
+            onReverse={handleReverse}
             onAngleChange={controller.updateAngle}
             onTypeChange={controller.updateGradientType}
             type={gradientType}
@@ -117,6 +139,9 @@ export function GradientControl({
         </div>
         <div className="min-w-0 w-full">
           <GradientStopsTrack
+            allowAdd={mode !== "tonal-ramp"}
+            allowDrag={true}
+            allowRemove={mode !== "tonal-ramp"}
             draggingIndex={controller.draggingIndex}
             gradient={getGradientBackground(gradientType, stops, angle)}
             onDragEnd={() => controller.setDraggingIndex(null)}
@@ -124,6 +149,7 @@ export function GradientControl({
             onPointerMove={controller.handleTrackPointerMove}
             onRemoveStop={controller.handleStopDoubleClick}
             onRemoveStopByKey={controller.handleStopKeyDown}
+            onSelectStop={controller.selectStop}
             onStartDrag={controller.handleStartDrag}
             selectedIndex={controller.selectedIndex}
             stops={controller.indexedStops}
@@ -132,6 +158,7 @@ export function GradientControl({
         </div>
       </div>
       <GradientStopsList
+        mode={mode}
         onAdd={controller.addStop}
         onColorChange={(index, nextColor) =>
           controller.updateStop(index, { color: nextColor })
@@ -145,6 +172,7 @@ export function GradientControl({
         onRemove={controller.removeStop}
         onSelect={controller.selectStop}
         selectedIndex={controller.selectedIndex}
+        stopLabels={stopLabels}
         stops={controller.indexedStops}
       />
     </Field>

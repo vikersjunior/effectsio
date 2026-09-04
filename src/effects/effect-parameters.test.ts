@@ -68,8 +68,17 @@ describe("Effect Parameters & Rendering", () => {
       shadowColor: "#1e1b4b",
     });
 
+    const shiftedPositionOutput = duotoneEffect.render(sample, {
+      contrast: 1.0,
+      highlightColor: "#38bdf8",
+      shadowColor: "#0f172a",
+      shadowPosition: 40,
+      highlightPosition: 60,
+    });
+
     expect(highContrastOutput.data).not.toEqual(defaultOutput.data);
     expect(customColorOutput.data).not.toEqual(defaultOutput.data);
+    expect(shiftedPositionOutput.data).not.toEqual(defaultOutput.data);
   });
 
   it("modifies Posterize output with levels parameter", () => {

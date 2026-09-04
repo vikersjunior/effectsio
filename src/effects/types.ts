@@ -44,6 +44,16 @@ export interface EffectParameterSchema {
   options?: EffectParameterOption[];
 }
 
+export interface GradientColorParamsConfig {
+  startColorParam: string;
+  endColorParam: string;
+  startPositionParam?: string;
+  endPositionParam?: string;
+  startLabel?: string;
+  endLabel?: string;
+  label?: string;
+}
+
 export interface EffectDefinition<TParams = Record<string, unknown>> {
   id: EffectId;
   name: string;
@@ -52,5 +62,6 @@ export interface EffectDefinition<TParams = Record<string, unknown>> {
   parameters: readonly EffectParameterSchema[];
   parameterSchema?: readonly EffectParameterSchema[];
   defaultParameters: Record<string, unknown>;
+  gradientColorParams?: GradientColorParamsConfig;
   render: (imageData: ImageData, parameters?: TParams) => ImageData;
 }

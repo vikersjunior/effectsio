@@ -1,30 +1,12 @@
 "use client";
 
 import type * as React from "react";
-import { selectedItemBorderClassName } from "../../primitives/selection-state";
 import { cn } from "../../lib/utils";
 import {
-  formatStopPosition,
   getStopCssColor,
   parseStopPosition,
   type IndexedGradientStop,
 } from "./gradient-control-utils";
-
-const gradientStopPinEdgeInset = 2;
-
-function getGradientStopPinLeftPosition(position: number): string {
-  const stopPosition = formatStopPosition(position);
-  const pixelOffset = gradientStopPinEdgeInset * (1 - position * 2);
-
-  if (Math.abs(pixelOffset) < 0.01) {
-    return stopPosition;
-  }
-
-  const offsetOperator = pixelOffset > 0 ? "+" : "-";
-  const offsetValue = Number(Math.abs(pixelOffset).toFixed(2));
-
-  return `calc(${stopPosition} ${offsetOperator} ${offsetValue}px)`;
-}
 
 function GradientStopPin({
   isDragging,
@@ -32,62 +14,47 @@ function GradientStopPin({
   onDoubleClick,
   onKeyDown,
   onPointerDown,
+  onPointerMove,
+  onPointerUp,
   stop,
+  allowDrag = true,
 }: {
   isDragging: boolean;
   isSelected: boolean;
-  onDoubleClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
+  onDoubleClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
   onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onPointerMove?: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onPointerUp?: (event: React.PointerEvent<HTMLButtonElement>) => void;
   stop: IndexedGradientStop;
+  allowDrag?: boolean;
 }): React.JSX.Element {
   const stopPosition = parseStopPosition(stop.position);
+  const posPercent = Math.round(stopPosition * 100);
 
   return (
     <button
       aria-label={`Gradient stop ${stop.originalIndex + 1}`}
       aria-pressed={isSelected}
       className={cn(
-        "absolute top-1 z-10 flex touch-none -translate-x-1/2 cursor-grab flex-col items-center rounded-lg outline-none",
-        "active:cursor-grabbing",
-        isDragging && "cursor-grabbing",
+        "absolute top-1.5 -translate-x-1/2 size-4 rounded-[3px] border-2 border-white shadow-md transition-[box-shadow,transform] touch-none outline-none",
+        allowDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+        isDragging && allowDrag && "cursor-grabbing ring-2 ring-[color:var(--ring)] scale-110 z-20",
+        isSelected && !isDragging && "ring-2 ring-[color:var(--ring)] scale-105 z-20",
+        !isDragging && !isSelected && "hover:scale-105 z-10"
       )}
-      onDoubleClick={onDoubleClick}
-      onKeyDown={onKeyDown}
+      onDoubleClick={allowDrag ? onDoubleClick : undefined}
+      onKeyDown={allowDrag ? onKeyDown : undefined}
       onPointerDown={onPointerDown}
-      style={{ left: getGradientStopPinLeftPosition(stopPosition) }}
+      onPointerMove={allowDrag ? onPointerMove : undefined}
+      onPointerUp={allowDrag ? onPointerUp : undefined}
+      onPointerCancel={allowDrag ? onPointerUp : undefined}
+      style={{
+        left: `${posPercent}%`,
+        backgroundColor: getStopCssColor(stop),
+      }}
       type="button"
-    >
-      <span
-        className={cn(
-          "flex size-[22px] items-center justify-center rounded-md bg-[color:var(--muted)] shadow-[0_4px_7px_color-mix(in_oklab,var(--background)_30%,transparent)] transition-colors",
-          isSelected && "bg-[color:var(--accent)]",
-        )}
-      >
-        <span
-          aria-hidden="true"
-          className={cn(
-            "h-3.5 max-h-3.5 min-h-3.5 w-3.5 max-w-3.5 min-w-3.5 flex-none rounded-[4px] border border-[color:color-mix(in_oklab,var(--border)_10%,transparent)]",
-            isSelected && selectedItemBorderClassName,
-          )}
-          style={{ backgroundColor: getStopCssColor(stop) }}
-        />
-      </span>
-      <svg
-        aria-hidden="true"
-        className={cn(
-          "h-1 w-2.5 text-[color:var(--muted)] transition-colors",
-          isSelected && "text-[color:var(--accent)]",
-        )}
-        fill="none"
-        viewBox="0 0 10 4"
-      >
-        <path
-          d="M0 0H10L5.72 3.42Q5 4.08 4.28 3.42L0 0Z"
-          fill="currentColor"
-        />
-      </svg>
-    </button>
+    />
   );
 }
 
@@ -96,19 +63,33 @@ export function GradientStopsTrack({
   onDragEnd,
   onPointerDown,
   onPointerMove,
+  onPinPointerMove,
+  onPinPointerUp,
   onRemoveStop,
   onRemoveStopByKey,
   onStartDrag,
+  onSelectStop,
   selectedIndex,
   stops,
   trackRef,
   draggingIndex,
+  allowDrag = true,
+  allowAdd = true,
+  allowRemove = true,
 }: {
   gradient: string;
   draggingIndex: number | null;
   onDragEnd: () => void;
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
-  onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerMove?: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onPinPointerMove?: (
+    index: number,
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => void;
+  onPinPointerUp?: (
+    index: number,
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => void;
   onRemoveStop: (
     index: number,
     event: React.MouseEvent<HTMLButtonElement>,
@@ -121,21 +102,29 @@ export function GradientStopsTrack({
     index: number,
     event: React.PointerEvent<HTMLButtonElement>,
   ) => void;
+  onSelectStop?: (index: number) => void;
   selectedIndex: number | null;
   stops: readonly IndexedGradientStop[];
   trackRef: React.RefObject<HTMLDivElement | null>;
+  allowDrag?: boolean;
+  allowAdd?: boolean;
+  allowRemove?: boolean;
 }): React.JSX.Element {
   return (
     <div
       aria-label="Gradient stops track"
-      className="app-no-drag relative mt-1 h-12 w-full touch-none cursor-crosshair"
-      onPointerCancel={onDragEnd}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onDragEnd}
+      data-slot="gradient-stops-track"
+      className={cn(
+        "app-no-drag relative mt-1 h-10 w-full touch-none select-none",
+        allowAdd ? "cursor-crosshair" : "cursor-default"
+      )}
+      onPointerCancel={allowDrag ? onDragEnd : undefined}
+      onPointerDown={allowAdd ? onPointerDown : undefined}
+      onPointerMove={allowDrag ? onPointerMove : undefined}
+      onPointerUp={allowDrag ? onDragEnd : undefined}
       ref={trackRef}
     >
-      <div className="absolute inset-x-0 top-4 h-6 overflow-hidden rounded-md border border-[color:color-mix(in_oklab,var(--border)_10%,transparent)]">
+      <div className="absolute inset-x-0 top-3 h-6 overflow-hidden rounded-md border border-[color:color-mix(in_oklab,var(--border)_10%,transparent)] shadow-xs">
         <div
           aria-hidden="true"
           className="absolute inset-0 rounded-[inherit]"
@@ -144,12 +133,29 @@ export function GradientStopsTrack({
       </div>
       {stops.map((stop) => (
         <GradientStopPin
+          allowDrag={allowDrag}
           isDragging={draggingIndex === stop.originalIndex}
           isSelected={selectedIndex === stop.originalIndex}
           key={stop.originalIndex}
-          onDoubleClick={(event) => onRemoveStop(stop.originalIndex, event)}
-          onKeyDown={(event) => onRemoveStopByKey(stop.originalIndex, event)}
-          onPointerDown={(event) => onStartDrag(stop.originalIndex, event)}
+          onDoubleClick={(event) => allowRemove && onRemoveStop(stop.originalIndex, event)}
+          onKeyDown={(event) => allowRemove && onRemoveStopByKey(stop.originalIndex, event)}
+          onPointerDown={(event) => {
+            if (allowDrag) {
+              onStartDrag(stop.originalIndex, event);
+            } else {
+              onSelectStop?.(stop.originalIndex);
+            }
+          }}
+          onPointerMove={
+            onPinPointerMove
+              ? (event) => onPinPointerMove(stop.originalIndex, event)
+              : undefined
+          }
+          onPointerUp={
+            onPinPointerUp
+              ? (event) => onPinPointerUp(stop.originalIndex, event)
+              : undefined
+          }
           stop={stop}
         />
       ))}

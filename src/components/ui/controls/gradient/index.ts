@@ -1,7 +1,7 @@
 "use client";
 
 export { GradientControl } from "./gradient-control";
-export type { GradientControlProps } from "./gradient-control";
+export type { GradientControlProps, GradientControlMode } from "./gradient-control";
 export {
   getGradientBackground,
   getGradientAngle,

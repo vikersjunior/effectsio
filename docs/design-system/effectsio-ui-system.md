@@ -724,3 +724,19 @@ Consistency should come from:
 - canvas-first composition
 
 The objective is a unified EffectsIO experience, not visual uniformity for its own sake.
+
+---
+
+## 26. Icon Sizing Consistency Rule
+
+Use the canonical EffectsIO icon sizing conventions for shared UI actions. Equivalent icons at the same UI scale must use the same size. Do not introduce arbitrary icon dimensions for individual components. When Figma intentionally specifies a different size, follow Figma. Reuse existing icon components, tokens (`ICON_SIZES`), or variants whenever available.
+
+- **Micro (11px)**: Micro actions, input clear triggers, asset hover badges.
+- **Compact (12–13px)**: Input leading accessories, contextual help indicators.
+- **Small (14px)**: Inline dropdown triggers, modal close triggers.
+- **Medium (16px)**: Standard shell headers (+/−), panel actions (close, reset, reverse), row actions (eye, reorder).
+- **Large (18px)**: Canvas Viewport Dock primary tool controls.
+- **Extra Large / Hero (20–24px)**: Prominent modal headers, empty-state hero iconography.
+
+Hit areas (button bounds such as `size-6`, `size-7`, or `!size-8`) are decoupled from icon glyph sizes. A larger clickable hit area must not inflate the icon glyph beyond its canonical scale.
+

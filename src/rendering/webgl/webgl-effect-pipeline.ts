@@ -89,10 +89,14 @@ export const GPU_EFFECT_REGISTRY: Record<GPUEffectId, GPUEffectShaderDef> = {
       const contrast = typeof params?.contrast === "number" ? params.contrast : 1.0;
       const shadow = hexToNormalizedRgb(params?.shadowColor, "#0f172a");
       const highlight = hexToNormalizedRgb(params?.highlightColor, "#38bdf8");
+      const shadowPos = (typeof params?.shadowPosition === "number" ? params.shadowPosition : 0) / 100;
+      const highlightPos = (typeof params?.highlightPosition === "number" ? params.highlightPosition : 100) / 100;
 
       setUniform(gl, program, "u_contrast", { type: "1f", value: contrast });
       setUniform(gl, program, "u_shadowColor", { type: "3f", value: shadow });
       setUniform(gl, program, "u_highlightColor", { type: "3f", value: highlight });
+      setUniform(gl, program, "u_shadowPos", { type: "1f", value: shadowPos });
+      setUniform(gl, program, "u_highlightPos", { type: "1f", value: highlightPos });
       setUniform(gl, program, "u_time", { type: "1f", value: time });
     },
   },

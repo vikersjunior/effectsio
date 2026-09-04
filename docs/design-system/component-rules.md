@@ -200,3 +200,23 @@ EffectsIO uses its native component architecture, sizing, spacing, surfaces, bor
      - Help/Info tooltips in control layouts use `weight="fill"` (`<QuestionIcon weight="fill" />`).
      - Large empty-state dropzones use `weight="light"` (`<CloudArrowUpIcon weight="light" />`).
 3. **Export Naming**: All Phosphor React icons follow the `*Icon` convention (e.g., `CaretDownIcon`, `CheckIcon`, `SparkleIcon`, `PlusIcon`, `MinusIcon`, `ArrowCounterClockwiseIcon`, `DownloadSimpleIcon`, `TrashIcon`, `DotsSixVerticalIcon`, `SpinnerGapIcon`).
+4. **Canonical Icon Sizing Specification (`ICON_SIZES`)**:
+   EffectsIO establishes a centralized icon sizing convention to ensure cross-application visual polish. Icons representing the same semantic role at the same UI scale must use the same canonical size. Agents must import `ICON_SIZES` from `src/components/ui`:
+
+   | Token | Size (px) | Tailwind Class | Semantic UI Roles | Examples |
+   | :--- | :--- | :--- | :--- | :--- |
+   | `ICON_SIZES.micro` | `11px` | `size-[11px]` | Micro actions, clear input buttons, thumbnail hover badges | `<XIcon size={11} />`, `<TrashIcon size={11} />` |
+   | `ICON_SIZES.xs` | `12px` | `size-3` | Contextual help indicators, compact inline tags | `<QuestionIcon size={12} weight="fill" />` |
+   | `ICON_SIZES.compact` | `13px` | `size-[13px]` | Search input leading accessories, timeline micro transport | `<MagnifyingGlassIcon size={13} />` |
+   | `ICON_SIZES.sm` | `14px` | `size-3.5` | Inline controls, dropdown triggers, modal close triggers, stop item actions | `<CaretDownIcon size={14} />`, `<XIcon size={14} />` |
+   | `ICON_SIZES.md` | `16px` | `size-4` | Standard shell, section headers, row actions, panel toolbars | `<PlusIcon size={16} />`, `<MinusIcon size={16} />`, `<EyeIcon size={16} />`, `<ArrowsLeftRightIcon size={16} />` |
+   | `ICON_SIZES.lg` | `18px` | `size-[18px]` | Floating Canvas Viewport Dock action controls | `<HandIcon size={18} />`, `<MagicWandIcon size={18} />`, `<ArrowUUpLeftIcon size={18} />` |
+   | `ICON_SIZES.xl` | `20px` | `size-5` | Prominent modal headers, primary export triggers | `<DownloadSimpleIcon size={20} />` |
+   | `ICON_SIZES.hero` | `24px` | `size-6` | Empty-state dropzones, feature hero illustrations | `<CloudArrowUpIcon size={24} weight="light" />` |
+
+5. **Operational Sizing & Decoupling Guidelines**:
+   - **Semantic Equivalence Invariant**: If two controls perform the same type of action and exist at the same UI scale (e.g., Reverse gradient in Duotone vs. Background, or Section Header Plus in Effects vs. Assets), they must use the exact same icon size.
+   - **Hit Area vs. Glyph Decoupling**: Clickable button bounds (`size-6`, `size-7`, `!size-8`) are decoupled from icon glyph size. A larger hit area does not permit an arbitrarily inflated icon glyph.
+   - **Figma Authoritative Exception**: When a specific Figma node intentionally designates a distinct icon scale, Figma remains authoritative. Do not alter approved designs simply to force every icon into one size.
+   - **No Arbitrary Classes**: Avoid scattered ad-hoc styles (`w-[13px]`, `w-[15px]`, `!size-3.5` overrides). Always use `ICON_SIZES` and canonical `Button` size variants (`icon-xs`, `icon-sm`, `icon-md`).
+

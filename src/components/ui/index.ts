@@ -23,3 +23,4 @@ export {
 } from "./panel";
 export * from "./controls";
 export * from "./composites";
+export * from "./lib/icon-sizes";

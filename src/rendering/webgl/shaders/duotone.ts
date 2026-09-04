@@ -16,6 +16,8 @@ out vec4 fragColor;
 uniform sampler2D u_texture;
 uniform vec3 u_shadowColor;    // Normalized RGB [0..1]
 uniform vec3 u_highlightColor; // Normalized RGB [0..1]
+uniform float u_shadowPos;     // Normalized shadow threshold [0..1]
+uniform float u_highlightPos;  // Normalized highlight threshold [0..1]
 uniform float u_contrast;      // Gradient transition steepness (default 1.0)
 
 void main() {
@@ -24,10 +26,15 @@ void main() {
     // Luminance conversion (ITU-R BT.601)
     float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
 
+    // Positional threshold ramp
+    float range = u_highlightPos - u_shadowPos;
+    float t = abs(range) < 0.0001
+        ? step(u_shadowPos, gray)
+        : clamp((gray - u_shadowPos) / range, 0.0, 1.0);
+
     // Contrast curve via power-law
-    float t = gray;
     if (u_contrast != 1.0) {
-        t = clamp(pow(max(gray, 0.0001), u_contrast), 0.0, 1.0);
+        t = clamp(pow(max(t, 0.0001), u_contrast), 0.0, 1.0);
     }
 
     // Linear interpolation between shadow and highlight tones
