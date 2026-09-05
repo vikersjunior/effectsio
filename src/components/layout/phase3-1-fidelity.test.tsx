@@ -18,6 +18,9 @@ import { FloatingEffectPanel } from './floating-effect-panel';
 vi.mock('../../storage/db', () => ({
   loadHydratedProject: vi.fn().mockResolvedValue({
     assets: [],
+    frames: [],
+    activeFrameId: null,
+    activeLayerId: null,
     activeImageId: null,
     projectName: 'Project Name',
     effectStacks: {},
@@ -33,6 +36,10 @@ vi.mock('../../storage/db', () => ({
   dbSaveUserLook: vi.fn().mockResolvedValue(undefined),
   dbDeleteUserLook: vi.fn().mockResolvedValue(undefined),
   dbSaveSessionState: vi.fn().mockResolvedValue(undefined),
+  dbSaveFrame: vi.fn().mockResolvedValue(undefined),
+  dbSaveFrames: vi.fn().mockResolvedValue(undefined),
+  dbDeleteFrame: vi.fn().mockResolvedValue(undefined),
+  dbGetAllFrames: vi.fn().mockResolvedValue([]),
 }));
 
 describe('Phase 3.1: Figma Fidelity Workspace Components', () => {

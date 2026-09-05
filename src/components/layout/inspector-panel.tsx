@@ -41,6 +41,9 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
+  SliderControl,
+  StaticSelect,
+  SegmentedControl,
 } from "../ui";
 import { useStudioStore } from "../../context/studio-context";
 import { getEffectDefinition } from "../../effects/registry";
@@ -49,6 +52,27 @@ import { LooksBrowser } from "../looks/looks-browser";
 import { ExportModal } from "../export/export-modal";
 import type { EffectInstance } from "../../types/asset";
 import type { BackgroundType } from "../../types/look";
+import type { BlendMode, ImageLayer, GenerativeLayer } from "../../types/frame";
+
+const BLEND_MODE_OPTIONS = [
+  { value: "normal", label: "Normal" },
+  { value: "multiply", label: "Multiply" },
+  { value: "screen", label: "Screen" },
+  { value: "overlay", label: "Overlay" },
+  { value: "darken", label: "Darken" },
+  { value: "lighten", label: "Lighten" },
+  { value: "color-dodge", label: "Color Dodge" },
+  { value: "color-burn", label: "Color Burn" },
+  { value: "hard-light", label: "Hard Light" },
+  { value: "soft-light", label: "Soft Light" },
+  { value: "difference", label: "Difference" },
+  { value: "exclusion", label: "Exclusion" },
+] as const;
+
+const FIT_OPTIONS = [
+  { value: "contain", label: "Contain" },
+  { value: "cover", label: "Cover" },
+] as const;
 
 interface SortableEffectRowProps {
   instance: EffectInstance;
@@ -185,6 +209,10 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     setTheme,
     appliedLook,
     clearAppliedLook,
+    activeFrame,
+    activeLayerId,
+    activeLayer,
+    updateLayer,
   } = useStudioStore();
 
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
@@ -218,6 +246,13 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
       reorderEffectStack(activeImageId, oldIndex, newIndex);
     }
   };
+
+  const hasMultipleLayers = (activeFrame?.layers.length ?? 0) > 1;
+  const isImageLayerActive = activeLayer?.type === "image" || Boolean(activeAsset);
+  const isGenerativeLayerExplicitlyActive =
+    activeLayer?.type === "generative" &&
+    (hasActiveBackground || (hasMultipleLayers && activeLayerId === activeLayer.id));
+  const isPopulated = isImageLayerActive || isGenerativeLayerExplicitlyActive;
 
   return (
     <PanelSurface
@@ -343,7 +378,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
       </div>
 
       {/* 3. Panel Body: Empty State vs Animate vs Populated Stack */}
-      {!activeAsset ? (
+      {!isPopulated ? (
         /* Empty Inspector State (Figma node 10:920): Header -> Design/Animate -> Empty remaining space */
         <div className="flex-1 min-h-0" data-testid="empty-inspector-space" />
       ) : editorMode === "animate" ? (
@@ -397,153 +432,206 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
         /* Populated Design Mode Inspector (Figma node 61:1306): Stacked Sections */
         <ScrollFade className="flex-1 overflow-y-auto" containerClassName="flex-1 min-h-0">
           <div className="flex flex-col">
-            {/* Section 1: Effects */}
-            <div className="flex flex-col border-b border-[color:var(--border)]">
-              <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
-                <span className="text-sm font-medium text-[color:var(--foreground)]">Effects</span>
-                <button
-                  type="button"
-                  onClick={() => setIsEffectBrowserOpen(true)}
-                  aria-label="Add effect"
-                  title="Add effect"
-                  className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
-                >
-                  <PlusIcon size={16} />
-                </button>
-              </div>
+            {/* Section 0: Layer Properties (Stage 1C - Opacity, Blend Mode, Fit) */}
+            {activeLayer?.type === "image" && (
+              <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
+                <span className="text-sm font-medium text-[color:var(--foreground)]">
+                  Layer Properties
+                </span>
 
-              {activeEffectStack.length > 0 && (
-                <div className="flex flex-col gap-1 px-2 pb-2.5">
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <SortableContext
-                      items={activeEffectStack.map((i) => i.instanceId)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {activeEffectStack.map((instance, index) => {
-                        const isSelected = selectedInstanceId === instance.instanceId;
-                        return (
-                          <SortableEffectRow
-                            key={instance.instanceId}
-                            instance={instance}
-                            index={index}
-                            isSelected={isSelected}
-                            onSelect={() =>
-                              activeImageId &&
-                              selectInstance(
-                                activeImageId,
-                                isSelected ? null : instance.instanceId
-                              )
-                            }
-                            onToggleEnabled={() =>
-                              activeImageId &&
-                              toggleInstanceEnabled(activeImageId, instance.instanceId)
-                            }
-                            onRemove={() =>
-                              activeImageId &&
-                              removeInstanceFromStack(activeImageId, instance.instanceId)
-                            }
-                          />
-                        );
-                      })}
-                    </SortableContext>
-                  </DndContext>
+                {/* Opacity */}
+                <SliderControl
+                  name="Opacity"
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                  value={Math.round((activeLayer.opacity ?? 1) * 100)}
+                  onValueChange={(val) => {
+                    updateLayer(activeLayer.id, { opacity: val / 100 });
+                  }}
+                />
+
+                {/* Blend Mode */}
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-2xs text-[color:var(--muted-foreground)]">Blend Mode</span>
+                  <StaticSelect
+                    size="sm"
+                    value={activeLayer.blendMode || "normal"}
+                    options={BLEND_MODE_OPTIONS}
+                    onValueChange={(val) => {
+                      updateLayer(activeLayer.id, { blendMode: val as BlendMode });
+                    }}
+                  />
                 </div>
-              )}
-            </div>
 
-            {/* Section 2: Looks */}
-            <div className="flex flex-col border-b border-[color:var(--border)]">
-              <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
-                <span className="text-sm font-medium text-[color:var(--foreground)]">Looks</span>
-                {appliedLook ? (
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={clearAppliedLook}
-                    aria-label="Remove applied look"
-                    title="Remove applied look"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors [&_svg]:!size-4 cursor-pointer"
+                {/* Fit */}
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-2xs text-[color:var(--muted-foreground)]">Fit</span>
+                  <SegmentedControl
+                    name="Fit"
+                    showLabel={false}
+                    value={(activeLayer as ImageLayer).fit || "contain"}
+                    options={FIT_OPTIONS}
+                    onValueChange={(val) => {
+                      updateLayer(activeLayer.id, { fit: val as "contain" | "cover" });
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Section 1: Effects (shown for image layers) */}
+            {!isGenerativeLayerExplicitlyActive && (
+              <div className="flex flex-col border-b border-[color:var(--border)]">
+                <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
+                  <span className="text-sm font-medium text-[color:var(--foreground)]">Effects</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsEffectBrowserOpen(true)}
+                    aria-label="Add effect"
+                    title="Add effect"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
                   >
-                    <MinusIcon size={16} />
-                  </Button>
-                ) : (
-                  <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
-                    <PopoverTrigger
-                      type="button"
-                      aria-label="Open looks browser"
-                      title="Open looks browser"
-                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
+                    <PlusIcon size={16} />
+                  </button>
+                </div>
+
+                {activeEffectStack.length > 0 && (
+                  <div className="flex flex-col gap-1 px-2 pb-2.5">
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
                     >
-                      <PlusIcon size={16} />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      side="left"
-                      align="start"
-                      sideOffset={8}
-                      className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
-                    >
-                      <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
-                    </PopoverContent>
-                  </Popover>
+                      <SortableContext
+                        items={activeEffectStack.map((i) => i.instanceId)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {activeEffectStack.map((instance, index) => {
+                          const isSelected = selectedInstanceId === instance.instanceId;
+                          return (
+                            <SortableEffectRow
+                              key={instance.instanceId}
+                              instance={instance}
+                              index={index}
+                              isSelected={isSelected}
+                              onSelect={() =>
+                                activeImageId &&
+                                selectInstance(
+                                  activeImageId,
+                                  isSelected ? null : instance.instanceId
+                                )
+                              }
+                              onToggleEnabled={() =>
+                                activeImageId &&
+                                toggleInstanceEnabled(activeImageId, instance.instanceId)
+                              }
+                              onRemove={() =>
+                                activeImageId &&
+                                removeInstanceFromStack(activeImageId, instance.instanceId)
+                              }
+                            />
+                          );
+                        })}
+                      </SortableContext>
+                    </DndContext>
+                  </div>
                 )}
               </div>
+            )}
 
-              {appliedLook && (
-                <div className="px-4 pb-2.5 flex items-center gap-1.5">
-                  <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
-                    <PopoverTrigger
-                      data-slot="look-row"
-                      data-testid="look-row"
-                      className="group flex-1 min-w-0 flex items-center gap-2 px-2.5 h-8 rounded-[6px] border border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--foreground)_20%,transparent)] cursor-pointer transition-colors select-none text-left outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+            {/* Section 2: Looks */}
+            {!isGenerativeLayerExplicitlyActive && (
+              <div className="flex flex-col border-b border-[color:var(--border)]">
+                <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
+                  <span className="text-sm font-medium text-[color:var(--foreground)]">Looks</span>
+                  {appliedLook ? (
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={clearAppliedLook}
+                      aria-label="Remove applied look"
+                      title="Remove applied look"
+                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors [&_svg]:!size-4 cursor-pointer"
                     >
-                      <div className="size-4 shrink-0 flex items-center justify-center text-[color:var(--foreground)] [&_svg]:!size-4">
-                        <SparkleIcon size={16} />
-                      </div>
-                      <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
-                        {appliedLook.name}
-                      </span>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      side="left"
-                      align="start"
-                      sideOffset={8}
-                      className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
-                    >
-                      <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
-                    </PopoverContent>
-                  </Popover>
-
-                  {/* Eye control sits OUTSIDE the bordered Look control */}
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => {
-                      setIsLookVisible((prev) => {
-                        const next = !prev;
-                        if (activeImageId && appliedLook) {
-                          activeEffectStack.forEach((inst) => {
-                            if (inst.enabled !== next) {
-                              toggleInstanceEnabled(activeImageId, inst.instanceId);
-                            }
-                          });
-                        }
-                        return next;
-                      });
-                    }}
-                    title={isLookVisible ? "Hide look" : "Show look"}
-                    aria-label={isLookVisible ? "Hide look" : "Show look"}
-                    data-testid="look-eye-button"
-                    className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer shrink-0"
-                  >
-                    {isLookVisible ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
-                  </Button>
+                      <MinusIcon size={16} />
+                    </Button>
+                  ) : (
+                    <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
+                      <PopoverTrigger
+                        type="button"
+                        aria-label="Open looks browser"
+                        title="Open looks browser"
+                        className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
+                      >
+                        <PlusIcon size={16} />
+                      </PopoverTrigger>
+                      <PopoverContent
+                        side="left"
+                        align="start"
+                        sideOffset={8}
+                        className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
+                      >
+                        <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
+                      </PopoverContent>
+                    </Popover>
+                  )}
                 </div>
-              )}
-            </div>
+
+                {appliedLook && (
+                  <div className="px-4 pb-2.5 flex items-center gap-1.5">
+                    <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
+                      <PopoverTrigger
+                        data-slot="look-row"
+                        data-testid="look-row"
+                        className="group flex-1 min-w-0 flex items-center gap-2 px-2.5 h-8 rounded-[6px] border border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--foreground)_20%,transparent)] cursor-pointer transition-colors select-none text-left outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                      >
+                        <div className="size-4 shrink-0 flex items-center justify-center text-[color:var(--foreground)] [&_svg]:!size-4">
+                          <SparkleIcon size={16} />
+                        </div>
+                        <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
+                          {appliedLook.name}
+                        </span>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        side="left"
+                        align="start"
+                        sideOffset={8}
+                        className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
+                      >
+                        <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Eye control sits OUTSIDE the bordered Look control */}
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => {
+                        setIsLookVisible((prev) => {
+                          const next = !prev;
+                          if (activeImageId && appliedLook) {
+                            activeEffectStack.forEach((inst) => {
+                              if (inst.enabled !== next) {
+                                toggleInstanceEnabled(activeImageId, inst.instanceId);
+                              }
+                            });
+                          }
+                          return next;
+                        });
+                      }}
+                      title={isLookVisible ? "Hide look" : "Show look"}
+                      aria-label={isLookVisible ? "Hide look" : "Show look"}
+                      data-testid="look-eye-button"
+                      className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer shrink-0"
+                    >
+                      {isLookVisible ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Section 3: Background */}
             <div className="flex flex-col border-b border-[color:var(--border)]">

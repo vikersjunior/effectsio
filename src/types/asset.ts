@@ -37,3 +37,6 @@ export type EffectStack = EffectInstance[];
 export * from "./look";
 
 export * from "./history";
+
+export * from "./frame";
+

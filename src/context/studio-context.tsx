@@ -6,6 +6,20 @@ import type {
   EffectStack,
   StudioHistorySnapshot,
 } from "../types/asset";
+import type {
+  Frame,
+  Layer,
+  ImageLayer,
+  GenerativeLayer,
+  BlendMode,
+  FrameDimensions,
+  FrameSizePreset,
+} from "../types/frame";
+import {
+  createDefaultFrame,
+  createDefaultGenerativeLayer,
+  createImageLayer,
+} from "../types/frame";
 import type { Look, LookCategory, BackgroundState } from "../types/look";
 import { DEFAULT_BACKGROUND_STATE } from "../types/look";
 import type { EffectId } from "../effects/types";
@@ -32,6 +46,10 @@ import {
   dbSaveUserLook,
   dbDeleteUserLook,
   dbSaveSessionState,
+  dbSaveFrame,
+  dbSaveFrames,
+  dbDeleteFrame,
+  dbGetAllFrames,
 } from "../storage/db";
 
 const MAX_HISTORY_LIMIT = 40;
@@ -40,6 +58,25 @@ export interface StudioContextType {
   isHydrated: boolean;
   projectName: string;
   setProjectName: (name: string) => void;
+
+  // Frame & Layer Domain (Stage 1 Source of Truth)
+  frames: Frame[];
+  activeFrameId: string | null;
+  activeFrame: Frame | null;
+  activeLayerId: string | null;
+  activeLayer: Layer | null;
+  setActiveFrameId: (id: string | null) => void;
+  setActiveLayerId: (id: string | null) => void;
+  selectedEffectInstanceId: string | null;
+
+  // Stage 1C Layer & Frame Operations
+  addLayerFromAsset: (assetId: string) => ImageLayer | null;
+  updateLayer: (layerId: string, updates: Partial<Layer>) => void;
+  reorderLayers: (fromIndex: number, toIndex: number) => void;
+  removeLayer: (layerId: string) => void;
+  setFrameDimensions: (dimensions: FrameDimensions) => void;
+
+  // Transitional Compatibility Adapters (Stage 1A)
   assets: Asset[];
   activeImageId: string | null;
   activeAsset: Asset | null;
@@ -103,26 +140,26 @@ export interface StudioContextType {
 
   // Effect Stack Mutations
   addEffectToStack: (
-    assetId: string,
+    assetIdOrLayerId: string,
     effectId: EffectId,
     parameters?: Record<string, unknown>
   ) => void;
   updateInstanceParameters: (
-    assetId: string,
+    assetIdOrLayerId: string,
     instanceId: string,
     parameters: Record<string, unknown>
   ) => void;
-  resetInstanceParameters: (assetId: string, instanceId: string) => void;
-  toggleInstanceEnabled: (assetId: string, instanceId: string) => void;
-  removeInstanceFromStack: (assetId: string, instanceId: string) => void;
-  removeAllInstancesFromStack: (assetId: string) => void;
+  resetInstanceParameters: (assetIdOrLayerId: string, instanceId: string) => void;
+  toggleInstanceEnabled: (assetIdOrLayerId: string, instanceId: string) => void;
+  removeInstanceFromStack: (assetIdOrLayerId: string, instanceId: string) => void;
+  removeAllInstancesFromStack: (assetIdOrLayerId: string) => void;
   reorderEffectStack: (
-    assetId: string,
+    assetIdOrLayerId: string,
     fromIndex: number,
     toIndex: number
   ) => void;
-  duplicateInstance: (assetId: string, instanceId: string) => void;
-  selectInstance: (assetId: string, instanceId: string | null) => void;
+  duplicateInstance: (assetIdOrLayerId: string, instanceId: string) => void;
+  selectInstance: (assetIdOrLayerId: string, instanceId: string | null) => void;
 
   // Looks / Presets
   applyLookToActiveAsset: (look: Look) => void;
@@ -170,18 +207,21 @@ export function StudioProvider({
   const [isHydrated, setIsHydrated] = React.useState(false);
   const [projectName, setProjectNameState] = React.useState<string>("Project Name");
   const [assets, setAssets] = React.useState<Asset[]>([]);
-  const [activeImageId, setActiveImageIdState] = React.useState<string | null>(
-    null
+
+  // Stage 1 Domain Model Source of Truth
+  const [frames, setFrames] = React.useState<Frame[]>(() => [createDefaultFrame()]);
+  const [activeFrameId, setActiveFrameIdState] = React.useState<string | null>(
+    () => frames[0]?.id ?? null
   );
+  const [activeLayerId, setActiveLayerIdState] = React.useState<string | null>(
+    () => frames[0]?.layers[0]?.id ?? null
+  );
+  const [selectedEffectInstanceId, setSelectedEffectInstanceId] =
+    React.useState<string | null>(null);
+
   const [selectedAssetIds, setSelectedAssetIds] = React.useState<Set<string>>(
     () => new Set()
   );
-  const [effectStacks, setEffectStacks] = React.useState<
-    Record<string, EffectStack>
-  >({});
-  const [backgrounds, setBackgrounds] = React.useState<
-    Record<string, BackgroundState>
-  >({});
   const [userLooks, setUserLooks] = React.useState<Look[]>([]);
   const [selectedInstanceIds, setSelectedInstanceIds] = React.useState<
     Record<string, string | null>
@@ -257,12 +297,110 @@ export function StudioProvider({
     }
   }, [theme]);
 
+  // Derived active frame
+  const activeFrame = React.useMemo((): Frame | null => {
+    if (!activeFrameId) return frames[0] || null;
+    return frames.find((f) => f.id === activeFrameId) || frames[0] || null;
+  }, [frames, activeFrameId]);
+
+  // Derived active layer (strictly belongs to activeFrame)
+  const activeLayer = React.useMemo((): Layer | null => {
+    if (!activeFrame) return null;
+    if (activeLayerId) {
+      const found = activeFrame.layers.find((l) => l.id === activeLayerId);
+      if (found) return found;
+    }
+    const firstImage = activeFrame.layers.find((l): l is ImageLayer => l.type === "image");
+    return firstImage || activeFrame.layers[0] || null;
+  }, [activeFrame, activeLayerId]);
+
+  // Transitional Compatibility Getters (Stage 1A)
+  const activeImageId = React.useMemo((): string | null => {
+    if (!activeLayer) return null;
+    if (activeLayer.type === "image") return activeLayer.assetId;
+    const firstImage = activeFrame?.layers.find((l): l is ImageLayer => l.type === "image");
+    return firstImage ? firstImage.assetId : null;
+  }, [activeLayer, activeFrame]);
+
+  const activeAsset = React.useMemo((): Asset | null => {
+    if (!activeImageId) return null;
+    return assets.find((a) => a.id === activeImageId) || null;
+  }, [assets, activeImageId]);
+
+  const activeEffectStack = React.useMemo((): EffectStack => {
+    if (!activeLayer) return [];
+    if (activeLayer.type === "image") {
+      return activeLayer.effectStack || [];
+    }
+    const firstImage = activeFrame?.layers.find((l): l is ImageLayer => l.type === "image");
+    return firstImage ? firstImage.effectStack || [] : [];
+  }, [activeLayer, activeFrame]);
+
+  const activeBackground = React.useMemo((): BackgroundState => {
+    if (!activeFrame) return DEFAULT_BACKGROUND_STATE;
+    const genLayer = activeFrame.layers.find((l): l is GenerativeLayer => l.type === "generative");
+    return genLayer?.backgroundConfig || DEFAULT_BACKGROUND_STATE;
+  }, [activeFrame]);
+
+  const hasActiveBackground = React.useMemo((): boolean => {
+    if (!activeFrame) return false;
+    const genLayer = activeFrame.layers.find((l): l is GenerativeLayer => l.type === "generative");
+    return Boolean(genLayer && genLayer.visible);
+  }, [activeFrame]);
+
+  const effectStacks = React.useMemo((): Record<string, EffectStack> => {
+    const map: Record<string, EffectStack> = {};
+    for (const frame of frames) {
+      for (const layer of frame.layers) {
+        if (layer.type === "image" && layer.assetId && layer.effectStack && layer.effectStack.length > 0) {
+          map[layer.assetId] = layer.effectStack;
+        }
+      }
+    }
+    return map;
+  }, [frames]);
+
+  const backgrounds = React.useMemo((): Record<string, BackgroundState> => {
+    const map: Record<string, BackgroundState> = {};
+    for (const frame of frames) {
+      const genLayer = frame.layers.find((l): l is GenerativeLayer => l.type === "generative");
+      if (genLayer && genLayer.visible && genLayer.backgroundConfig) {
+        for (const layer of frame.layers) {
+          if (layer.type === "image" && layer.assetId) {
+            map[layer.assetId] = genLayer.backgroundConfig;
+          }
+        }
+      }
+    }
+    return map;
+  }, [frames]);
+
+  const selectedInstanceId = React.useMemo((): string | null => {
+    if (selectedEffectInstanceId) return selectedEffectInstanceId;
+    if (!activeImageId) return null;
+    return selectedInstanceIds[activeImageId] || null;
+  }, [selectedEffectInstanceId, activeImageId, selectedInstanceIds]);
+
+  const selectedInstance = React.useMemo((): EffectInstance | null => {
+    if (!selectedInstanceId || !activeEffectStack) return null;
+    return (
+      activeEffectStack.find(
+        (inst) => inst.instanceId === selectedInstanceId
+      ) || null
+    );
+  }, [selectedInstanceId, activeEffectStack]);
+
   // History state: past & future
   const [past, setPast] = React.useState<StudioHistorySnapshot[]>([]);
   const [future, setFuture] = React.useState<StudioHistorySnapshot[]>([]);
 
   // Live refs for stable callbacks & continuous interaction debouncing
   const projectNameRef = React.useRef(projectName);
+  const framesRef = React.useRef(frames);
+  const activeFrameIdRef = React.useRef(activeFrameId);
+  const activeFrameRef = React.useRef(activeFrame);
+  const activeLayerIdRef = React.useRef(activeLayerId);
+  const activeLayerRef = React.useRef(activeLayer);
   const effectStacksRef = React.useRef(effectStacks);
   const backgroundsRef = React.useRef(backgrounds);
   const activeImageIdRef = React.useRef(activeImageId);
@@ -271,9 +409,33 @@ export function StudioProvider({
   const futureRef = React.useRef(future);
   const assetsRef = React.useRef(assets);
 
+  // Keep refs immediately synchronized on every render
+  assetsRef.current = assets;
+  framesRef.current = frames;
+  activeFrameIdRef.current = activeFrameId;
+  activeFrameRef.current = activeFrame;
+  activeLayerIdRef.current = activeLayerId;
+  backgroundsRef.current = backgrounds;
+  activeImageIdRef.current = activeImageId;
+
   React.useEffect(() => {
     projectNameRef.current = projectName;
   }, [projectName]);
+  React.useEffect(() => {
+    framesRef.current = frames;
+  }, [frames]);
+  React.useEffect(() => {
+    activeFrameIdRef.current = activeFrameId;
+  }, [activeFrameId]);
+  React.useEffect(() => {
+    activeFrameRef.current = activeFrame;
+  }, [activeFrame]);
+  React.useEffect(() => {
+    activeLayerIdRef.current = activeLayerId;
+  }, [activeLayerId]);
+  React.useEffect(() => {
+    activeLayerRef.current = activeLayer;
+  }, [activeLayer]);
   React.useEffect(() => {
     effectStacksRef.current = effectStacks;
   }, [effectStacks]);
@@ -306,6 +468,9 @@ export function StudioProvider({
   // Snapshot factory helper
   const createSnapshot = React.useCallback((): StudioHistorySnapshot => {
     return {
+      frames: JSON.parse(JSON.stringify(framesRef.current)),
+      activeFrameId: activeFrameIdRef.current,
+      activeLayerId: activeLayerIdRef.current,
       effectStacks: JSON.parse(JSON.stringify(effectStacksRef.current)),
       backgrounds: JSON.parse(JSON.stringify(backgroundsRef.current)),
       activeImageId: activeImageIdRef.current,
@@ -334,7 +499,6 @@ export function StudioProvider({
   // Start or continue continuous parameter interaction (slider gestures)
   const startOrContinueParamInteraction = React.useCallback(() => {
     if (!isParamInteractingRef.current) {
-      // First update of this gesture: record pre-interaction state
       const snap = createSnapshot();
       setPast((prev) => {
         const next = [...prev, snap];
@@ -364,18 +528,56 @@ export function StudioProvider({
       try {
         const state = await loadHydratedProject();
         if (mounted) {
-          setAssets((prev) => (prev.length > 0 ? prev : state.assets));
-          setActiveImageIdState((prev) => (prev ? prev : state.activeImageId));
+          if (state.assets && state.assets.length > 0) {
+            setAssets((prev) => (prev.length > 0 ? prev : state.assets));
+          }
+
           if (state.projectName) {
             setProjectNameState(state.projectName);
           }
-          setEffectStacks((prev) =>
-            Object.keys(prev).length > 0 ? prev : state.effectStacks
-          );
-          setBackgrounds((prev) =>
-            Object.keys(prev).length > 0 ? prev : state.backgrounds
-          );
-          setUserLooks((prev) => (prev.length > 0 ? prev : state.userLooks));
+
+          if (state.userLooks && state.userLooks.length > 0) {
+            setUserLooks((prev) => (prev.length > 0 ? prev : state.userLooks));
+          }
+
+          if (state.frames && Array.isArray(state.frames) && state.frames.length > 0) {
+            setFrames(state.frames);
+            const resolvedFrameId = state.activeFrameId || state.frames[0].id;
+            setActiveFrameIdState(resolvedFrameId);
+            const targetFrame = state.frames.find((f) => f.id === resolvedFrameId) || state.frames[0];
+            const resolvedLayerId =
+              state.activeLayerId && targetFrame.layers.some((l) => l.id === state.activeLayerId)
+                ? state.activeLayerId
+                : targetFrame.activeLayerId || targetFrame.layers[1]?.id || targetFrame.layers[0].id;
+            setActiveLayerIdState(resolvedLayerId);
+          } else if (state.assets && state.assets.length > 0) {
+            // Defensive synthesis for test mocks that return assets without frames
+            const synthesizedFrames: Frame[] = state.assets.map((asset) => {
+              const assetBg = state.backgrounds?.[asset.id];
+              const baseGen = createDefaultGenerativeLayer(assetBg);
+              const assetStack = state.effectStacks?.[asset.id] ? [...state.effectStacks[asset.id]] : [];
+              const imgLayer = createImageLayer(asset.id, asset.filename, assetStack, "contain");
+              return {
+                id: `frame-${asset.id}`,
+                name: asset.filename || "Frame",
+                dimensions: {
+                  width: asset.width || 1080,
+                  height: asset.height || 1080,
+                  presetId: null,
+                },
+                layers: [baseGen, imgLayer],
+                activeLayerId: imgLayer.id,
+                createdAt: asset.createdAt || Date.now(),
+                updatedAt: Date.now(),
+              };
+            });
+            setFrames(synthesizedFrames);
+            const targetAssetId = state.activeImageId || state.assets[0].id;
+            const initialFrame = synthesizedFrames.find((f) => f.id === `frame-${targetAssetId}`) || synthesizedFrames[0];
+            setActiveFrameIdState(initialFrame.id);
+            setActiveLayerIdState(initialFrame.activeLayerId || initialFrame.layers[1]?.id || initialFrame.layers[0].id);
+          }
+
           setIsHydrated(true);
         }
       } catch (err) {
@@ -396,71 +598,341 @@ export function StudioProvider({
   const setProjectName = React.useCallback((name: string) => {
     const trimmed = name.trim() || "Project Name";
     setProjectNameState(trimmed);
-    dbSaveSessionState(activeImageIdRef.current, trimmed).catch(console.error);
+    if (typeof dbSaveSessionState === "function") {
+      dbSaveSessionState(
+        activeFrameIdRef.current,
+        activeLayerIdRef.current,
+        activeImageIdRef.current,
+        trimmed
+      ).catch(console.error);
+    }
   }, []);
 
-  // Derived active asset
-  const activeAsset = React.useMemo(() => {
-    if (!activeImageId) return null;
-    return assets.find((a) => a.id === activeImageId) || null;
-  }, [assets, activeImageId]);
+  // Frame and Layer Setters (Stage 1 Source of Truth)
+  const setActiveFrameId = React.useCallback((id: string | null) => {
+    setActiveFrameIdState(id);
+    if (id) {
+      const frame = framesRef.current.find((f) => f.id === id);
+      if (frame) {
+        const nextLayerId =
+          frame.activeLayerId ||
+          frame.layers.find((l) => l.type === "image")?.id ||
+          frame.layers[0]?.id ||
+          null;
+        setActiveLayerIdState(nextLayerId);
+        const imgLayer = frame.layers.find((l): l is ImageLayer => l.type === "image");
+        if (typeof dbSaveSessionState === "function") {
+          dbSaveSessionState(
+            id,
+            nextLayerId,
+            imgLayer?.assetId || null,
+            projectNameRef.current
+          ).catch(console.error);
+        }
+      }
+    }
+  }, []);
 
-  // Derived active stack
-  const activeEffectStack = React.useMemo(() => {
-    if (!activeImageId) return [];
-    return effectStacks[activeImageId] || [];
-  }, [activeImageId, effectStacks]);
+  const setActiveLayerId = React.useCallback((id: string | null) => {
+    setActiveLayerIdState(id);
+    if (activeFrameRef.current && typeof dbSaveSessionState === "function") {
+      const frame = activeFrameRef.current;
+      const targetLayer = frame.layers.find((l) => l.id === id);
+      const assetId = targetLayer?.type === "image" ? targetLayer.assetId : null;
+      dbSaveSessionState(
+        frame.id,
+        id,
+        assetId,
+        projectNameRef.current
+      ).catch(console.error);
+    }
+  }, []);
 
-  // Derived active background
-  const activeBackground = React.useMemo(() => {
-    if (!activeImageId) return DEFAULT_BACKGROUND_STATE;
-    return backgrounds[activeImageId] || DEFAULT_BACKGROUND_STATE;
-  }, [activeImageId, backgrounds]);
-
-  // Whether the active asset has a configured background
-  const hasActiveBackground = React.useMemo(() => {
-    if (!activeImageId) return false;
-    return Boolean(backgrounds[activeImageId]);
-  }, [activeImageId, backgrounds]);
-
-  // Derived selected instance ID
-  const selectedInstanceId = React.useMemo(() => {
-    if (!activeImageId) return null;
-    return selectedInstanceIds[activeImageId] || null;
-  }, [activeImageId, selectedInstanceIds]);
-
-  // Derived selected instance object
-  const selectedInstance = React.useMemo(() => {
-    if (!selectedInstanceId || !activeEffectStack) return null;
-    return (
-      activeEffectStack.find(
-        (inst) => inst.instanceId === selectedInstanceId
-      ) || null
-    );
-  }, [selectedInstanceId, activeEffectStack]);
-
+  // Compatibility setter for activeImageId
   const setActiveImageId = React.useCallback((id: string | null) => {
-    setActiveImageIdState(id);
-    dbSaveSessionState(id, projectNameRef.current).catch(console.error);
+    if (!id) {
+      setActiveLayerIdState(null);
+      return;
+    }
+
+    const currentFrames = framesRef.current;
+    const targetFrame = currentFrames.find((f) =>
+      f.layers.some((l) => l.type === "image" && l.assetId === id)
+    );
+
+    if (targetFrame) {
+      setActiveFrameIdState(targetFrame.id);
+      const targetLayer = targetFrame.layers.find(
+        (l) => l.type === "image" && l.assetId === id
+      );
+      if (targetLayer) {
+        setActiveLayerIdState(targetLayer.id);
+      }
+      if (typeof dbSaveSessionState === "function") {
+        dbSaveSessionState(
+          targetFrame.id,
+          targetLayer?.id || null,
+          id,
+          projectNameRef.current
+        ).catch(console.error);
+      }
+    }
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // Stage 1C Layer & Frame Operations
+  // ---------------------------------------------------------------------------
+
+  const addLayerFromAsset = React.useCallback(
+    (assetId: string): ImageLayer | null => {
+      const asset = assetsRef.current.find((a) => a.id === assetId) || assets.find((a) => a.id === assetId);
+      const filename = asset?.filename;
+
+      recordDiscreteSnapshot();
+      const newLayer = createImageLayer(assetId, filename);
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current || prev[0]?.id;
+        if (!activeFId) return prev;
+
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const newLayers = [...frame.layers, newLayer];
+          const updatedFrame: Frame = {
+            ...frame,
+            layers: newLayers,
+            activeLayerId: newLayer.id,
+            updatedAt: Date.now(),
+          };
+
+          setActiveLayerIdState(newLayer.id);
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          if (typeof dbSaveSessionState === "function") {
+            dbSaveSessionState(
+              updatedFrame.id,
+              newLayer.id,
+              assetId,
+              projectNameRef.current
+            ).catch(console.error);
+          }
+
+          return updatedFrame;
+        });
+      });
+
+      return newLayer;
+    },
+    [assets, recordDiscreteSnapshot]
+  );
+
+  const updateLayer = React.useCallback(
+    (layerId: string, updates: Partial<Layer>) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+          const layerIdx = frame.layers.findIndex((l) => l.id === layerId);
+          if (layerIdx === -1) return frame;
+
+          const current = frame.layers[layerIdx];
+          let updatedLayer: Layer;
+
+          if (layerIdx === 0 && current.type === "generative") {
+            const genUpdates = updates as Partial<GenerativeLayer>;
+            const nextBgConfig = genUpdates.backgroundConfig
+              ? { ...current.backgroundConfig, ...genUpdates.backgroundConfig }
+              : current.backgroundConfig;
+
+            updatedLayer = {
+              ...current,
+              ...updates,
+              type: "generative",
+              backgroundConfig: nextBgConfig,
+              updatedAt: Date.now(),
+            };
+          } else if (current.type === "image") {
+            updatedLayer = {
+              ...current,
+              ...updates,
+              type: "image",
+              updatedAt: Date.now(),
+            };
+          } else {
+            updatedLayer = {
+              ...current,
+              ...updates,
+              updatedAt: Date.now(),
+            } as Layer;
+          }
+
+          const newLayers = [...frame.layers];
+          newLayers[layerIdx] = updatedLayer;
+
+          const updatedFrame: Frame = {
+            ...frame,
+            layers: newLayers,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  const reorderLayers = React.useCallback(
+    (fromIndex: number, toIndex: number) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          // Hard Invariant: index 0 is GenerativeLayer (locked background)
+          // Image layers are only reorderable at indices >= 1
+          if (fromIndex <= 0 || toIndex <= 0) {
+            console.warn("Cannot reorder locked GenerativeLayer at index 0");
+            return frame;
+          }
+          if (
+            fromIndex >= frame.layers.length ||
+            toIndex >= frame.layers.length ||
+            fromIndex === toIndex
+          ) {
+            return frame;
+          }
+
+          const newLayers = [...frame.layers];
+          const [moved] = newLayers.splice(fromIndex, 1);
+          newLayers.splice(toIndex, 0, moved);
+
+          // Verify invariant
+          if (newLayers[0].type !== "generative") {
+            console.warn("Reorder rejected: index 0 must be GenerativeLayer");
+            return frame;
+          }
+
+          const updatedFrame: Frame = {
+            ...frame,
+            layers: newLayers,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  const removeLayer = React.useCallback(
+    (layerId: string) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+          const layerIdx = frame.layers.findIndex((l) => l.id === layerId);
+          if (layerIdx === -1) return frame;
+
+          // Invariant: index 0 GenerativeLayer cannot be deleted
+          if (layerIdx === 0 || frame.layers[layerIdx].type === "generative") {
+            console.warn("Cannot remove base GenerativeLayer");
+            return frame;
+          }
+
+          const newLayers = frame.layers.filter((l) => l.id !== layerId);
+          let nextActiveLayerId = frame.activeLayerId;
+          if (frame.activeLayerId === layerId) {
+            const fallback = newLayers[Math.max(0, layerIdx - 1)] || newLayers[0];
+            nextActiveLayerId = fallback?.id || null;
+            setActiveLayerIdState(nextActiveLayerId);
+          }
+
+          const updatedFrame: Frame = {
+            ...frame,
+            layers: newLayers,
+            activeLayerId: nextActiveLayerId,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  const setFrameDimensions = React.useCallback(
+    (dimensions: FrameDimensions) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const updatedFrame: Frame = {
+            ...frame,
+            dimensions: {
+              width: Math.max(1, Math.round(dimensions.width)),
+              height: Math.max(1, Math.round(dimensions.height)),
+              presetId: dimensions.presetId || null,
+            },
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
 
   // ---------------------------------------------------------------------------
   // Multi-Asset Selection Methods
   // ---------------------------------------------------------------------------
 
-  const toggleAssetSelection = React.useCallback((assetId: string) => {
-    setSelectedAssetIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(assetId)) {
-        next.delete(assetId);
-      } else {
-        next.add(assetId);
-      }
-      return next;
-    });
-    setActiveImageIdState(assetId);
-    dbSaveSessionState(assetId, projectNameRef.current).catch(console.error);
-  }, []);
+  const toggleAssetSelection = React.useCallback(
+    (assetId: string) => {
+      setSelectedAssetIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(assetId)) {
+          next.delete(assetId);
+        } else {
+          next.add(assetId);
+        }
+        return next;
+      });
+      setActiveImageId(assetId);
+    },
+    [setActiveImageId]
+  );
 
   const selectAsset = React.useCallback(
     (assetId: string, clearOthers = true) => {
@@ -472,10 +944,9 @@ export function StudioProvider({
         next.add(assetId);
         return next;
       });
-      setActiveImageIdState(assetId);
-      dbSaveSessionState(assetId, projectNameRef.current).catch(console.error);
+      setActiveImageId(assetId);
     },
-    []
+    [setActiveImageId]
   );
 
   const selectAssetRange = React.useCallback(
@@ -490,10 +961,9 @@ export function StudioProvider({
       const end = Math.max(fromIdx, toIdx);
       const rangeIds = assetList.slice(start, end + 1).map((a) => a.id);
       setSelectedAssetIds(new Set(rangeIds));
-      setActiveImageIdState(toAssetId);
-      dbSaveSessionState(toAssetId).catch(console.error);
+      setActiveImageId(toAssetId);
     },
-    [selectAsset]
+    [selectAsset, setActiveImageId]
   );
 
   const deselectAsset = React.useCallback((assetId: string) => {
@@ -538,7 +1008,7 @@ export function StudioProvider({
           newlyCreated.push(asset);
 
           // Save raw Blob to IndexedDB
-          if (asset.rawBlob) {
+          if (asset.rawBlob && typeof dbSaveAsset === "function") {
             dbSaveAsset({
               id: asset.id,
               filename: asset.filename,
@@ -561,9 +1031,105 @@ export function StudioProvider({
       if (newlyCreated.length > 0) {
         setAssets((prev) => [...prev, ...newlyCreated]);
         const newActiveId = newlyCreated[newlyCreated.length - 1].id;
-        setActiveImageIdState(newActiveId);
+
+        setFrames((prevFrames) => {
+          let updatedFrames = [...prevFrames];
+
+          const isOnlyEmptyDefault =
+            updatedFrames.length === 1 &&
+            !updatedFrames[0].layers.some((l) => l.type === "image");
+
+          if (isOnlyEmptyDefault) {
+            const firstAsset = newlyCreated[0];
+            const baseGen =
+              (updatedFrames[0].layers[0] as GenerativeLayer) ||
+              createDefaultGenerativeLayer();
+            const firstLayer = createImageLayer(
+              firstAsset.id,
+              firstAsset.filename,
+              [],
+              "contain"
+            );
+            const firstFrame: Frame = {
+              ...updatedFrames[0],
+              name: firstAsset.filename,
+              dimensions: {
+                width: firstAsset.width || 1080,
+                height: firstAsset.height || 1080,
+                presetId: null,
+              },
+              layers: [baseGen, firstLayer],
+              activeLayerId: firstLayer.id,
+              updatedAt: Date.now(),
+            };
+
+            const otherFrames = newlyCreated.slice(1).map((asset) => {
+              const gen = createDefaultGenerativeLayer();
+              const layer = createImageLayer(asset.id, asset.filename, [], "contain");
+              return {
+                id: `frame-${asset.id}`,
+                name: asset.filename,
+                dimensions: {
+                  width: asset.width || 1080,
+                  height: asset.height || 1080,
+                  presetId: null,
+                },
+                layers: [gen, layer],
+                activeLayerId: layer.id,
+                createdAt: asset.createdAt || Date.now(),
+                updatedAt: Date.now(),
+              };
+            });
+
+            updatedFrames = [firstFrame, ...otherFrames];
+          } else {
+            const newFrames = newlyCreated.map((asset) => {
+              const gen = createDefaultGenerativeLayer();
+              const layer = createImageLayer(asset.id, asset.filename, [], "contain");
+              return {
+                id: `frame-${asset.id}`,
+                name: asset.filename,
+                dimensions: {
+                  width: asset.width || 1080,
+                  height: asset.height || 1080,
+                  presetId: null,
+                },
+                layers: [gen, layer],
+                activeLayerId: layer.id,
+                createdAt: asset.createdAt || Date.now(),
+                updatedAt: Date.now(),
+              };
+            });
+            updatedFrames = [...updatedFrames, ...newFrames];
+          }
+
+          const targetFrame =
+            updatedFrames.find((f) =>
+              f.layers.some((l) => l.type === "image" && l.assetId === newActiveId)
+            ) || updatedFrames[updatedFrames.length - 1];
+
+          setActiveFrameIdState(targetFrame.id);
+          const targetLayer = targetFrame.layers.find(
+            (l) => l.type === "image" && l.assetId === newActiveId
+          );
+          setActiveLayerIdState(targetLayer?.id || targetFrame.layers[0].id);
+
+          if (typeof dbSaveFrames === "function") {
+            dbSaveFrames(updatedFrames).catch(console.error);
+          }
+          if (typeof dbSaveSessionState === "function") {
+            dbSaveSessionState(
+              targetFrame.id,
+              targetLayer?.id || null,
+              newActiveId,
+              projectNameRef.current
+            ).catch(console.error);
+          }
+
+          return updatedFrames;
+        });
+
         setSelectedAssetIds(new Set([newActiveId]));
-        dbSaveSessionState(newActiveId).catch(console.error);
       }
 
       if (lastError && newlyCreated.length === 0) {
@@ -582,16 +1148,7 @@ export function StudioProvider({
         if (target) {
           revokeAssetUrls(target);
         }
-        const filtered = prev.filter((a) => a.id !== id);
-
-        if (activeImageId === id) {
-          const nextActive =
-            filtered.length > 0 ? filtered[filtered.length - 1].id : null;
-          setActiveImageIdState(nextActive);
-          dbSaveSessionState(nextActive).catch(console.error);
-        }
-
-        return filtered;
+        return prev.filter((a) => a.id !== id);
       });
 
       setSelectedAssetIds((prev) => {
@@ -603,16 +1160,59 @@ export function StudioProvider({
         return prev;
       });
 
-      setEffectStacks((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
+      setFrames((prevFrames) => {
+        let updatedFrames = prevFrames
+          .map((f) => {
+            const nextLayers = f.layers.filter(
+              (l) => !(l.type === "image" && l.assetId === id)
+            );
+            return {
+              ...f,
+              layers: nextLayers,
+              activeLayerId:
+                f.activeLayerId && !nextLayers.some((l) => l.id === f.activeLayerId)
+                  ? nextLayers.find((l) => l.type === "image")?.id || nextLayers[0]?.id || null
+                  : f.activeLayerId,
+              updatedAt: Date.now(),
+            };
+          })
+          .filter((f) => {
+            if (f.id === `frame-${id}` && f.layers.length <= 1) {
+              return false;
+            }
+            return true;
+          });
 
-      setBackgrounds((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
+        if (updatedFrames.length === 0) {
+          updatedFrames = [createDefaultFrame()];
+        }
+
+        const nextActiveFrame =
+          updatedFrames.find((f) => f.id === activeFrameIdRef.current) ||
+          updatedFrames[updatedFrames.length - 1];
+
+        setActiveFrameIdState(nextActiveFrame.id);
+        const nextActiveLayerId =
+          nextActiveFrame.activeLayerId ||
+          nextActiveFrame.layers.find((l) => l.type === "image")?.id ||
+          nextActiveFrame.layers[0]?.id ||
+          null;
+        setActiveLayerIdState(nextActiveLayerId);
+
+        if (typeof dbSaveFrames === "function") {
+          dbSaveFrames(updatedFrames).catch(console.error);
+        }
+        if (typeof dbSaveSessionState === "function") {
+          const activeImg = nextActiveFrame.layers.find((l): l is ImageLayer => l.type === "image");
+          dbSaveSessionState(
+            nextActiveFrame.id,
+            nextActiveLayerId,
+            activeImg?.assetId || null,
+            projectNameRef.current
+          ).catch(console.error);
+        }
+
+        return updatedFrames;
       });
 
       setSelectedInstanceIds((prev) => {
@@ -622,18 +1222,120 @@ export function StudioProvider({
       });
 
       // Remove from IndexedDB
-      dbDeleteAsset(id).catch(console.error);
-      dbDeleteEffectStack(id).catch(console.error);
-      dbDeleteBackground(id).catch(console.error);
+      if (typeof dbDeleteAsset === "function") {
+        dbDeleteAsset(id).catch(console.error);
+      }
+      if (typeof dbDeleteEffectStack === "function") {
+        dbDeleteEffectStack(id).catch(console.error);
+      }
+      if (typeof dbDeleteBackground === "function") {
+        dbDeleteBackground(id).catch(console.error);
+      }
     },
-    [activeImageId]
+    []
+  );
+
+  // Helper for mutating an effect stack on a layer within frames
+  const mutateLayerStack = React.useCallback(
+    (
+      targetId: string,
+      mutator: (currentStack: EffectStack) => EffectStack,
+      options: { debounce?: boolean; isContinuous?: boolean } = {}
+    ) => {
+      if (options.isContinuous) {
+        startOrContinueParamInteraction();
+      } else {
+        recordDiscreteSnapshot();
+      }
+
+      setFrames((prevFrames) => {
+        let frameIndex = -1;
+        let layerIndex = -1;
+
+        for (let fi = 0; fi < prevFrames.length; fi++) {
+          const frame = prevFrames[fi];
+          const li = frame.layers.findIndex(
+            (l) => l.id === targetId || (l.type === "image" && l.assetId === targetId)
+          );
+          if (li !== -1) {
+            frameIndex = fi;
+            layerIndex = li;
+            break;
+          }
+        }
+
+        if (frameIndex === -1 && activeFrameRef.current) {
+          frameIndex = prevFrames.findIndex((f) => f.id === activeFrameRef.current!.id);
+          if (frameIndex !== -1) {
+            const frame = prevFrames[frameIndex];
+            layerIndex = frame.layers.findIndex(
+              (l) => l.id === activeLayerRef.current?.id || l.type === "image"
+            );
+          }
+        }
+
+        if (frameIndex === -1 || layerIndex === -1) {
+          return prevFrames;
+        }
+
+        const targetFrame = prevFrames[frameIndex];
+        const targetLayer = targetFrame.layers[layerIndex];
+        const currentStack = targetLayer.effectStack || [];
+        const nextStack = mutator(currentStack);
+
+        const updatedLayer: Layer = {
+          ...targetLayer,
+          effectStack: nextStack,
+        };
+
+        const nextLayers = [...targetFrame.layers];
+        nextLayers[layerIndex] = updatedLayer;
+
+        const updatedFrame: Frame = {
+          ...targetFrame,
+          layers: nextLayers,
+          updatedAt: Date.now(),
+        };
+
+        const nextFrames = [...prevFrames];
+        nextFrames[frameIndex] = updatedFrame;
+
+        const assetId = targetLayer.type === "image" ? targetLayer.assetId : targetId;
+
+        if (options.debounce) {
+          const timerKey = "stack_" + assetId;
+          if (debounceTimersRef.current[timerKey]) {
+            clearTimeout(debounceTimersRef.current[timerKey]);
+          }
+          debounceTimersRef.current[timerKey] = setTimeout(() => {
+            if (typeof dbSaveFrame === "function") {
+              Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
+            }
+            if (typeof dbSaveEffectStack === "function") {
+              Promise.resolve(dbSaveEffectStack(assetId, nextStack)).catch(console.error);
+            }
+          }, 500);
+        } else {
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          if (typeof dbSaveEffectStack === "function") {
+            dbSaveEffectStack(assetId, nextStack).catch(console.error);
+          }
+        }
+
+        return nextFrames;
+      });
+    },
+    [recordDiscreteSnapshot, startOrContinueParamInteraction]
   );
 
   const selectInstance = React.useCallback(
-    (assetId: string, instanceId: string | null) => {
+    (targetId: string, instanceId: string | null) => {
+      setSelectedEffectInstanceId(instanceId);
       setSelectedInstanceIds((prev) => ({
         ...prev,
-        [assetId]: instanceId,
+        [targetId]: instanceId,
       }));
     },
     []
@@ -645,12 +1347,10 @@ export function StudioProvider({
 
   const addEffectToStack = React.useCallback(
     (
-      assetId: string,
+      targetId: string,
       effectId: EffectId,
       userParams?: Record<string, unknown>
     ) => {
-      recordDiscreteSnapshot();
-
       const def = getEffectDefinition(effectId);
       const initialParams = {
         ...(def ? def.defaultParameters : {}),
@@ -664,229 +1364,146 @@ export function StudioProvider({
         parameters: initialParams,
       };
 
-      setEffectStacks((prev) => {
-        const currentStack = prev[assetId] || [];
-        const nextStack = [...currentStack, newInstance];
-        dbSaveEffectStack(assetId, nextStack).catch(console.error);
-        return {
-          ...prev,
-          [assetId]: nextStack,
-        };
-      });
+      mutateLayerStack(targetId, (current) => [...current, newInstance]);
 
+      setSelectedEffectInstanceId(newInstance.instanceId);
       setSelectedInstanceIds((prev) => ({
         ...prev,
-        [assetId]: newInstance.instanceId,
+        [targetId]: newInstance.instanceId,
       }));
     },
-    [recordDiscreteSnapshot]
+    [mutateLayerStack]
   );
 
   const updateInstanceParameters = React.useCallback(
     (
-      assetId: string,
+      targetId: string,
       instanceId: string,
       updatedParams: Record<string, unknown>
     ) => {
-      startOrContinueParamInteraction();
-
-      setEffectStacks((prev) => {
-        const currentStack = prev[assetId] || [];
-        const nextStack = currentStack.map((inst) => {
-          if (inst.instanceId !== instanceId) return inst;
-          return {
-            ...inst,
-            parameters: {
-              ...inst.parameters,
-              ...updatedParams,
-            },
-          };
-        });
-
-        // Debounced persistence to prevent I/O thrashing during slider drag
-        const timerKey = "stack_" + assetId;
-        if (debounceTimersRef.current[timerKey]) {
-          clearTimeout(debounceTimersRef.current[timerKey]);
-        }
-        debounceTimersRef.current[timerKey] = setTimeout(() => {
-          Promise.resolve(dbSaveEffectStack(assetId, nextStack)).catch(console.error);
-        }, 500);
-
-        return {
-          ...prev,
-          [assetId]: nextStack,
-        };
-      });
+      mutateLayerStack(
+        targetId,
+        (current) =>
+          current.map((inst) =>
+            inst.instanceId === instanceId
+              ? { ...inst, parameters: { ...inst.parameters, ...updatedParams } }
+              : inst
+          ),
+        { debounce: true, isContinuous: true }
+      );
     },
-    [startOrContinueParamInteraction]
+    [mutateLayerStack]
   );
 
   const resetInstanceParameters = React.useCallback(
-    (assetId: string, instanceId: string) => {
-      recordDiscreteSnapshot();
-
-      setEffectStacks((prev) => {
-        const currentStack = prev[assetId] || [];
-        const nextStack = currentStack.map((inst) => {
+    (targetId: string, instanceId: string) => {
+      mutateLayerStack(targetId, (current) =>
+        current.map((inst) => {
           if (inst.instanceId !== instanceId) return inst;
           const def = getEffectDefinition(inst.effectId);
           return {
             ...inst,
             parameters: def ? { ...def.defaultParameters } : {},
           };
-        });
-        dbSaveEffectStack(assetId, nextStack).catch(console.error);
-        return {
-          ...prev,
-          [assetId]: nextStack,
-        };
-      });
+        })
+      );
     },
-    [recordDiscreteSnapshot]
+    [mutateLayerStack]
   );
 
   const toggleInstanceEnabled = React.useCallback(
-    (assetId: string, instanceId: string) => {
-      recordDiscreteSnapshot();
-
-      setEffectStacks((prev) => {
-        const currentStack = prev[assetId] || [];
-        const nextStack = currentStack.map((inst) => {
-          if (inst.instanceId !== instanceId) return inst;
-          return {
-            ...inst,
-            enabled: !inst.enabled,
-          };
-        });
-        dbSaveEffectStack(assetId, nextStack).catch(console.error);
-        return {
-          ...prev,
-          [assetId]: nextStack,
-        };
-      });
+    (targetId: string, instanceId: string) => {
+      mutateLayerStack(targetId, (current) =>
+        current.map((inst) =>
+          inst.instanceId === instanceId ? { ...inst, enabled: !inst.enabled } : inst
+        )
+      );
     },
-    [recordDiscreteSnapshot]
+    [mutateLayerStack]
   );
 
   const removeInstanceFromStack = React.useCallback(
-    (assetId: string, instanceId: string) => {
-      recordDiscreteSnapshot();
-
-      setEffectStacks((prev) => {
-        const currentStack = prev[assetId] || [];
-        const nextStack = currentStack.filter(
-          (inst) => inst.instanceId !== instanceId
-        );
-        dbSaveEffectStack(assetId, nextStack).catch(console.error);
-        return {
-          ...prev,
-          [assetId]: nextStack,
-        };
-      });
+    (targetId: string, instanceId: string) => {
+      mutateLayerStack(targetId, (current) =>
+        current.filter((inst) => inst.instanceId !== instanceId)
+      );
 
       setSelectedInstanceIds((prev) => {
-        const currentSelected = prev[assetId];
+        const currentSelected = prev[targetId];
         if (currentSelected === instanceId) {
-          const currentStack = effectStacksRef.current[assetId] || [];
-          const filtered = currentStack.filter(
-            (inst) => inst.instanceId !== instanceId
-          );
+          const stack = effectStacksRef.current[targetId] || [];
+          const filtered = stack.filter((inst) => inst.instanceId !== instanceId);
           const nextSelected =
-            filtered.length > 0
-              ? filtered[filtered.length - 1].instanceId
-              : null;
-          return { ...prev, [assetId]: nextSelected };
+            filtered.length > 0 ? filtered[filtered.length - 1].instanceId : null;
+          return { ...prev, [targetId]: nextSelected };
         }
         return prev;
       });
     },
-    [recordDiscreteSnapshot]
+    [mutateLayerStack]
   );
 
   const removeAllInstancesFromStack = React.useCallback(
-    (assetId: string) => {
-      recordDiscreteSnapshot();
-
-      setEffectStacks((prev) => {
-        dbSaveEffectStack(assetId, []).catch(console.error);
-        return {
-          ...prev,
-          [assetId]: [],
-        };
-      });
+    (targetId: string) => {
+      mutateLayerStack(targetId, () => []);
+      setSelectedEffectInstanceId(null);
       setSelectedInstanceIds((prev) => ({
         ...prev,
-        [assetId]: null,
+        [targetId]: null,
       }));
     },
-    [recordDiscreteSnapshot]
+    [mutateLayerStack]
   );
 
   const reorderEffectStack = React.useCallback(
-    (assetId: string, fromIndex: number, toIndex: number) => {
-      recordDiscreteSnapshot();
-
-      setEffectStacks((prev) => {
-        const currentStack = [...(prev[assetId] || [])];
+    (targetId: string, fromIndex: number, toIndex: number) => {
+      mutateLayerStack(targetId, (current) => {
         if (
           fromIndex < 0 ||
-          fromIndex >= currentStack.length ||
+          fromIndex >= current.length ||
           toIndex < 0 ||
-          toIndex >= currentStack.length
+          toIndex >= current.length
         ) {
-          return prev;
+          return current;
         }
-
-        const [moved] = currentStack.splice(fromIndex, 1);
-        currentStack.splice(toIndex, 0, moved);
-
-        dbSaveEffectStack(assetId, currentStack).catch(console.error);
-
-        return {
-          ...prev,
-          [assetId]: currentStack,
-        };
+        const next = [...current];
+        const [moved] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, moved);
+        return next;
       });
     },
-    [recordDiscreteSnapshot]
+    [mutateLayerStack]
   );
 
   const duplicateInstance = React.useCallback(
-    (assetId: string, instanceId: string) => {
-      recordDiscreteSnapshot();
-
-      setEffectStacks((prev) => {
-        const currentStack = prev[assetId] || [];
-        const targetIndex = currentStack.findIndex(
-          (inst) => inst.instanceId === instanceId
-        );
-        if (targetIndex === -1) return prev;
-
-        const target = currentStack[targetIndex];
+    (targetId: string, instanceId: string) => {
+      let dupInstanceId: string | null = null;
+      mutateLayerStack(targetId, (current) => {
+        const targetIndex = current.findIndex((inst) => inst.instanceId === instanceId);
+        if (targetIndex === -1) return current;
+        const target = current[targetIndex];
         const dup: EffectInstance = {
           instanceId: crypto.randomUUID(),
           effectId: target.effectId,
           enabled: target.enabled,
           parameters: JSON.parse(JSON.stringify(target.parameters || {})),
         };
-
-        const nextStack = [...currentStack];
-        nextStack.splice(targetIndex + 1, 0, dup);
-
-        setSelectedInstanceIds((sprev) => ({
-          ...sprev,
-          [assetId]: dup.instanceId,
-        }));
-
-        dbSaveEffectStack(assetId, nextStack).catch(console.error);
-
-        return {
-          ...prev,
-          [assetId]: nextStack,
-        };
+        dupInstanceId = dup.instanceId;
+        const next = [...current];
+        next.splice(targetIndex + 1, 0, dup);
+        return next;
       });
+
+      if (dupInstanceId) {
+        const finalDupId: string = dupInstanceId;
+        setSelectedEffectInstanceId(finalDupId);
+        setSelectedInstanceIds((prev) => ({
+          ...prev,
+          [targetId]: finalDupId,
+        }));
+      }
     },
-    [recordDiscreteSnapshot]
+    [mutateLayerStack]
   );
 
   // ---------------------------------------------------------------------------
@@ -895,31 +1512,25 @@ export function StudioProvider({
 
   const applyLookToActiveAsset = React.useCallback(
     (look: Look) => {
-      if (!activeImageId) return;
+      if (!activeLayer) return;
       recordDiscreteSnapshot();
 
-      // Deep clone template instances with brand-new unique instanceIds
       const clonedStack = cloneLookToEffectStack(look);
 
-      setEffectStacks((prev) => {
-        dbSaveEffectStack(activeImageId, clonedStack).catch(console.error);
-        return {
-          ...prev,
-          [activeImageId]: clonedStack,
-        };
-      });
+      mutateLayerStack(activeLayer.id, () => clonedStack);
 
-      setSelectedInstanceIds((prev) => ({
-        ...prev,
-        [activeImageId]:
-          clonedStack.length > 0
-            ? clonedStack[clonedStack.length - 1].instanceId
-            : null,
-      }));
+      const lastId = clonedStack.length > 0 ? clonedStack[clonedStack.length - 1].instanceId : null;
+      setSelectedEffectInstanceId(lastId);
+      if (activeImageId) {
+        setSelectedInstanceIds((prev) => ({
+          ...prev,
+          [activeImageId]: lastId,
+        }));
+      }
 
       setAppliedLook(look);
     },
-    [activeImageId, recordDiscreteSnapshot]
+    [activeLayer, activeImageId, mutateLayerStack, recordDiscreteSnapshot]
   );
 
   const applyLookToAssets = React.useCallback(
@@ -928,27 +1539,43 @@ export function StudioProvider({
       recordDiscreteSnapshot();
 
       const newStacksMap: Record<string, EffectStack> = {};
-
-      for (const assetId of assetIds) {
-        // Deep clone independent effect stack with brand-new unique instanceIds
-        const clonedStack = cloneLookToEffectStack(look);
-        newStacksMap[assetId] = clonedStack;
-        dbSaveEffectStack(assetId, clonedStack).catch(console.error);
+      for (const aId of assetIds) {
+        newStacksMap[aId] = cloneLookToEffectStack(look);
       }
 
-      setEffectStacks((prev) => ({
-        ...prev,
-        ...newStacksMap,
-      }));
+      setFrames((prevFrames) => {
+        const updatedFrames = prevFrames.map((frame) => {
+          let hasChange = false;
+          const nextLayers = frame.layers.map((layer) => {
+            if (layer.type === "image" && assetIds.includes(layer.assetId)) {
+              hasChange = true;
+              return {
+                ...layer,
+                effectStack: newStacksMap[layer.assetId] || [],
+              };
+            }
+            return layer;
+          });
+          return hasChange ? { ...frame, layers: nextLayers, updatedAt: Date.now() } : frame;
+        });
+
+        if (typeof dbSaveFrames === "function") {
+          dbSaveFrames(updatedFrames).catch(console.error);
+        }
+        for (const [aId, stack] of Object.entries(newStacksMap)) {
+          if (typeof dbSaveEffectStack === "function") {
+            dbSaveEffectStack(aId, stack).catch(console.error);
+          }
+        }
+
+        return updatedFrames;
+      });
 
       setSelectedInstanceIds((prev) => {
         const next = { ...prev };
         for (const assetId of assetIds) {
           const stack = newStacksMap[assetId];
-          next[assetId] =
-            stack && stack.length > 0
-              ? stack[stack.length - 1].instanceId
-              : null;
+          next[assetId] = stack && stack.length > 0 ? stack[stack.length - 1].instanceId : null;
         }
         return next;
       });
@@ -970,7 +1597,9 @@ export function StudioProvider({
       );
       setUserLooks((prev) => {
         const next = [...prev, newLook];
-        dbSaveUserLook(newLook).catch(console.error);
+        if (typeof dbSaveUserLook === "function") {
+          dbSaveUserLook(newLook).catch(console.error);
+        }
         return next;
       });
       return newLook;
@@ -981,7 +1610,9 @@ export function StudioProvider({
   const deleteUserLook = React.useCallback((lookId: string) => {
     setUserLooks((prev) => {
       const next = prev.filter((l) => l.id !== lookId);
-      dbDeleteUserLook(lookId).catch(console.error);
+      if (typeof dbDeleteUserLook === "function") {
+        dbDeleteUserLook(lookId).catch(console.error);
+      }
       return next;
     });
   }, []);
@@ -992,43 +1623,107 @@ export function StudioProvider({
 
   const updateActiveBackground = React.useCallback(
     (updates: Partial<BackgroundState>) => {
-      if (!activeImageId) return;
+      if (!activeFrame) return;
       startOrContinueParamInteraction();
 
-      setBackgrounds((prev) => {
-        const currentBg = prev[activeImageId] || DEFAULT_BACKGROUND_STATE;
-        const nextBg = { ...currentBg, ...updates };
+      setFrames((prev) => {
+        const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
+        if (frameIndex === -1) return prev;
+        const targetFrame = prev[frameIndex];
+        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        if (genLayerIndex === -1) return prev;
+
+        const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
+        const currentBg = genLayer.backgroundConfig || DEFAULT_BACKGROUND_STATE;
+        const nextBg: BackgroundState = {
+          ...currentBg,
+          ...updates,
+          type: updates.type || currentBg.type,
+        };
+
+        const updatedGenLayer: GenerativeLayer = {
+          ...genLayer,
+          visible: true,
+          backgroundMode: nextBg.type,
+          backgroundConfig: nextBg,
+        };
+
+        const nextLayers = [...targetFrame.layers];
+        nextLayers[genLayerIndex] = updatedGenLayer;
+
+        const updatedFrame: Frame = {
+          ...targetFrame,
+          layers: nextLayers,
+          updatedAt: Date.now(),
+        };
+
+        const nextFrames = [...prev];
+        nextFrames[frameIndex] = updatedFrame;
 
         // Debounced persistence
-        const timerKey = "bg_" + activeImageId;
+        const timerKey = "bg_" + targetFrame.id;
         if (debounceTimersRef.current[timerKey]) {
           clearTimeout(debounceTimersRef.current[timerKey]);
         }
         debounceTimersRef.current[timerKey] = setTimeout(() => {
-          Promise.resolve(dbSaveBackground(activeImageId, nextBg)).catch(console.error);
+          if (typeof dbSaveFrame === "function") {
+            Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
+          }
+          const activeImg = targetFrame.layers.find((l): l is ImageLayer => l.type === "image");
+          if (activeImg && typeof dbSaveBackground === "function") {
+            Promise.resolve(dbSaveBackground(activeImg.assetId, nextBg)).catch(console.error);
+          }
         }, 500);
 
-        return {
-          ...prev,
-          [activeImageId]: nextBg,
-        };
+        return nextFrames;
       });
     },
-    [activeImageId, startOrContinueParamInteraction]
+    [activeFrame, startOrContinueParamInteraction]
   );
 
   const resetActiveBackground = React.useCallback(() => {
-    if (!activeImageId) return;
+    if (!activeFrame) return;
     recordDiscreteSnapshot();
     setIsBackgroundPanelOpen(false);
 
-    setBackgrounds((prev) => {
-      const next = { ...prev };
-      delete next[activeImageId];
-      dbDeleteBackground(activeImageId).catch(console.error);
-      return next;
+    setFrames((prev) => {
+      const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
+      if (frameIndex === -1) return prev;
+      const targetFrame = prev[frameIndex];
+      const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+      if (genLayerIndex === -1) return prev;
+
+      const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
+      const updatedGenLayer: GenerativeLayer = {
+        ...genLayer,
+        visible: false,
+        backgroundMode: "transparent",
+        backgroundConfig: { ...DEFAULT_BACKGROUND_STATE, type: "transparent" },
+      };
+
+      const nextLayers = [...targetFrame.layers];
+      nextLayers[genLayerIndex] = updatedGenLayer;
+
+      const updatedFrame: Frame = {
+        ...targetFrame,
+        layers: nextLayers,
+        updatedAt: Date.now(),
+      };
+
+      const nextFrames = [...prev];
+      nextFrames[frameIndex] = updatedFrame;
+
+      if (typeof dbSaveFrame === "function") {
+        dbSaveFrame(updatedFrame).catch(console.error);
+      }
+      const activeImg = targetFrame.layers.find((l): l is ImageLayer => l.type === "image");
+      if (activeImg && typeof dbDeleteBackground === "function") {
+        dbDeleteBackground(activeImg.assetId).catch(console.error);
+      }
+
+      return nextFrames;
     });
-  }, [activeImageId, recordDiscreteSnapshot]);
+  }, [activeFrame, recordDiscreteSnapshot]);
 
   // ---------------------------------------------------------------------------
   // Global Undo / Redo
@@ -1050,19 +1745,65 @@ export function StudioProvider({
     setFuture((prev) => [currentSnap, ...prev]);
 
     // Restore state
-    setEffectStacks(snapshotToRestore.effectStacks);
-    setBackgrounds(snapshotToRestore.backgrounds);
-    setActiveImageIdState(snapshotToRestore.activeImageId);
-    setSelectedAssetIds(new Set(snapshotToRestore.selectedAssetIds));
+    if (snapshotToRestore.frames && snapshotToRestore.frames.length > 0) {
+      setFrames(snapshotToRestore.frames);
+      if (snapshotToRestore.activeFrameId !== undefined) {
+        setActiveFrameIdState(snapshotToRestore.activeFrameId);
+      }
+      if (snapshotToRestore.activeLayerId !== undefined) {
+        setActiveLayerIdState(snapshotToRestore.activeLayerId);
+      }
+      if (typeof dbSaveFrames === "function") {
+        dbSaveFrames(snapshotToRestore.frames).catch(console.error);
+      }
+    } else if (snapshotToRestore.effectStacks || snapshotToRestore.backgrounds) {
+      // Legacy snapshot fallback
+      setFrames((prev) =>
+        prev.map((frame) => {
+          const imgLayer = frame.layers.find((l) => l.type === "image");
+          const assetId = imgLayer?.type === "image" ? imgLayer.assetId : null;
+          let nextLayers = [...frame.layers];
+          if (assetId && snapshotToRestore.effectStacks?.[assetId]) {
+            nextLayers = nextLayers.map((l) =>
+              l.type === "image" && l.assetId === assetId
+                ? { ...l, effectStack: snapshotToRestore.effectStacks[assetId] }
+                : l
+            );
+          }
+          if (assetId && snapshotToRestore.backgrounds) {
+            const bg = snapshotToRestore.backgrounds[assetId] || DEFAULT_BACKGROUND_STATE;
+            nextLayers = nextLayers.map((l) =>
+              l.type === "generative"
+                ? { ...l, backgroundConfig: bg }
+                : l
+            );
+          }
+          return { ...frame, layers: nextLayers, updatedAt: Date.now() };
+        })
+      );
+    }
 
-    // Synchronize persistence to IndexedDB
-    for (const [aId, stack] of Object.entries(snapshotToRestore.effectStacks)) {
-      dbSaveEffectStack(aId, stack).catch(console.error);
+    setSelectedAssetIds(new Set(snapshotToRestore.selectedAssetIds || []));
+
+    // Dual-write legacy persistence
+    if (snapshotToRestore.effectStacks && typeof dbSaveEffectStack === "function") {
+      for (const [aId, stack] of Object.entries(snapshotToRestore.effectStacks)) {
+        dbSaveEffectStack(aId, stack).catch(console.error);
+      }
     }
-    for (const [aId, bg] of Object.entries(snapshotToRestore.backgrounds)) {
-      dbSaveBackground(aId, bg).catch(console.error);
+    if (snapshotToRestore.backgrounds && typeof dbSaveBackground === "function") {
+      for (const [aId, bg] of Object.entries(snapshotToRestore.backgrounds)) {
+        dbSaveBackground(aId, bg).catch(console.error);
+      }
     }
-    dbSaveSessionState(snapshotToRestore.activeImageId).catch(console.error);
+    if (typeof dbSaveSessionState === "function") {
+      dbSaveSessionState(
+        snapshotToRestore.activeFrameId || null,
+        snapshotToRestore.activeLayerId || null,
+        snapshotToRestore.activeImageId || null,
+        projectNameRef.current
+      ).catch(console.error);
+    }
   }, [createSnapshot]);
 
   const redo = React.useCallback(() => {
@@ -1087,19 +1828,65 @@ export function StudioProvider({
     });
 
     // Restore state
-    setEffectStacks(snapshotToRestore.effectStacks);
-    setBackgrounds(snapshotToRestore.backgrounds);
-    setActiveImageIdState(snapshotToRestore.activeImageId);
-    setSelectedAssetIds(new Set(snapshotToRestore.selectedAssetIds));
+    if (snapshotToRestore.frames && snapshotToRestore.frames.length > 0) {
+      setFrames(snapshotToRestore.frames);
+      if (snapshotToRestore.activeFrameId !== undefined) {
+        setActiveFrameIdState(snapshotToRestore.activeFrameId);
+      }
+      if (snapshotToRestore.activeLayerId !== undefined) {
+        setActiveLayerIdState(snapshotToRestore.activeLayerId);
+      }
+      if (typeof dbSaveFrames === "function") {
+        dbSaveFrames(snapshotToRestore.frames).catch(console.error);
+      }
+    } else if (snapshotToRestore.effectStacks || snapshotToRestore.backgrounds) {
+      // Legacy snapshot fallback
+      setFrames((prev) =>
+        prev.map((frame) => {
+          const imgLayer = frame.layers.find((l) => l.type === "image");
+          const assetId = imgLayer?.type === "image" ? imgLayer.assetId : null;
+          let nextLayers = [...frame.layers];
+          if (assetId && snapshotToRestore.effectStacks?.[assetId]) {
+            nextLayers = nextLayers.map((l) =>
+              l.type === "image" && l.assetId === assetId
+                ? { ...l, effectStack: snapshotToRestore.effectStacks[assetId] }
+                : l
+            );
+          }
+          if (assetId && snapshotToRestore.backgrounds) {
+            const bg = snapshotToRestore.backgrounds[assetId] || DEFAULT_BACKGROUND_STATE;
+            nextLayers = nextLayers.map((l) =>
+              l.type === "generative"
+                ? { ...l, backgroundConfig: bg }
+                : l
+            );
+          }
+          return { ...frame, layers: nextLayers, updatedAt: Date.now() };
+        })
+      );
+    }
 
-    // Synchronize persistence to IndexedDB
-    for (const [aId, stack] of Object.entries(snapshotToRestore.effectStacks)) {
-      dbSaveEffectStack(aId, stack).catch(console.error);
+    setSelectedAssetIds(new Set(snapshotToRestore.selectedAssetIds || []));
+
+    // Dual-write legacy persistence
+    if (snapshotToRestore.effectStacks && typeof dbSaveEffectStack === "function") {
+      for (const [aId, stack] of Object.entries(snapshotToRestore.effectStacks)) {
+        dbSaveEffectStack(aId, stack).catch(console.error);
+      }
     }
-    for (const [aId, bg] of Object.entries(snapshotToRestore.backgrounds)) {
-      dbSaveBackground(aId, bg).catch(console.error);
+    if (snapshotToRestore.backgrounds && typeof dbSaveBackground === "function") {
+      for (const [aId, bg] of Object.entries(snapshotToRestore.backgrounds)) {
+        dbSaveBackground(aId, bg).catch(console.error);
+      }
     }
-    dbSaveSessionState(snapshotToRestore.activeImageId).catch(console.error);
+    if (typeof dbSaveSessionState === "function") {
+      dbSaveSessionState(
+        snapshotToRestore.activeFrameId || null,
+        snapshotToRestore.activeLayerId || null,
+        snapshotToRestore.activeImageId || null,
+        projectNameRef.current
+      ).catch(console.error);
+    }
   }, [createSnapshot]);
 
   // Global Keyboard Shortcuts (⌘Z, ⌘⇧Z / Ctrl+Y)
@@ -1303,6 +2090,25 @@ export function StudioProvider({
     isHydrated,
     projectName,
     setProjectName,
+
+    // Frame & Layer Domain (Stage 1 Source of Truth)
+    frames,
+    activeFrameId,
+    activeFrame,
+    activeLayerId,
+    activeLayer,
+    setActiveFrameId,
+    setActiveLayerId,
+    selectedEffectInstanceId,
+
+    // Stage 1C Layer & Frame Operations
+    addLayerFromAsset,
+    updateLayer,
+    reorderLayers,
+    removeLayer,
+    setFrameDimensions,
+
+    // Transitional Compatibility Adapters (Stage 1A)
     assets,
     activeImageId,
     activeAsset,

@@ -19,6 +19,7 @@ import { formatFileSize } from '../../utils/image-ingestion';
 import { BrandLogo } from './brand-logo';
 import { ProjectNameInput } from './project-name-input';
 import { AssetSearch } from './asset-search';
+import { LayersPanel } from './layers-panel';
 import type { Asset } from '../../types/asset';
 
 export interface AssetPanelProps {
@@ -30,9 +31,11 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
     assets,
     activeAsset,
     activeImageId,
+    activeFrame,
     selectedAssetIds,
     addAssets,
     removeAsset,
+    addLayerFromAsset,
     isImporting,
     importError,
     clearImportError,
@@ -41,6 +44,7 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
     selectAssetRange,
   } = useStudioStore();
 
+  const [activeTab, setActiveTab] = React.useState<"assets" | "layers">("assets");
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [searchQuery, setSearchQuery] = React.useState<string>('');
   const [isSpecsOpen, setIsSpecsOpen] = React.useState<boolean>(false);
@@ -118,26 +122,51 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
         )}
       </div>
 
-      {/* Assets Section Header (Matching Design/Animate, Effects, Looks, Background height h-11) */}
-      <div className="h-11 min-h-11 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-semibold tracking-tight text-[color:var(--foreground)]">
-            Assets
-          </span>
-          <span className="text-xs text-[color:var(--muted-foreground)]">
-            ({assets.length})
-          </span>
+      {/* Left Panel Tabs Header: Assets vs Layers (Matching Design/Animate bar in Inspector) */}
+      <div className="h-11 min-h-11 px-4 border-b border-[color:var(--border)] flex items-center justify-between shrink-0 bg-[color:var(--sidebar)]">
+        <div role="tablist" aria-label="Left panel views" className="flex items-center gap-1">
+          <button
+            role="tab"
+            aria-selected={activeTab === "assets"}
+            type="button"
+            onClick={() => setActiveTab("assets")}
+            className={cn(
+              "px-2.5 py-1 text-sm font-medium rounded-[4px] transition-colors cursor-pointer",
+              activeTab === "assets"
+                ? "bg-[color:var(--secondary)] text-[color:var(--foreground)]"
+                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+            )}
+          >
+            Assets ({assets.length})
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === "layers"}
+            type="button"
+            onClick={() => setActiveTab("layers")}
+            className={cn(
+              "px-2.5 py-1 text-sm font-medium rounded-[4px] transition-colors cursor-pointer",
+              activeTab === "layers"
+                ? "bg-[color:var(--secondary)] text-[color:var(--foreground)]"
+                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+            )}
+          >
+            Layers ({activeFrame?.layers.length ?? 0})
+          </button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => fileInputRef.current?.click()}
-          title="Import media"
-          aria-label="Import media"
-          className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] [&_svg]:!size-4"
-        >
-          <PlusIcon size={ICON_SIZES.md} className="shrink-0" />
-        </Button>
+
+        {activeTab === "assets" && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => fileInputRef.current?.click()}
+            title="Import media"
+            aria-label="Import media"
+            className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] [&_svg]:!size-4"
+          >
+            <PlusIcon size={ICON_SIZES.md} className="shrink-0" />
+          </Button>
+        )}
       </div>
 
       {/* Import Error Alert Banner */}
@@ -158,14 +187,20 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
         </div>
       )}
 
-      {/* Panel Body: State A (Empty Dropzone) vs State B (Populated Grid) */}
-      <ScrollFade
-        className={cn(
-          "flex-1 overflow-y-auto",
-          assets.length === 0 ? "p-0" : "px-4 py-3",
-        )}
-        containerClassName="flex-1 min-h-0"
-      >
+      {/* Panel Body: Layers Panel vs Assets Library */}
+      {activeTab === "layers" ? (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <LayersPanel />
+        </div>
+      ) : (
+        <>
+          <ScrollFade
+            className={cn(
+              "flex-1 overflow-y-auto",
+              assets.length === 0 ? "p-0" : "px-4 py-3",
+            )}
+            containerClassName="flex-1 min-h-0"
+          >
         {assets.length === 0 ? (
           /* State A: Figma-aligned Empty State Composition (Figma node 50:1165) */
           <div
@@ -244,12 +279,16 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
                   <div
                     key={asset.id}
                     onClick={(e) => handleTileClick(e, asset)}
+                    onDoubleClick={() => {
+                      addLayerFromAsset(asset.id);
+                      setActiveTab("layers");
+                    }}
                     className={`group relative aspect-square w-full rounded-md bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] overflow-hidden cursor-pointer transition-all duration-150 ${
                       isSelected
                         ? selectedAssetRingClassName
                         : 'hover:opacity-90 border border-[color:color-mix(in_oklab,var(--border)_15%,transparent)] hover:border-[color:color-mix(in_oklab,var(--border)_35%,transparent)]'
                     }`}
-                    title={`${asset.filename} (${asset.width}×${asset.height})`}
+                    title={`${asset.filename} (${asset.width}×${asset.height}) — Double-click to add layer`}
                   >
                     <img
                       src={asset.thumbnailUrl}
@@ -270,6 +309,23 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
                       className="absolute top-1 right-1 size-5 rounded-xs bg-black/60 text-white/80 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-100 p-0"
                     >
                       <TrashIcon size={11} />
+                    </Button>
+
+                    {/* Add Layer to Composition Button on Hover */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      title="Add to composition"
+                      aria-label="Add to composition"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addLayerFromAsset(asset.id);
+                        setActiveTab("layers");
+                      }}
+                      className="absolute bottom-1 right-1 size-5 rounded-xs bg-black/60 text-white/80 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-100 p-0"
+                    >
+                      <PlusIcon size={11} />
                     </Button>
                   </div>
                 );
@@ -350,6 +406,8 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
           </div>
         )}
       </div>
+      </>
+    )}
     </PanelSurface>
   );
 }

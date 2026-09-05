@@ -10,6 +10,9 @@ import type { Look } from "../types/look";
 vi.mock("../storage/db", () => ({
   loadHydratedProject: vi.fn().mockResolvedValue({
     assets: [],
+    frames: [],
+    activeFrameId: null,
+    activeLayerId: null,
     activeImageId: null,
     effectStacks: {},
     backgrounds: {},
@@ -24,6 +27,10 @@ vi.mock("../storage/db", () => ({
   dbSaveUserLook: vi.fn().mockResolvedValue(undefined),
   dbDeleteUserLook: vi.fn().mockResolvedValue(undefined),
   dbSaveSessionState: vi.fn().mockResolvedValue(undefined),
+  dbSaveFrame: vi.fn().mockResolvedValue(undefined),
+  dbSaveFrames: vi.fn().mockResolvedValue(undefined),
+  dbDeleteFrame: vi.fn().mockResolvedValue(undefined),
+  dbGetAllFrames: vi.fn().mockResolvedValue([]),
 }));
 
 const sampleAssets: Asset[] = [

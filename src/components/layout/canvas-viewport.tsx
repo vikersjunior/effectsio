@@ -24,6 +24,9 @@ import { renderBackgroundToCanvas } from "../../export/image-encoder";
 import { createWebGL2Context } from "../../rendering/webgl/webgl-context";
 import { GPUEffectPipeline, canExecuteStackOnGPU } from "../../rendering/webgl/webgl-effect-pipeline";
 import { GPUBackgroundRenderer, isGPUSupportedBackground } from "../../rendering/webgl/webgl-background";
+import { WebGL2FrameCompositor } from "../../rendering/webgl/webgl-frame-compositor";
+import type { TextureSource } from "../../rendering/webgl/webgl-texture";
+import type { ImageLayer } from "../../types/frame";
 import { CanvasControlDock } from "./canvas-control-dock";
 import { FloatingEffectPanel } from "./floating-effect-panel";
 import { FloatingBackgroundPanel } from "./floating-background-panel";
@@ -42,6 +45,8 @@ export function CanvasViewport({
 }: CanvasViewportProps = {}): React.JSX.Element {
   const {
     isHydrated,
+    activeFrame,
+    assets,
     activeAsset,
     activeEffectStack,
     activeBackground,
@@ -98,9 +103,11 @@ export function CanvasViewport({
   const currentTimeRef = React.useRef<number>(timeline.currentTime);
   const lastSyncTimeRef = React.useRef<number>(0);
 
-  // WebGL2 GPU Pipeline and Background Renderer references (persistent across renders, disposed on unmount)
+  // WebGL2 GPU Pipeline, Background Renderer, and Stage 1B Multi-Layer Compositor references
   const gpuPipelineRef = React.useRef<GPUEffectPipeline | null>(null);
   const gpuBgRendererRef = React.useRef<GPUBackgroundRenderer | null>(null);
+  const gpuCompositorRef = React.useRef<WebGL2FrameCompositor | null>(null);
+  const compCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
   React.useEffect(() => {
     const offscreenCanvas = document.createElement("canvas");
@@ -131,6 +138,23 @@ export function CanvasViewport({
       gpuBgRendererRef.current = null;
     }
 
+    try {
+      const compCanvas = document.createElement("canvas");
+      compCanvasRef.current = compCanvas;
+      const compGl = createWebGL2Context(compCanvas, {
+        alpha: true,
+        premultipliedAlpha: false,
+        preserveDrawingBuffer: true,
+        powerPreference: "high-performance",
+      });
+      if (compGl) {
+        gpuCompositorRef.current = new WebGL2FrameCompositor(compGl);
+      }
+    } catch (err) {
+      console.warn("GPU frame compositor setup failed, will use CPU fallback:", err);
+      gpuCompositorRef.current = null;
+    }
+
     return () => {
       if (gpuPipelineRef.current) {
         gpuPipelineRef.current.dispose();
@@ -139,6 +163,10 @@ export function CanvasViewport({
       if (gpuBgRendererRef.current) {
         gpuBgRendererRef.current.dispose();
         gpuBgRendererRef.current = null;
+      }
+      if (gpuCompositorRef.current) {
+        gpuCompositorRef.current.dispose();
+        gpuCompositorRef.current = null;
       }
     };
   }, []);
@@ -178,6 +206,29 @@ export function CanvasViewport({
       isCancelled = true;
     };
   }, [activeAsset]);
+
+  // Preload/cache images for all image layers across the active frame
+  const loadedAssetsRef = React.useRef<Map<string, HTMLImageElement>>(new Map());
+  const [, setLoadedAssetsVersion] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!activeFrame) return;
+
+    const imageLayers = activeFrame.layers.filter((l): l is ImageLayer => l.type === "image");
+    for (const layer of imageLayers) {
+      if (!loadedAssetsRef.current.has(layer.assetId)) {
+        const asset = assets.find((a) => a.id === layer.assetId);
+        if (asset?.objectUrl) {
+          const img = new Image();
+          img.src = asset.objectUrl;
+          img.onload = () => {
+            loadedAssetsRef.current.set(layer.assetId, img);
+            setLoadedAssetsVersion((v) => v + 1);
+          };
+        }
+      }
+    }
+  }, [activeFrame, assets]);
 
   // Centralized Canvas Draw Method (ONLY clears & renders; NEVER mutates canvas.width / canvas.height!)
   const drawFrame = React.useCallback(
@@ -250,13 +301,34 @@ export function CanvasViewport({
       if (isSourceLoaded && loadedSourceImage) {
         const scale = currentZoom / 100;
         const renderSource = loadedSourceImage.img;
-        const w = activeAsset.width;
-        const h = activeAsset.height;
+        let w = activeAsset.width;
+        let h = activeAsset.height;
 
-        // Render processed output via GPU or CPU fallback
+        // Render processed output via Stage 1B GPU Multi-Layer Compositor, or CPU fallback
         let renderProcessed: HTMLImageElement | HTMLCanvasElement = renderSource;
+        let multiLayerComposited = false;
 
-        if (activeEffectStack && activeEffectStack.some((item) => item.enabled !== false)) {
+        if (activeFrame && gpuCompositorRef.current && compCanvasRef.current) {
+          try {
+            const assetSources = new Map<string, TextureSource>();
+            for (const [id, img] of loadedAssetsRef.current.entries()) {
+              assetSources.set(id, img);
+            }
+            if (activeAsset && loadedSourceImage) {
+              assetSources.set(activeAsset.id, loadedSourceImage.img);
+            }
+            gpuCompositorRef.current.composeFrame(activeFrame, assetSources, time);
+            gpuCompositorRef.current.renderToCanvas(compCanvasRef.current);
+            renderProcessed = compCanvasRef.current;
+            w = activeFrame.dimensions.width;
+            h = activeFrame.dimensions.height;
+            multiLayerComposited = true;
+          } catch (gpuErr) {
+            console.warn("GPU multi-layer frame composition failed, falling back to single-image pipeline:", gpuErr);
+          }
+        }
+
+        if (!multiLayerComposited && activeEffectStack && activeEffectStack.some((item) => item.enabled !== false)) {
           let gpuRenderSuccess = false;
           if (gpuPipelineRef.current && canExecuteStackOnGPU(activeEffectStack)) {
             try {
@@ -303,8 +375,8 @@ export function CanvasViewport({
           ctx.translate(width / 2 + currentPanX, height / 2 + currentPanY);
           ctx.scale(scale, scale);
 
-          // 1. Draw Creative Background Layer (if not transparent and visible)
-          if (activeBackground && activeBackground.type !== "transparent" && activeBackground.visible !== false) {
+          // 1. Draw Creative Background Layer (if not transparent, visible, and NOT already multi-layer composited)
+          if (!multiLayerComposited && activeBackground && activeBackground.type !== "transparent" && activeBackground.visible !== false) {
             const bgW = w + 2 * padding;
             const bgH = h + 2 * padding;
             const bgX = -bgW / 2;
@@ -426,7 +498,7 @@ export function CanvasViewport({
 
       ctx.restore();
     },
-    [activeAsset, loadedSourceImage, activeEffectStack, activeBackground, viewport]
+    [activeFrame, activeAsset, loadedSourceImage, activeEffectStack, activeBackground, viewport]
   );
 
   const drawFrameRef = React.useRef(drawFrame);

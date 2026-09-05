@@ -9,3 +9,4 @@ export * from "./webgl/webgl-pipeline";
 export * from "./webgl/webgl-viewport-renderer";
 export * from "./webgl/webgl-effect-pipeline";
 export * from "./webgl/webgl-background";
+export * from "./webgl/webgl-frame-compositor";

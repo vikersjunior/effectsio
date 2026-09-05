@@ -25,6 +25,9 @@ const { mockSampleAsset } = vi.hoisted(() => ({
 vi.mock("../../../storage/db", () => ({
   loadHydratedProject: vi.fn().mockResolvedValue({
     assets: [mockSampleAsset],
+    frames: [],
+    activeFrameId: null,
+    activeLayerId: null,
     activeImageId: "asset-1",
     projectName: "Project Name",
     effectStacks: {},
@@ -40,6 +43,10 @@ vi.mock("../../../storage/db", () => ({
   dbGetRecentAssets: vi.fn().mockResolvedValue([]),
   dbGetAllLooks: vi.fn().mockResolvedValue([]),
   dbClearAll: vi.fn().mockResolvedValue(undefined),
+  dbSaveFrame: vi.fn().mockResolvedValue(undefined),
+  dbSaveFrames: vi.fn().mockResolvedValue(undefined),
+  dbDeleteFrame: vi.fn().mockResolvedValue(undefined),
+  dbGetAllFrames: vi.fn().mockResolvedValue([]),
 }));
 
 describe("Canonical Icon Sizing System (ICON_SIZES)", () => {

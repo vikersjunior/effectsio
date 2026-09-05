@@ -25,6 +25,9 @@ const { mockSampleAsset } = vi.hoisted(() => ({
 vi.mock('../../storage/db', () => ({
   loadHydratedProject: vi.fn().mockResolvedValue({
     assets: [mockSampleAsset],
+    frames: [],
+    activeFrameId: null,
+    activeLayerId: null,
     activeImageId: 'asset-1',
     projectName: 'Project Name',
     effectStacks: {},
@@ -40,6 +43,10 @@ vi.mock('../../storage/db', () => ({
   dbSaveUserLook: vi.fn().mockResolvedValue(undefined),
   dbDeleteUserLook: vi.fn().mockResolvedValue(undefined),
   dbSaveSessionState: vi.fn().mockResolvedValue(undefined),
+  dbSaveFrame: vi.fn().mockResolvedValue(undefined),
+  dbSaveFrames: vi.fn().mockResolvedValue(undefined),
+  dbDeleteFrame: vi.fn().mockResolvedValue(undefined),
+  dbGetAllFrames: vi.fn().mockResolvedValue([]),
 }));
 
 describe('AssetPanel: Add Asset Controls (Correction 02)', () => {
@@ -47,6 +54,9 @@ describe('AssetPanel: Add Asset Controls (Correction 02)', () => {
     vi.clearAllMocks();
     vi.mocked(loadHydratedProject).mockResolvedValue({
       assets: [mockSampleAsset],
+      frames: [],
+      activeFrameId: null,
+      activeLayerId: null,
       activeImageId: 'asset-1',
       projectName: 'Project Name',
       effectStacks: {},
@@ -188,6 +198,9 @@ describe('AssetPanel: Empty State (Correction 02.7 — Figma 50:1165)', () => {
     vi.clearAllMocks();
     vi.mocked(loadHydratedProject).mockResolvedValue({
       assets: [],
+      frames: [],
+      activeFrameId: null,
+      activeLayerId: null,
       activeImageId: null,
       projectName: 'Project Name',
       effectStacks: {},

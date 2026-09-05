@@ -1,8 +1,10 @@
 import type { EffectStack } from "../types/asset";
 import type { BackgroundState } from "../types/look";
 import type { ExportFormat } from "../types/export";
+import type { Frame } from "../types/frame";
 import { createWebGL2Context } from "../rendering/webgl/webgl-context";
 import { GPUEffectPipeline, canExecuteStackOnGPU } from "../rendering/webgl/webgl-effect-pipeline";
+import { WebGL2FrameCompositor } from "../rendering/webgl/webgl-frame-compositor";
 import type { TextureSource } from "../rendering/webgl/webgl-texture";
 import { getMimeTypeForFormat } from "./export-utils";
 import { encodeImageDataToBlob } from "./image-encoder";
@@ -189,6 +191,76 @@ export async function renderGPUExport(params: GPUExportParams): Promise<GPUExpor
     }
 
     try {
+      const ext = gl.getExtension("WEBGL_lose_context");
+      if (ext) {
+        ext.loseContext();
+      }
+    } catch {
+      // Ignored
+    }
+
+    offscreenCanvas.width = 0;
+    offscreenCanvas.height = 0;
+  }
+}
+
+export interface GPUFrameExportParams {
+  frame: Frame;
+  assetSources: Map<string, TextureSource>;
+  format: ExportFormat;
+  quality?: number;
+  time?: number;
+}
+
+/**
+ * Stage 1B: Executes multi-layer GPU frame export rendering on an offscreen WebGL2 canvas.
+ * Renders the complete Frame layer hierarchy (GenerativeLayer backdrop + ImageLayers with effect stacks).
+ */
+export async function renderGPUFrameExport(
+  params: GPUFrameExportParams,
+): Promise<GPUExportResult> {
+  const { frame, assetSources, format, quality = 0.92, time = 0 } = params;
+  const outWidth = frame.dimensions.width;
+  const outHeight = frame.dimensions.height;
+
+  if (outWidth <= 0 || outHeight <= 0) {
+    throw new Error(`Invalid frame export dimensions: ${outWidth}x${outHeight}`);
+  }
+
+  const offscreenCanvas = document.createElement("canvas");
+  offscreenCanvas.width = outWidth;
+  offscreenCanvas.height = outHeight;
+
+  const compositor = new WebGL2FrameCompositor(offscreenCanvas);
+  try {
+    compositor.composeFrame(frame, assetSources, time);
+    compositor.renderToCanvas(offscreenCanvas);
+
+    let blob: Blob;
+    try {
+      blob = await encodeCanvasToBlob(offscreenCanvas, format, quality);
+    } catch {
+      const gl = compositor.getContext();
+      const imgData = readPixelsToImageData(gl, outWidth, outHeight);
+      blob = await encodeImageDataToBlob(imgData, format, quality, undefined);
+    }
+
+    return {
+      blob,
+      width: outWidth,
+      height: outHeight,
+      size: blob.size,
+      renderedOnGPU: true,
+    };
+  } finally {
+    try {
+      compositor.dispose();
+    } catch (err) {
+      console.warn("Error disposing GPU frame compositor:", err);
+    }
+
+    try {
+      const gl = compositor.getContext();
       const ext = gl.getExtension("WEBGL_lose_context");
       if (ext) {
         ext.loseContext();

@@ -14,10 +14,15 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
+  ICON_SIZES,
 } from "../ui";
 import { TimelineBar } from "../timeline/timeline-bar";
 import { useStudioStore } from "../../context/studio-context";
 import { EffectBrowserModal } from "../effects/effect-browser-modal";
+import {
+  FRAME_SIZE_PRESETS,
+  DEFAULT_FRAME_DIMENSIONS,
+} from "../../types/frame";
 
 export interface CanvasControlDockProps {
   isHandToolActive: boolean;
@@ -47,7 +52,18 @@ export function CanvasControlDock({
     setIsEffectBrowserOpen,
     activeImageId,
     addEffectToStack,
+    activeFrame,
+    setFrameDimensions,
   } = useStudioStore();
+
+  const frameDimensions = activeFrame?.dimensions ?? DEFAULT_FRAME_DIMENSIONS;
+  const [customWidth, setCustomWidth] = React.useState(frameDimensions.width);
+  const [customHeight, setCustomHeight] = React.useState(frameDimensions.height);
+
+  React.useEffect(() => {
+    setCustomWidth(frameDimensions.width);
+    setCustomHeight(frameDimensions.height);
+  }, [frameDimensions.width, frameDimensions.height]);
 
   const isHandActive = isHandToolActive || isSpacePressed;
 
@@ -82,22 +98,125 @@ export function CanvasControlDock({
                 : ""
             }`}
           >
-            <HandIcon size={18} className="shrink-0" />
+            <HandIcon size={ICON_SIZES.lg} className="shrink-0" />
           </Button>
 
-          {/* 2. Resize / Frame Size */}
-          <Button
-            variant="ghost"
-            size="icon-md"
-            aria-label="Frame size"
-            title="Resize"
-            className="!size-8 rounded-lg [&_svg]:!size-[18px]"
-            onClick={() => {
-              // Frame size selection entry point: preserved structurally for upcoming feature
-            }}
-          >
-            <ResizeIcon size={18} className="shrink-0" />
-          </Button>
+          {/* 2. Resize / Frame Size Popover */}
+          <Popover>
+            <PopoverTrigger
+              type="button"
+              aria-label="Frame size"
+              title="Resize / Frame size"
+              className="inline-flex items-center justify-center !size-8 rounded-lg text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+            >
+              <ResizeIcon size={ICON_SIZES.lg} className="shrink-0" />
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="center"
+              sideOffset={8}
+              className="w-64 p-3 gap-3"
+            >
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[color:var(--foreground)]">
+                    Frame Size
+                  </span>
+                  <span className="text-2xs font-mono text-[color:var(--muted-foreground)]">
+                    {frameDimensions.width} × {frameDimensions.height}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1">
+                  {FRAME_SIZE_PRESETS.map((preset) => {
+                    const isSelected =
+                      frameDimensions.presetId === preset.id ||
+                      (frameDimensions.width === preset.width &&
+                        frameDimensions.height === preset.height);
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() =>
+                          setFrameDimensions({
+                            width: preset.width,
+                            height: preset.height,
+                            presetId: preset.id,
+                          })
+                        }
+                        className={`flex flex-col items-start px-2 py-1.5 rounded-md text-left transition-colors cursor-pointer border ${
+                          isSelected
+                            ? "border-[color:var(--primary)] bg-[color:color-mix(in_oklab,var(--primary)_10%,transparent)] text-[color:var(--foreground)]"
+                            : "border-transparent hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--foreground)]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-xs font-medium">{preset.aspectRatioLabel}</span>
+                          <span className="text-2xs text-[color:var(--muted-foreground)] font-mono">
+                            {preset.category}
+                          </span>
+                        </div>
+                        <span className="text-2xs text-[color:var(--muted-foreground)] font-mono">
+                          {preset.width}×{preset.height}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Separator />
+
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-2xs font-medium text-[color:var(--muted-foreground)] uppercase tracking-wider">
+                    Custom Dimensions
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1 flex-1 bg-[color:var(--muted)]/50 rounded px-2 py-1 border border-[color:var(--border)]">
+                      <span className="text-2xs text-[color:var(--muted-foreground)] font-mono">W</span>
+                      <input
+                        type="number"
+                        min={64}
+                        max={8192}
+                        value={customWidth}
+                        onChange={(e) => setCustomWidth(Number(e.target.value))}
+                        aria-label="Custom Frame Width"
+                        className="w-full bg-transparent text-xs font-mono text-[color:var(--foreground)] outline-none"
+                      />
+                    </div>
+                    <span className="text-2xs text-[color:var(--muted-foreground)]">×</span>
+                    <div className="flex items-center gap-1 flex-1 bg-[color:var(--muted)]/50 rounded px-2 py-1 border border-[color:var(--border)]">
+                      <span className="text-2xs text-[color:var(--muted-foreground)] font-mono">H</span>
+                      <input
+                        type="number"
+                        min={64}
+                        max={8192}
+                        value={customHeight}
+                        onChange={(e) => setCustomHeight(Number(e.target.value))}
+                        aria-label="Custom Frame Height"
+                        className="w-full bg-transparent text-xs font-mono text-[color:var(--foreground)] outline-none"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        const w = Math.max(64, Math.min(8192, customWidth || 1080));
+                        const h = Math.max(64, Math.min(8192, customHeight || 1080));
+                        setFrameDimensions({
+                          width: w,
+                          height: h,
+                          presetId: null,
+                        });
+                      }}
+                      className="h-7 text-xs px-2"
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* 3. Magic Wand / Effects */}
           <Button
@@ -112,7 +231,7 @@ export function CanvasControlDock({
             }`}
             onClick={() => setIsEffectBrowserOpen(true)}
           >
-            <MagicWandIcon size={18} className="shrink-0" />
+            <MagicWandIcon size={ICON_SIZES.lg} className="shrink-0" />
           </Button>
 
           {/* 4. Compare */}
@@ -128,7 +247,7 @@ export function CanvasControlDock({
                 : ""
             }`}
           >
-            <ArrowsOutLineHorizontalIcon size={18} className="shrink-0" />
+            <ArrowsOutLineHorizontalIcon size={ICON_SIZES.lg} className="shrink-0" />
           </Button>
         </div>
 
@@ -143,7 +262,7 @@ export function CanvasControlDock({
             title="Undo (⌘Z)"
             className="!size-8 rounded-lg [&_svg]:!size-[18px] disabled:opacity-30"
           >
-            <ArrowUUpLeftIcon size={18} className="shrink-0" />
+            <ArrowUUpLeftIcon size={ICON_SIZES.lg} className="shrink-0" />
           </Button>
 
           <Button
@@ -155,7 +274,7 @@ export function CanvasControlDock({
             title="Redo (⌘⇧Z)"
             className="!size-8 rounded-lg [&_svg]:!size-[18px] disabled:opacity-30"
           >
-            <ArrowUUpRightIcon size={18} className="shrink-0" />
+            <ArrowUUpRightIcon size={ICON_SIZES.lg} className="shrink-0" />
           </Button>
         </div>
 
@@ -169,7 +288,7 @@ export function CanvasControlDock({
               className="flex items-center gap-1 px-2.5 h-8 text-xs font-mono font-medium text-[color:var(--foreground)] rounded-lg hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
             >
               <span className="tabular-nums">{Math.round(viewport.zoom)}%</span>
-              <CaretDownIcon size={14} className="opacity-70 shrink-0 !size-3.5" />
+              <CaretDownIcon size={ICON_SIZES.sm} className="opacity-70 shrink-0 !size-3.5" />
             </PopoverTrigger>
           <PopoverContent
             side="top"

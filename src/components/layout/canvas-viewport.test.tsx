@@ -52,6 +52,9 @@ beforeEach(() => {
 vi.mock("../../storage/db", () => ({
   loadHydratedProject: vi.fn().mockResolvedValue({
     assets: [],
+    frames: [],
+    activeFrameId: null,
+    activeLayerId: null,
     activeImageId: null,
     projectName: "Project Name",
     effectStacks: {},
@@ -67,6 +70,10 @@ vi.mock("../../storage/db", () => ({
   dbSaveUserLook: vi.fn().mockResolvedValue(undefined),
   dbDeleteUserLook: vi.fn().mockResolvedValue(undefined),
   dbSaveSessionState: vi.fn().mockResolvedValue(undefined),
+  dbSaveFrame: vi.fn().mockResolvedValue(undefined),
+  dbSaveFrames: vi.fn().mockResolvedValue(undefined),
+  dbDeleteFrame: vi.fn().mockResolvedValue(undefined),
+  dbGetAllFrames: vi.fn().mockResolvedValue([]),
 }));
 
 describe("CanvasViewport: Main Canvas Empty State (Correction 02.8 — Figma 137:6167)", () => {
@@ -74,6 +81,9 @@ describe("CanvasViewport: Main Canvas Empty State (Correction 02.8 — Figma 137
     vi.clearAllMocks();
     vi.mocked(loadHydratedProject).mockResolvedValue({
       assets: [],
+      frames: [],
+      activeFrameId: null,
+      activeLayerId: null,
       activeImageId: null,
       projectName: "Project Name",
       effectStacks: {},

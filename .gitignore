@@ -23,6 +23,9 @@ docs/reference-study-prompts.md
 docs/research/
 .research-scratch/
 
+# EffectsIO local research — never commit
+/research/
+
 # Local environment
 .env
 .env.*
