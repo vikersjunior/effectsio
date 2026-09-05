@@ -900,4 +900,92 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       });
     });
   });
+
+  describe("Stage 2D Transform Inspector Section", () => {
+    function TransformTestHost() {
+      const store = useStudioStore();
+      const activeLayer = store.activeFrame?.layers.find((l) => l.id === store.activeFrame?.activeLayerId);
+      const transform = activeLayer?.type === "image" ? activeLayer.transform : null;
+
+      return (
+        <div>
+          <span data-testid="is-hydrated">{String(store.isHydrated)}</span>
+          <span data-testid="transform-x">{transform ? String(transform.x) : "none"}</span>
+          <span data-testid="transform-y">{transform ? String(transform.y) : "none"}</span>
+          <span data-testid="transform-scale">{transform ? String(transform.scaleX) : "none"}</span>
+          <span data-testid="transform-rot">{transform ? String(transform.rotation) : "none"}</span>
+          <button
+            data-testid="setup-image-layer"
+            onClick={async () => {
+              await store.addAssets([sampleAsset]);
+            }}
+          >
+            Setup Image Layer
+          </button>
+          <InspectorPanel />
+        </div>
+      );
+    }
+
+    it("renders Transform section with Position, Scale, Rotation, and Reset button for active ImageLayer", async () => {
+      render(
+        <StudioProvider>
+          <TransformTestHost />
+        </StudioProvider>
+      );
+
+      await waitFor(() => expect(screen.getByTestId("is-hydrated").textContent).toBe("true"));
+      fireEvent.click(screen.getByTestId("setup-image-layer"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Transform")).toBeDefined();
+        expect(screen.getByText("Position")).toBeDefined();
+        expect(screen.getByText("Scale")).toBeDefined();
+        expect(screen.getByText("Rotation")).toBeDefined();
+        expect(screen.getByRole("button", { name: "Reset Transform" })).toBeDefined();
+      });
+    });
+
+    it("updates transform X and Y via numeric inputs and resets transform on Reset button click", async () => {
+      render(
+        <StudioProvider>
+          <TransformTestHost />
+        </StudioProvider>
+      );
+
+      await waitFor(() => expect(screen.getByTestId("is-hydrated").textContent).toBe("true"));
+      fireEvent.click(screen.getByTestId("setup-image-layer"));
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Reset Transform" })).toBeDefined();
+      });
+
+      // Find position inputs
+      const inputs = screen.getAllByRole("spinbutton");
+      expect(inputs.length).toBeGreaterThanOrEqual(2);
+
+      // Mutate X input
+      fireEvent.change(inputs[0], { target: { value: "150" } });
+      await waitFor(() => {
+        expect(screen.getByTestId("transform-x").textContent).toBe("150");
+      });
+
+      // Mutate Y input
+      fireEvent.change(inputs[1], { target: { value: "-80" } });
+      await waitFor(() => {
+        expect(screen.getByTestId("transform-y").textContent).toBe("-80");
+      });
+
+      // Click Reset Transform
+      const resetBtn = screen.getByRole("button", { name: "Reset Transform" });
+      fireEvent.click(resetBtn);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("transform-x").textContent).toBe("0");
+        expect(screen.getByTestId("transform-y").textContent).toBe("0");
+        expect(screen.getByTestId("transform-scale").textContent).toBe("1");
+        expect(screen.getByTestId("transform-rot").textContent).toBe("0");
+      });
+    });
+  });
 });

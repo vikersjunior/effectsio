@@ -6,9 +6,17 @@ import { CanvasViewport } from "./canvas-viewport";
 import { StudioProvider } from "../../context/studio-context";
 import { loadHydratedProject } from "../../storage/db";
 
+import { createDefaultFrame, createImageLayer } from "../../types/frame";
+
 // Mock ResizeObserver for jsdom
 global.ResizeObserver = class ResizeObserver {
-  observe = vi.fn();
+  private cb: ResizeObserverCallback;
+  constructor(cb: ResizeObserverCallback) {
+    this.cb = cb;
+  }
+  observe = vi.fn(() => {
+    this.cb([{ contentRect: { width: 800, height: 600 } } as unknown as ResizeObserverEntry], this);
+  });
   unobserve = vi.fn();
   disconnect = vi.fn();
 };
@@ -232,5 +240,122 @@ describe("CanvasViewport: Main Canvas Empty State (Correction 02.8 — Figma 137
     await screen.findByText("No image selected");
     const toolbar = screen.getByRole("toolbar", { name: /Canvas Workspace Controls/i });
     expect(toolbar).toBeDefined();
+  });
+});
+
+describe("CanvasViewport: Stage 2 Transform Selection Overlay & Interactions", () => {
+  const mockAsset = {
+    id: "asset-1",
+    name: "photo.jpg",
+    filename: "photo.jpg",
+    mimeType: "image/jpeg",
+    fileSize: 1000,
+    width: 800,
+    height: 600,
+    aspectRatio: 800 / 600,
+    blob: new Blob([""], { type: "image/jpeg" }),
+    objectUrl: "blob:photo.jpg",
+    thumbnailUrl: "blob:photo-thumb.jpg",
+    format: "jpeg" as const,
+    fileSizeBytes: 1000,
+    createdAt: Date.now(),
+  };
+
+  const testImageLayer = createImageLayer("asset-1", "Image 1", [], "contain", {
+    x: 10,
+    y: -20,
+    scaleX: 1.5,
+    scaleY: 1.5,
+    rotation: 30,
+  });
+  const defaultFrame = createDefaultFrame("frame-1", "Frame 1");
+  const mockFrame = {
+    ...defaultFrame,
+    layers: [defaultFrame.layers[0], testImageLayer],
+    activeLayerId: testImageLayer.id,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(loadHydratedProject).mockResolvedValue({
+      assets: [mockAsset],
+      frames: [mockFrame],
+      activeFrameId: "frame-1",
+      activeLayerId: testImageLayer.id,
+      activeImageId: "asset-1",
+      projectName: "Project Name",
+      effectStacks: {},
+      backgrounds: {},
+      userLooks: [],
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders the SVG transform selection overlay when an ImageLayer is active", async () => {
+    const { container } = render(
+      <StudioProvider>
+        <CanvasViewport />
+      </StudioProvider>
+    );
+
+    const overlay = await screen.findByTestId("layer-selection-overlay");
+    expect(overlay).toBeDefined();
+
+    // Verify 4 corner scale handles exist
+    expect(container.querySelector('[data-handle="corner-tl"]')).toBeDefined();
+    expect(container.querySelector('[data-handle="corner-tr"]')).toBeDefined();
+    expect(container.querySelector('[data-handle="corner-br"]')).toBeDefined();
+    expect(container.querySelector('[data-handle="corner-bl"]')).toBeDefined();
+
+    // Verify rotation handle exists
+    expect(container.querySelector('[data-handle="rotation"]')).toBeDefined();
+
+    // Verify bounding box polygon exists
+    expect(container.querySelector('[data-handle="bounding-box"]')).toBeDefined();
+  });
+
+  it("never renders transform selection overlay for GenerativeLayer (protected background)", async () => {
+    vi.mocked(loadHydratedProject).mockResolvedValue({
+      assets: [mockAsset],
+      frames: [{ ...mockFrame, activeLayerId: defaultFrame.layers[0].id }],
+      activeFrameId: "frame-1",
+      activeLayerId: defaultFrame.layers[0].id, // active is generative layer!
+      activeImageId: null,
+      projectName: "Project Name",
+      effectStacks: {},
+      backgrounds: {},
+      userLooks: [],
+    });
+
+    render(
+      <StudioProvider>
+        <CanvasViewport />
+      </StudioProvider>
+    );
+
+    // Generative layer active -> no selection overlay
+    expect(screen.queryByTestId("layer-selection-overlay")).toBeNull();
+  });
+
+  it("handles keyboard arrow nudges (1px for Arrow, 10px for Shift+Arrow)", async () => {
+    render(
+      <StudioProvider>
+        <CanvasViewport />
+      </StudioProvider>
+    );
+
+    await screen.findByTestId("layer-selection-overlay");
+
+    // Press ArrowRight (should nudge x by +1)
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    // Press ArrowDown with Shift (should nudge y by +10)
+    fireEvent.keyDown(window, { key: "ArrowDown", shiftKey: true });
+    // Press ArrowLeft (should nudge x by -1)
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    // Press ArrowUp with Shift (should nudge y by -10)
+    fireEvent.keyDown(window, { key: "ArrowUp", shiftKey: true });
   });
 });

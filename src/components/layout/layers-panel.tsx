@@ -33,6 +33,8 @@ import { cn } from "../ui/lib/utils";
 import { useStudioStore } from "../../context/studio-context";
 import type { ImageLayer, GenerativeLayer } from "../../types/frame";
 import type { Asset } from "../../types/asset";
+import { DEFAULT_BACKGROUND_STATE } from "../../types/look";
+import { deriveLegacyBackgroundFromSublayers } from "../../generative/normalization";
 
 interface SortableLayerRowProps {
   layer: ImageLayer;
@@ -156,7 +158,9 @@ function BackgroundRow({
   onSelect,
   onToggleVisibility,
 }: BackgroundRowProps): React.JSX.Element {
-  const bgConfig = layer.backgroundConfig;
+  const bgConfig =
+    layer.backgroundConfig ??
+    (layer.sublayers ? deriveLegacyBackgroundFromSublayers(layer.sublayers) : DEFAULT_BACKGROUND_STATE);
   const isVisible = layer.visible !== false;
 
   return (

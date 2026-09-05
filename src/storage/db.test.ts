@@ -363,4 +363,97 @@ describe("Stage 1A Frame Storage & Migration Suite", () => {
       delete (globalThis.window as any).indexedDB;
     }
   });
+
+  it("hydrates legacy ImageLayers without transform with DEFAULT_LAYER_TRANSFORM and preserves valid transforms", async () => {
+    const originalIDB = (globalThis as any).window?.indexedDB;
+    if (!globalThis.window) (globalThis as any).window = {};
+    const { mockIDBFactory } = createMockIndexedDB();
+    globalThis.window.indexedDB = mockIDBFactory as any;
+
+    const { dbSaveFrames, loadHydratedProject } = await import("./db");
+    const { DEFAULT_LAYER_TRANSFORM } = await import("../types/frame");
+
+    // Persist a legacy frame containing an ImageLayer without transform property
+    const legacyFrame: any = {
+      id: "frame-legacy",
+      name: "Legacy Frame",
+      dimensions: { width: 1080, height: 1080, presetId: "1:1" },
+      layers: [
+        {
+          id: "gen-1",
+          type: "generative",
+          name: "Background",
+          visible: true,
+          opacity: 1,
+          blendMode: "normal",
+          effectStack: [],
+          backgroundMode: "solid",
+          backgroundConfig: { type: "solid", color: "#000000" },
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+        {
+          id: "img-legacy",
+          type: "image",
+          name: "Legacy Image",
+          visible: true,
+          opacity: 1,
+          blendMode: "normal",
+          effectStack: [],
+          assetId: "asset-legacy-1",
+          fit: "contain",
+          // Note: NO transform property (Stage 1 legacy shape)
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+        {
+          id: "img-transformed",
+          type: "image",
+          name: "Transformed Image",
+          visible: true,
+          opacity: 1,
+          blendMode: "normal",
+          effectStack: [],
+          assetId: "asset-transformed-2",
+          fit: "cover",
+          transform: {
+            x: 150,
+            y: -80,
+            scaleX: 2.5,
+            scaleY: 2.5,
+            rotation: 45,
+          },
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ],
+      activeLayerId: "img-legacy",
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+
+    await dbSaveFrames([legacyFrame]);
+    const project = await loadHydratedProject();
+
+    const loadedFrame = project.frames.find((f) => f.id === "frame-legacy");
+    expect(loadedFrame).toBeDefined();
+
+    const legacyLayer = loadedFrame!.layers.find((l) => l.id === "img-legacy") as any;
+    expect(legacyLayer.transform).toEqual(DEFAULT_LAYER_TRANSFORM);
+
+    const transformedLayer = loadedFrame!.layers.find((l) => l.id === "img-transformed") as any;
+    expect(transformedLayer.transform).toEqual({
+      x: 150,
+      y: -80,
+      scaleX: 2.5,
+      scaleY: 2.5,
+      rotation: 45,
+    });
+
+    if (originalIDB) {
+      globalThis.window.indexedDB = originalIDB;
+    } else {
+      delete (globalThis.window as any).indexedDB;
+    }
+  });
 });

@@ -26,10 +26,17 @@ import { GPUEffectPipeline, canExecuteStackOnGPU } from "../../rendering/webgl/w
 import { GPUBackgroundRenderer, isGPUSupportedBackground } from "../../rendering/webgl/webgl-background";
 import { WebGL2FrameCompositor } from "../../rendering/webgl/webgl-frame-compositor";
 import type { TextureSource } from "../../rendering/webgl/webgl-texture";
-import type { ImageLayer } from "../../types/frame";
+import { DEFAULT_LAYER_TRANSFORM, type ImageLayer } from "../../types/frame";
 import { CanvasControlDock } from "./canvas-control-dock";
 import { FloatingEffectPanel } from "./floating-effect-panel";
 import { FloatingBackgroundPanel } from "./floating-background-panel";
+import { LayerSelectionOverlay } from "./layer-selection-overlay";
+import {
+  calculateFittedDimensions,
+  getLayerCenterInFrame,
+  isPointInOrientedBox,
+  screenToFrame,
+} from "../../utils/transform-math";
 import emptyStateSvgUrl from "../../assets/empty_state.svg";
 
 export interface CanvasViewportProps {
@@ -46,6 +53,11 @@ export function CanvasViewport({
   const {
     isHydrated,
     activeFrame,
+    activeLayerId,
+    setActiveLayerId,
+    updateLayer,
+    startOrContinueParamInteraction,
+    commitParamInteraction,
     assets,
     activeAsset,
     activeEffectStack,
@@ -68,6 +80,19 @@ export function CanvasViewport({
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+
+  const [containerSize, setContainerSize] = React.useState<{ width: number; height: number }>({ width: 0, height: 0 });
+
+  const activeLayer = React.useMemo(() => {
+    if (!activeFrame) return null;
+    const targetId = activeLayerId || activeFrame.activeLayerId;
+    return activeFrame.layers.find((l) => l.id === targetId) || null;
+  }, [activeFrame, activeLayerId]);
+
+  const activeImageLayerAsset = React.useMemo(() => {
+    if (!activeLayer || activeLayer.type !== "image") return null;
+    return assets.find((a) => a.id === activeLayer.assetId) || null;
+  }, [activeLayer, assets]);
 
   // Loaded source bitmap reference
   const [loadedSourceImage, setLoadedSourceImage] = React.useState<{ id: string; img: HTMLImageElement } | null>(null);
@@ -621,6 +646,7 @@ export function CanvasViewport({
         const cssH = Math.round(rawH);
 
         if (cssW > 0 && cssH > 0) {
+          setContainerSize({ width: cssW, height: cssH });
           updateCanvasBufferSize(cssW, cssH);
 
           const asset = activeAssetRef.current;
@@ -714,6 +740,36 @@ export function CanvasViewport({
       if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA") {
         return;
       }
+      // Stage 2: Arrow Key Nudging for active ImageLayer
+      if (
+        (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight") &&
+        activeLayer?.type === "image"
+      ) {
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        let dx = 0;
+        let dy = 0;
+        if (e.key === "ArrowLeft") dx = -step;
+        if (e.key === "ArrowRight") dx = step;
+        if (e.key === "ArrowUp") dy = -step;
+        if (e.key === "ArrowDown") dy = step;
+
+        startOrContinueParamInteraction();
+        const currentTransform = activeLayer.transform ?? DEFAULT_LAYER_TRANSFORM;
+        updateLayer(
+          activeLayer.id,
+          {
+            transform: {
+              ...currentTransform,
+              x: currentTransform.x + dx,
+              y: currentTransform.y + dy,
+            },
+          },
+          { skipHistory: true }
+        );
+        return;
+      }
+
       if (e.code === "Space" && !e.repeat) {
         if (isHandToolActive) {
           setIsSpacePressed(true);
@@ -737,7 +793,7 @@ export function CanvasViewport({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [isHandToolActive, togglePlayback]);
+  }, [isHandToolActive, togglePlayback, activeLayer, startOrContinueParamInteraction, updateLayer]);
 
   // Non-passive wheel zoom with transient RAF coalescing
   React.useEffect(() => {
@@ -981,6 +1037,58 @@ export function CanvasViewport({
       } catch {
         // Ignore pointer capture error
       }
+    } else if (isLeftClick && activeFrame && containerRef.current) {
+      // Stage 2: Analytical Hit-Testing for ImageLayer Selection
+      const rect = containerRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const framePt = screenToFrame(
+        mouseX,
+        mouseY,
+        rect.width,
+        rect.height,
+        activeFrame.dimensions.width,
+        activeFrame.dimensions.height,
+        viewport.zoom,
+        viewport.panX,
+        viewport.panY
+      );
+
+      // Iterate in reverse (topmost visual layer first, excluding GenerativeLayer at index 0)
+      let hitLayerId: string | null = null;
+      for (let i = activeFrame.layers.length - 1; i >= 1; i--) {
+        const layer = activeFrame.layers[i];
+        if (!layer || layer.visible === false || layer.type !== "image") continue;
+
+        const asset = assets.find((a) => a.id === layer.assetId);
+        if (!asset) continue;
+
+        const fitted = calculateFittedDimensions(
+          asset.width,
+          asset.height,
+          activeFrame.dimensions.width,
+          activeFrame.dimensions.height,
+          layer.fit
+        );
+        const transform = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
+        const scaledW = fitted.width * transform.scaleX;
+        const scaledH = fitted.height * transform.scaleY;
+        const center = getLayerCenterInFrame(
+          transform,
+          activeFrame.dimensions.width,
+          activeFrame.dimensions.height
+        );
+
+        if (isPointInOrientedBox(framePt, center, scaledW, scaledH, transform.rotation)) {
+          hitLayerId = layer.id;
+          break;
+        }
+      }
+
+      if (hitLayerId && hitLayerId !== activeLayerId) {
+        setActiveLayerId(hitLayerId);
+      }
     }
   };
 
@@ -1107,6 +1215,30 @@ export function CanvasViewport({
             display: "block",
           }}
         />
+
+        {/* Stage 2 DOM/SVG Layer Selection & Transform Overlay */}
+        {activeFrame &&
+          activeLayer?.type === "image" &&
+          activeImageLayerAsset &&
+          (containerSize.width > 0 || (containerRef.current?.clientWidth ?? 0) > 0) && (
+            <LayerSelectionOverlay
+              frame={activeFrame}
+              activeLayer={activeLayer}
+              asset={activeImageLayerAsset}
+              viewport={viewport}
+              viewportWidth={containerSize.width || containerRef.current?.clientWidth || 800}
+              viewportHeight={containerSize.height || containerRef.current?.clientHeight || 600}
+              onTransformChange={(transform, options) => {
+                updateLayer(activeLayer.id, { transform }, options);
+              }}
+              onTransformCommit={() => {
+                commitParamInteraction();
+              }}
+              onTransformCancel={() => {
+                commitParamInteraction();
+              }}
+            />
+          )}
 
         {/* Main Canvas Empty State (Correction 02.8 — Figma node 137:6167) */}
         {!activeAsset && isHydrated && (

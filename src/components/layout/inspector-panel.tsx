@@ -44,6 +44,7 @@ import {
   SliderControl,
   StaticSelect,
   SegmentedControl,
+  Input,
 } from "../ui";
 import { useStudioStore } from "../../context/studio-context";
 import { getEffectDefinition } from "../../effects/registry";
@@ -53,6 +54,7 @@ import { ExportModal } from "../export/export-modal";
 import type { EffectInstance } from "../../types/asset";
 import type { BackgroundType } from "../../types/look";
 import type { BlendMode, ImageLayer, GenerativeLayer } from "../../types/frame";
+import { DEFAULT_LAYER_TRANSFORM } from "../../types/frame";
 
 const BLEND_MODE_OPTIONS = [
   { value: "normal", label: "Normal" },
@@ -480,6 +482,125 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                 </div>
               </div>
             )}
+
+            {/* Section 0B: Transform (Stage 2 - Position, Scale, Rotation, Reset) */}
+            {activeLayer?.type === "image" && (() => {
+              const transform = (activeLayer as ImageLayer).transform ?? DEFAULT_LAYER_TRANSFORM;
+              return (
+                <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
+                  <span className="text-sm font-medium text-[color:var(--foreground)]">
+                    Transform
+                  </span>
+
+                  {/* Position */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-2xs text-[color:var(--muted-foreground)]">Position</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-[color:var(--muted-foreground)] w-3 shrink-0">X</span>
+                        <div className="relative flex-1 min-w-0">
+                          <Input
+                            type="number"
+                            size="sm"
+                            value={Math.round(transform.x)}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              updateLayer(activeLayer.id, {
+                                transform: {
+                                  ...transform,
+                                  x: isNaN(val) ? 0 : val,
+                                },
+                              });
+                            }}
+                            className="pr-6 text-right font-mono"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2xs text-[color:var(--muted-foreground)] pointer-events-none">
+                            px
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-[color:var(--muted-foreground)] w-3 shrink-0">Y</span>
+                        <div className="relative flex-1 min-w-0">
+                          <Input
+                            type="number"
+                            size="sm"
+                            value={Math.round(transform.y)}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              updateLayer(activeLayer.id, {
+                                transform: {
+                                  ...transform,
+                                  y: isNaN(val) ? 0 : val,
+                                },
+                              });
+                            }}
+                            className="pr-6 text-right font-mono"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2xs text-[color:var(--muted-foreground)] pointer-events-none">
+                            px
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scale */}
+                  <SliderControl
+                    name="Scale"
+                    min={5}
+                    max={500}
+                    inputMax={2000}
+                    step={1}
+                    unit="%"
+                    value={Math.round(transform.scaleX * 100)}
+                    onValueChange={(val) => {
+                      const nextScale = val / 100;
+                      updateLayer(activeLayer.id, {
+                        transform: {
+                          ...transform,
+                          scaleX: nextScale,
+                          scaleY: nextScale,
+                        },
+                      });
+                    }}
+                  />
+
+                  {/* Rotation */}
+                  <SliderControl
+                    name="Rotation"
+                    min={-180}
+                    max={180}
+                    step={1}
+                    unit="°"
+                    value={Math.round(transform.rotation)}
+                    onValueChange={(val) => {
+                      updateLayer(activeLayer.id, {
+                        transform: {
+                          ...transform,
+                          rotation: val,
+                        },
+                      });
+                    }}
+                  />
+
+                  {/* Reset Transform */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-1 text-xs"
+                    onClick={() => {
+                      updateLayer(activeLayer.id, {
+                        transform: { ...DEFAULT_LAYER_TRANSFORM },
+                      });
+                    }}
+                  >
+                    Reset Transform
+                  </Button>
+                </div>
+              );
+            })()}
 
             {/* Section 1: Effects (shown for image layers) */}
             {!isGenerativeLayerExplicitlyActive && (

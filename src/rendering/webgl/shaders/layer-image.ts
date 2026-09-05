@@ -23,6 +23,9 @@ uniform sampler2D u_assetTexture;
 uniform vec2 u_frameSize;
 uniform vec2 u_assetSize;
 uniform int u_fitMode; // 0 = contain, 1 = cover
+uniform vec2 u_layerOffset; // (x, y) in UI Frame pixels (x: right, y: down)
+uniform vec2 u_layerScale; // (scaleX, scaleY) multipliers >= 0.05
+uniform float u_layerRotation; // rotation angle in radians (clockwise)
 
 void main() {
     if (u_frameSize.x <= 0.0 || u_frameSize.y <= 0.0 || u_assetSize.x <= 0.0 || u_assetSize.y <= 0.0) {
@@ -59,18 +62,35 @@ void main() {
         }
     }
 
-    // Transform UV relative to center (0.5, 0.5)
-    vec2 centeredUv = (v_texCoord - 0.5) * scale + 0.5;
+    // Convert WebGL fragment coordinate to UI Frame pixel offset from frame center
+    // In UI space, positive X is right and positive Y is down
+    vec2 p = vec2((v_texCoord.x - 0.5) * u_frameSize.x, -(v_texCoord.y - 0.5) * u_frameSize.y);
 
-    // In contain mode, clip pixels outside [0, 1] range to transparent
-    if (u_fitMode == 0) {
-        if (centeredUv.x < 0.0 || centeredUv.x > 1.0 || centeredUv.y < 0.0 || centeredUv.y > 1.0) {
-            fragColor = vec4(0.0);
-            return;
-        }
+    // 1. Inverse translation
+    vec2 p_trans = p - u_layerOffset;
+
+    // 2. Inverse rotation (clockwise in UI space, so inverse rotates by -u_layerRotation)
+    float cosR = cos(u_layerRotation);
+    float sinR = sin(u_layerRotation);
+    vec2 p_rot = vec2(p_trans.x * cosR + p_trans.y * sinR, -p_trans.x * sinR + p_trans.y * cosR);
+
+    // 3. Inverse scale
+    vec2 safeScale = max(abs(u_layerScale), vec2(0.001));
+    vec2 p_scaled = p_rot / safeScale;
+
+    // Convert back to centered normalized UV offset
+    vec2 uvOffset = vec2(p_scaled.x / u_frameSize.x, -p_scaled.y / u_frameSize.y);
+
+    // Apply authoritative fit calculation
+    vec2 centeredUv = uvOffset * scale + 0.5;
+
+    // Clip pixels outside [0, 1] range to transparent alpha
+    if (centeredUv.x < 0.0 || centeredUv.x > 1.0 || centeredUv.y < 0.0 || centeredUv.y > 1.0) {
+        fragColor = vec4(0.0);
+        return;
     }
 
-    // Clamp centeredUv to avoid bleeding outside textures in cover mode
+    // Clamp centeredUv to avoid precision bleeding at outer edge
     vec2 sampledUv = clamp(centeredUv, 0.0, 1.0);
     fragColor = texture(u_assetTexture, sampledUv);
 }

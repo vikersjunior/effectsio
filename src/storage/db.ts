@@ -6,6 +6,11 @@ import {
   createDefaultGenerativeLayer,
   createImageLayer,
 } from "../types/frame";
+import { sanitizeTransform } from "../utils/transform-math";
+import {
+  deriveLegacyBackgroundFromSublayers,
+  normalizeGenerativeLayer,
+} from "../generative/normalization";
 
 const DB_NAME = "effectsio_db";
 const DB_VERSION = 2;
@@ -168,7 +173,16 @@ export async function dbGetAllFrames(): Promise<Frame[]> {
   const records = await runTransaction<Frame[]>("frames", "readonly", (store) => {
     return store.getAll();
   });
-  return Array.isArray(records) ? records : [];
+  if (!Array.isArray(records)) return [];
+  return records.map((frame) => ({
+    ...frame,
+    layers: frame.layers.map((layer) => {
+      if (layer.type === "generative") {
+        return normalizeGenerativeLayer(layer);
+      }
+      return layer;
+    }),
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -479,15 +493,38 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
             mergedEffectStacks[layer.assetId] = layer.effectStack;
           }
           if (baseGen && baseGen.type === "generative" && !mergedBackgrounds[layer.assetId]) {
-            mergedBackgrounds[layer.assetId] = baseGen.backgroundConfig;
+            const derivedBg =
+              baseGen.backgroundConfig ??
+              (baseGen.sublayers ? deriveLegacyBackgroundFromSublayers(baseGen.sublayers) : undefined);
+            if (derivedBg) {
+              mergedBackgrounds[layer.assetId] = derivedBg;
+            }
           }
         }
       }
     }
 
+    // Ensure all ImageLayers across all frames have sanitized, valid LayerTransform
+    // and all GenerativeLayers have normalized, valid sublayers
+    const sanitizedFrames = frames.map((frame) => ({
+      ...frame,
+      layers: frame.layers.map((layer) => {
+        if (layer.type === "image") {
+          return {
+            ...layer,
+            transform: sanitizeTransform(layer.transform),
+          };
+        }
+        if (layer.type === "generative") {
+          return normalizeGenerativeLayer(layer);
+        }
+        return layer;
+      }),
+    }));
+
     return {
       assets: validAssets,
-      frames,
+      frames: sanitizedFrames,
       activeFrameId,
       activeLayerId,
       activeImageId: resolvedActiveImageId,

@@ -1,6 +1,8 @@
 import type { EffectStack } from "./asset";
 import type { BackgroundState, BackgroundType } from "./look";
 import { DEFAULT_BACKGROUND_STATE } from "./look";
+import type { GenerativeSublayer } from "../generative/types";
+import { normalizeLegacyBackgroundToSublayers } from "../generative/normalization";
 
 /**
  * Selected Stage 1 subset of blend modes implemented according to
@@ -47,30 +49,48 @@ export interface BaseLayer {
   updatedAt: number;
 }
 
+export interface LayerTransform {
+  x: number; // Frame-space pixels, 0 = centered horizontally
+  y: number; // Frame-space pixels, 0 = centered vertically
+  scaleX: number; // 0.05 to 20.0, 1.0 = 100% of fitted base geometry
+  scaleY: number; // 0.05 to 20.0, 1.0 = 100% of fitted base geometry
+  rotation: number; // Degrees, [-180, 180], 0 = upright
+}
+
+export const DEFAULT_LAYER_TRANSFORM: LayerTransform = {
+  x: 0,
+  y: 0,
+  scaleX: 1,
+  scaleY: 1,
+  rotation: 0,
+};
+
 /**
  * ImageLayer represents an imported visual asset placed within a Frame.
  *
- * Stage 1 Constraint: No layer transforms (x, y, scale, rotation).
- * Image layers automatically occupy the defined frame bounds according to `fit`.
- * Interactive drag, scale, rotation handles, and transform state are strictly deferred to future stages.
+ * Stage 2: Spatially transformable visual object with position (x, y),
+ * proportional scale (scaleX, scaleY), and rotation inside Frame bounds.
  */
 export interface ImageLayer extends BaseLayer {
   type: "image";
   assetId: string; // References immutable source Asset in assets store
   fit: "contain" | "cover";
+  transform?: LayerTransform;
 }
 
 /**
  * GenerativeLayer represents procedural canvas background content.
  *
- * Stage 1 Constraint: Thin generative layer representing the 6 existing background modes only.
- * Serves as an intentional extension point for future procedural systems without prescribing
- * the Stage 2 generative sub-layer schema.
+ * Stage 3A: GenerativeLayer owns an ordered stack of GenerativeSublayers.
+ * `sublayers` is the canonical source of truth.
+ * Legacy `backgroundMode` and `backgroundConfig` are preserved for backward
+ * compatibility and non-destructive hydration.
  */
 export interface GenerativeLayer extends BaseLayer {
   type: "generative";
-  backgroundMode: BackgroundType;
-  backgroundConfig: BackgroundState;
+  sublayers: GenerativeSublayer[];
+  backgroundMode?: BackgroundType;
+  backgroundConfig?: BackgroundState;
 }
 
 export type Layer = ImageLayer | GenerativeLayer;
@@ -122,6 +142,7 @@ export function createDefaultGenerativeLayer(backgroundConfig?: BackgroundState)
     blendMode: "normal",
     effectStack: [],
     type: "generative",
+    sublayers: normalizeLegacyBackgroundToSublayers(config),
     backgroundMode: config.type,
     backgroundConfig: config,
     createdAt: now,
@@ -136,7 +157,8 @@ export function createImageLayer(
   assetId: string,
   name?: string,
   effectStack: EffectStack = [],
-  fit: "contain" | "cover" = "contain"
+  fit: "contain" | "cover" = "contain",
+  transform?: Partial<LayerTransform>
 ): ImageLayer {
   const now = Date.now();
   return {
@@ -151,6 +173,13 @@ export function createImageLayer(
     type: "image",
     assetId,
     fit,
+    transform: {
+      x: transform && Number.isFinite(transform.x) ? transform.x! : DEFAULT_LAYER_TRANSFORM.x,
+      y: transform && Number.isFinite(transform.y) ? transform.y! : DEFAULT_LAYER_TRANSFORM.y,
+      scaleX: transform && Number.isFinite(transform.scaleX) ? Math.max(0.05, Math.min(20, transform.scaleX!)) : DEFAULT_LAYER_TRANSFORM.scaleX,
+      scaleY: transform && Number.isFinite(transform.scaleY) ? Math.max(0.05, Math.min(20, transform.scaleY!)) : DEFAULT_LAYER_TRANSFORM.scaleY,
+      rotation: transform && Number.isFinite(transform.rotation) ? transform.rotation! : DEFAULT_LAYER_TRANSFORM.rotation,
+    },
     createdAt: now,
     updatedAt: now,
   };

@@ -1,6 +1,8 @@
 import type { Frame, Layer, GenerativeLayer, ImageLayer, BlendMode } from "../../types/frame";
+import { DEFAULT_LAYER_TRANSFORM } from "../../types/frame";
 import type { EffectInstance, EffectStack } from "../../types/asset";
-import type { BackgroundState } from "../../types/look";
+import { DEFAULT_BACKGROUND_STATE, type BackgroundState } from "../../types/look";
+import { deriveLegacyBackgroundFromSublayers } from "../../generative/normalization";
 import type { CompiledProgram, FBOTextureAttachment } from "./webgl-types";
 import { createWebGL2Context } from "./webgl-context";
 import { createProgram, setUniform } from "./webgl-shader";
@@ -232,12 +234,15 @@ export class WebGL2FrameCompositor {
       );
 
       if (layer.type === "generative") {
-        const bg = layer.backgroundConfig;
+        const bg =
+          layer.backgroundConfig ??
+          (layer.sublayers ? deriveLegacyBackgroundFromSublayers(layer.sublayers) : DEFAULT_BACKGROUND_STATE);
         parts.push(
           `bg:${bg.type}:${bg.color}:${bg.gradientEndColor}:${bg.gradientAngle}:${bg.patternSpacing}:${bg.patternBackgroundColor}`,
         );
       } else if (layer.type === "image") {
-        parts.push(`img:${layer.assetId}:${layer.fit}`);
+        const t = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
+        parts.push(`img:${layer.assetId}:${layer.fit}:${t.x}:${t.y}:${t.scaleX}:${t.scaleY}:${t.rotation}`);
         const stack = layer.effectStack ?? [];
         for (const eff of stack) {
           if (eff.enabled !== false) {
@@ -362,7 +367,9 @@ export class WebGL2FrameCompositor {
   ): WebGLTexture {
     const gl = this.gl;
     const targetFBO = this.layerPingPong!.write;
-    const bgState = layer.backgroundConfig;
+    const bgState =
+      layer.backgroundConfig ??
+      (layer.sublayers ? deriveLegacyBackgroundFromSublayers(layer.sublayers) : DEFAULT_BACKGROUND_STATE);
 
     gl.viewport(0, 0, width, height);
     gl.bindFramebuffer(gl.FRAMEBUFFER, targetFBO.framebuffer);
@@ -434,6 +441,20 @@ export class WebGL2FrameCompositor {
     setUniform(gl, this.imageProgram, "u_fitMode", {
       type: "1i",
       value: layer.fit === "cover" ? 1 : 0,
+    });
+
+    const transform = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
+    setUniform(gl, this.imageProgram, "u_layerOffset", {
+      type: "2f",
+      value: [transform.x, transform.y],
+    });
+    setUniform(gl, this.imageProgram, "u_layerScale", {
+      type: "2f",
+      value: [transform.scaleX, transform.scaleY],
+    });
+    setUniform(gl, this.imageProgram, "u_layerRotation", {
+      type: "1f",
+      value: (transform.rotation * Math.PI) / 180.0,
     });
 
     this.quad.draw();

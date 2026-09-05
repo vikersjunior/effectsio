@@ -26,6 +26,7 @@ export type SliderControlProps = {
   markerCount?: number;
   max?: number;
   min?: number;
+  inputMax?: number;
   name: string;
   onValueChange?: ControlValueChangeHandler<number>;
   showFill?: boolean;
@@ -43,6 +44,7 @@ export function SliderControl({
   markerCount,
   max = 100,
   min = 0,
+  inputMax,
   name,
   onValueChange,
   showFill = true,
@@ -77,7 +79,7 @@ export function SliderControl({
   }
 
   function commitValue(nextValue: number, meta?: ControlChangeMeta): void {
-    const clampedValue = clampSliderValue(nextValue, min, max);
+    const clampedValue = clampSliderValue(nextValue, min, inputMax ?? max);
     setCurrentValue(clampedValue);
     onValueChange?.(clampedValue, meta);
   }
@@ -85,7 +87,7 @@ export function SliderControl({
   function stepEditableValue(direction: -1 | 1, currentDraft: string): string | undefined {
     const parsedDraftValue = parseSliderValueLabel(currentDraft);
     const base = typeof parsedDraftValue === "number" ? parsedDraftValue : currentValue;
-    const nextValue = clampSliderValue(base + direction * step, min, max);
+    const nextValue = clampSliderValue(base + direction * step, min, inputMax ?? max);
     commitValue(nextValue, getLiveHistoryMeta());
     return formatSliderValueWithUnit(nextValue, step, unit);
   }

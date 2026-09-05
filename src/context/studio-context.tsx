@@ -22,6 +22,13 @@ import {
 } from "../types/frame";
 import type { Look, LookCategory, BackgroundState } from "../types/look";
 import { DEFAULT_BACKGROUND_STATE } from "../types/look";
+import type { GenerativeSublayer, GenerativeSublayerType } from "../generative/types";
+import { createGenerativeSublayer, resolveGenerativeParameters } from "../generative/registry";
+import {
+  deriveLegacyBackgroundFromSublayers,
+  normalizeLegacyBackgroundToSublayers,
+} from "../generative/normalization";
+import { sanitizeTransform } from "../utils/transform-math";
 import type { EffectId } from "../effects/types";
 import { getEffectDefinition } from "../effects/registry";
 import { createAssetFromFile, revokeAssetUrls } from "../utils/image-ingestion";
@@ -71,7 +78,7 @@ export interface StudioContextType {
 
   // Stage 1C Layer & Frame Operations
   addLayerFromAsset: (assetId: string) => ImageLayer | null;
-  updateLayer: (layerId: string, updates: Partial<Layer>) => void;
+  updateLayer: (layerId: string, updates: Partial<Layer>, options?: { skipHistory?: boolean }) => void;
   reorderLayers: (fromIndex: number, toIndex: number) => void;
   removeLayer: (layerId: string) => void;
   setFrameDimensions: (dimensions: FrameDimensions) => void;
@@ -109,6 +116,8 @@ export interface StudioContextType {
   canRedo: boolean;
   undo: () => void;
   redo: () => void;
+  startOrContinueParamInteraction: () => void;
+  commitParamInteraction: () => void;
 
   // Animation & Timeline State
   timeline: AnimationTimelineState;
@@ -171,9 +180,28 @@ export interface StudioContextType {
   ) => Look;
   deleteUserLook: (lookId: string) => void;
 
-  // Creative Background Layer
+  // Creative Background Layer (Transitional / Legacy selectors)
   updateActiveBackground: (updates: Partial<BackgroundState>) => void;
   resetActiveBackground: () => void;
+
+  // Generative Sublayers (Stage 3A Foundation)
+  activeSublayers: GenerativeSublayer[];
+  addSublayer: (
+    type: GenerativeSublayerType,
+    initialParams?: Record<string, unknown>,
+    atIndex?: number
+  ) => void;
+  removeSublayer: (sublayerId: string) => void;
+  reorderSublayers: (fromIndex: number, toIndex: number) => void;
+  updateSublayer: (
+    sublayerId: string,
+    updates: Partial<Omit<GenerativeSublayer, "id">>
+  ) => void;
+  updateSublayerParameters: (
+    sublayerId: string,
+    paramUpdates: Record<string, unknown>,
+    options?: { skipHistory?: boolean }
+  ) => void;
 
   // Viewport
   setViewport: (
@@ -336,10 +364,30 @@ export function StudioProvider({
     return firstImage ? firstImage.effectStack || [] : [];
   }, [activeLayer, activeFrame]);
 
+  const activeSublayers = React.useMemo((): GenerativeSublayer[] => {
+    if (!activeFrame) return [];
+    const genLayer = activeFrame.layers.find((l): l is GenerativeLayer => l.type === "generative");
+    return genLayer?.sublayers || [];
+  }, [activeFrame]);
+
   const activeBackground = React.useMemo((): BackgroundState => {
     if (!activeFrame) return DEFAULT_BACKGROUND_STATE;
     const genLayer = activeFrame.layers.find((l): l is GenerativeLayer => l.type === "generative");
-    return genLayer?.backgroundConfig || DEFAULT_BACKGROUND_STATE;
+    if (!genLayer) return DEFAULT_BACKGROUND_STATE;
+    const base = genLayer.backgroundConfig || DEFAULT_BACKGROUND_STATE;
+    if (genLayer.sublayers && genLayer.sublayers.length > 0) {
+      const derived = deriveLegacyBackgroundFromSublayers(genLayer.sublayers);
+      return {
+        ...base,
+        ...derived,
+        visible: base.visible !== undefined ? base.visible : derived.visible,
+      };
+    }
+    return {
+      ...base,
+      type: base.type || "transparent",
+      visible: base.visible !== undefined ? base.visible : false,
+    };
   }, [activeFrame]);
 
   const hasActiveBackground = React.useMemo((): boolean => {
@@ -364,10 +412,16 @@ export function StudioProvider({
     const map: Record<string, BackgroundState> = {};
     for (const frame of frames) {
       const genLayer = frame.layers.find((l): l is GenerativeLayer => l.type === "generative");
-      if (genLayer && genLayer.visible && genLayer.backgroundConfig) {
-        for (const layer of frame.layers) {
-          if (layer.type === "image" && layer.assetId) {
-            map[layer.assetId] = genLayer.backgroundConfig;
+      if (genLayer && genLayer.visible) {
+        const bg =
+          genLayer.sublayers && genLayer.sublayers.length > 0
+            ? deriveLegacyBackgroundFromSublayers(genLayer.sublayers)
+            : genLayer.backgroundConfig;
+        if (bg) {
+          for (const layer of frame.layers) {
+            if (layer.type === "image" && layer.assetId) {
+              map[layer.assetId] = bg;
+            }
           }
         }
       }
@@ -520,6 +574,15 @@ export function StudioProvider({
     }, 600);
   }, [createSnapshot]);
 
+  // Commit continuous parameter interaction immediately on pointer up / finish
+  const commitParamInteraction = React.useCallback(() => {
+    if (paramInteractionTimerRef.current) {
+      clearTimeout(paramInteractionTimerRef.current);
+      paramInteractionTimerRef.current = null;
+    }
+    isParamInteractingRef.current = false;
+  }, []);
+
   // 1. Startup Hydration Lifecycle
   React.useEffect(() => {
     let mounted = true;
@@ -635,6 +698,11 @@ export function StudioProvider({
 
   const setActiveLayerId = React.useCallback((id: string | null) => {
     setActiveLayerIdState(id);
+    setFrames((prevFrames) =>
+      prevFrames.map((f) =>
+        f.id === activeFrameRef.current?.id ? { ...f, activeLayerId: id } : f
+      )
+    );
     if (activeFrameRef.current && typeof dbSaveSessionState === "function") {
       const frame = activeFrameRef.current;
       const targetLayer = frame.layers.find((l) => l.id === id);
@@ -730,8 +798,10 @@ export function StudioProvider({
   );
 
   const updateLayer = React.useCallback(
-    (layerId: string, updates: Partial<Layer>) => {
-      recordDiscreteSnapshot();
+    (layerId: string, updates: Partial<Layer>, options?: { skipHistory?: boolean }) => {
+      if (!options?.skipHistory) {
+        recordDiscreteSnapshot();
+      }
 
       setFrames((prev) => {
         const activeFId = activeFrameIdRef.current;
@@ -745,6 +815,11 @@ export function StudioProvider({
 
           if (layerIdx === 0 && current.type === "generative") {
             const genUpdates = updates as Partial<GenerativeLayer>;
+            let nextSublayers = genUpdates.sublayers || current.sublayers;
+            if (genUpdates.backgroundConfig && !genUpdates.sublayers) {
+              const mergedBg = { ...current.backgroundConfig, ...genUpdates.backgroundConfig };
+              nextSublayers = normalizeLegacyBackgroundToSublayers(mergedBg);
+            }
             const nextBgConfig = genUpdates.backgroundConfig
               ? { ...current.backgroundConfig, ...genUpdates.backgroundConfig }
               : current.backgroundConfig;
@@ -753,13 +828,21 @@ export function StudioProvider({
               ...current,
               ...updates,
               type: "generative",
+              sublayers: nextSublayers,
               backgroundConfig: nextBgConfig,
               updatedAt: Date.now(),
             };
           } else if (current.type === "image") {
+            const imgUpdates = updates as Partial<ImageLayer>;
+            const nextTransform =
+              imgUpdates.transform !== undefined
+                ? sanitizeTransform(imgUpdates.transform)
+                : current.transform;
+
             updatedLayer = {
               ...current,
               ...updates,
+              transform: nextTransform,
               type: "image",
               updatedAt: Date.now(),
             };
@@ -1640,10 +1723,12 @@ export function StudioProvider({
           ...updates,
           type: updates.type || currentBg.type,
         };
+        const nextSublayers = normalizeLegacyBackgroundToSublayers(nextBg);
 
         const updatedGenLayer: GenerativeLayer = {
           ...genLayer,
           visible: true,
+          sublayers: nextSublayers,
           backgroundMode: nextBg.type,
           backgroundConfig: nextBg,
         };
@@ -1697,6 +1782,7 @@ export function StudioProvider({
       const updatedGenLayer: GenerativeLayer = {
         ...genLayer,
         visible: false,
+        sublayers: [],
         backgroundMode: "transparent",
         backgroundConfig: { ...DEFAULT_BACKGROUND_STATE, type: "transparent" },
       };
@@ -1724,6 +1810,336 @@ export function StudioProvider({
       return nextFrames;
     });
   }, [activeFrame, recordDiscreteSnapshot]);
+
+  // ---------------------------------------------------------------------------
+  // Stage 3A: Generative Sublayer Actions
+  // ---------------------------------------------------------------------------
+
+  const addSublayer = React.useCallback(
+    (
+      type: GenerativeSublayerType,
+      initialParams?: Record<string, unknown>,
+      atIndex?: number
+    ) => {
+      if (!activeFrame) return;
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
+        if (frameIndex === -1) return prev;
+        const targetFrame = prev[frameIndex];
+        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        if (genLayerIndex === -1) return prev;
+
+        const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
+        const currentSublayers = genLayer.sublayers || [];
+        const newSublayer = createGenerativeSublayer(type, {
+          parameters: initialParams,
+        });
+
+        let nextSublayers: GenerativeSublayer[];
+        if (typeof atIndex === "number" && Number.isFinite(atIndex)) {
+          const clampedIndex = Math.max(0, Math.min(currentSublayers.length, atIndex));
+          nextSublayers = [
+            ...currentSublayers.slice(0, clampedIndex),
+            newSublayer,
+            ...currentSublayers.slice(clampedIndex),
+          ];
+        } else {
+          // Canonical ordering: append to top of sublayer stack
+          nextSublayers = [...currentSublayers, newSublayer];
+        }
+
+        const updatedGenLayer: GenerativeLayer = {
+          ...genLayer,
+          visible: true,
+          sublayers: nextSublayers,
+        };
+
+        const nextLayers = [...targetFrame.layers];
+        nextLayers[genLayerIndex] = updatedGenLayer;
+
+        const updatedFrame: Frame = {
+          ...targetFrame,
+          layers: nextLayers,
+          updatedAt: Date.now(),
+        };
+
+        const nextFrames = [...prev];
+        nextFrames[frameIndex] = updatedFrame;
+
+        if (typeof dbSaveFrame === "function") {
+          Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
+        }
+
+        return nextFrames;
+      });
+    },
+    [activeFrame, recordDiscreteSnapshot]
+  );
+
+  const removeSublayer = React.useCallback(
+    (sublayerId: string) => {
+      if (!activeFrame) return;
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
+        if (frameIndex === -1) return prev;
+        const targetFrame = prev[frameIndex];
+        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        if (genLayerIndex === -1) return prev;
+
+        const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
+        const currentSublayers = genLayer.sublayers || [];
+        const nextSublayers = currentSublayers.filter((s) => s.id !== sublayerId);
+
+        const updatedGenLayer: GenerativeLayer = {
+          ...genLayer,
+          sublayers: nextSublayers,
+        };
+
+        const nextLayers = [...targetFrame.layers];
+        nextLayers[genLayerIndex] = updatedGenLayer;
+
+        const updatedFrame: Frame = {
+          ...targetFrame,
+          layers: nextLayers,
+          updatedAt: Date.now(),
+        };
+
+        const nextFrames = [...prev];
+        nextFrames[frameIndex] = updatedFrame;
+
+        if (typeof dbSaveFrame === "function") {
+          Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
+        }
+
+        return nextFrames;
+      });
+    },
+    [activeFrame, recordDiscreteSnapshot]
+  );
+
+  const reorderSublayers = React.useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (!activeFrame) return;
+
+      setFrames((prev) => {
+        const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
+        if (frameIndex === -1) return prev;
+        const targetFrame = prev[frameIndex];
+        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        if (genLayerIndex === -1) return prev;
+
+        const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
+        const currentSublayers = [...(genLayer.sublayers || [])];
+        if (
+          fromIndex < 0 ||
+          fromIndex >= currentSublayers.length ||
+          toIndex < 0 ||
+          toIndex >= currentSublayers.length ||
+          fromIndex === toIndex
+        ) {
+          return prev;
+        }
+
+        recordDiscreteSnapshot();
+
+        const [moved] = currentSublayers.splice(fromIndex, 1);
+        currentSublayers.splice(toIndex, 0, moved);
+
+        const updatedGenLayer: GenerativeLayer = {
+          ...genLayer,
+          sublayers: currentSublayers,
+        };
+
+        const nextLayers = [...targetFrame.layers];
+        nextLayers[genLayerIndex] = updatedGenLayer;
+
+        const updatedFrame: Frame = {
+          ...targetFrame,
+          layers: nextLayers,
+          updatedAt: Date.now(),
+        };
+
+        const nextFrames = [...prev];
+        nextFrames[frameIndex] = updatedFrame;
+
+        if (typeof dbSaveFrame === "function") {
+          Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
+        }
+
+        return nextFrames;
+      });
+    },
+    [activeFrame, recordDiscreteSnapshot]
+  );
+
+  const updateSublayer = React.useCallback(
+    (
+      sublayerId: string,
+      updates: Partial<Omit<GenerativeSublayer, "id">>
+    ) => {
+      if (!activeFrame) return;
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
+        if (frameIndex === -1) return prev;
+        const targetFrame = prev[frameIndex];
+        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        if (genLayerIndex === -1) return prev;
+
+        const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
+        const currentSublayers = genLayer.sublayers || [];
+        const nextSublayers = currentSublayers.map((s) => {
+          if (s.id !== sublayerId) return s;
+
+          const opacity =
+            typeof updates.opacity === "number" && Number.isFinite(updates.opacity)
+              ? Math.max(0.0, Math.min(1.0, updates.opacity))
+              : s.opacity;
+
+          const enabled =
+            updates.enabled !== undefined ? Boolean(updates.enabled) : s.enabled;
+
+          const blendMode = updates.blendMode || s.blendMode;
+
+          let parameters = s.parameters;
+          if (updates.parameters) {
+            parameters = resolveGenerativeParameters(s.type, {
+              ...s.parameters,
+              ...updates.parameters,
+            });
+          }
+
+          const updated: GenerativeSublayer = {
+            ...s,
+            enabled,
+            opacity,
+            blendMode,
+            parameters,
+          };
+
+          if (updates.name !== undefined) {
+            if (typeof updates.name === "string" && updates.name.trim().length > 0) {
+              updated.name = updates.name.trim();
+            } else {
+              delete updated.name;
+            }
+          }
+
+          if (updates.seed !== undefined) {
+            if (typeof updates.seed === "number" && Number.isFinite(updates.seed)) {
+              updated.seed = Math.floor(updates.seed);
+            } else {
+              delete updated.seed;
+            }
+          }
+
+          return updated;
+        });
+
+        const updatedGenLayer: GenerativeLayer = {
+          ...genLayer,
+          sublayers: nextSublayers,
+        };
+
+        const nextLayers = [...targetFrame.layers];
+        nextLayers[genLayerIndex] = updatedGenLayer;
+
+        const updatedFrame: Frame = {
+          ...targetFrame,
+          layers: nextLayers,
+          updatedAt: Date.now(),
+        };
+
+        const nextFrames = [...prev];
+        nextFrames[frameIndex] = updatedFrame;
+
+        if (typeof dbSaveFrame === "function") {
+          Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
+        }
+
+        return nextFrames;
+      });
+    },
+    [activeFrame, recordDiscreteSnapshot]
+  );
+
+  const updateSublayerParameters = React.useCallback(
+    (
+      sublayerId: string,
+      paramUpdates: Record<string, unknown>,
+      options?: { skipHistory?: boolean }
+    ) => {
+      if (!activeFrame) return;
+
+      if (options?.skipHistory) {
+        startOrContinueParamInteraction();
+      } else {
+        recordDiscreteSnapshot();
+      }
+
+      setFrames((prev) => {
+        const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
+        if (frameIndex === -1) return prev;
+        const targetFrame = prev[frameIndex];
+        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        if (genLayerIndex === -1) return prev;
+
+        const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
+        const currentSublayers = genLayer.sublayers || [];
+        const nextSublayers = currentSublayers.map((s) => {
+          if (s.id !== sublayerId) return s;
+          return {
+            ...s,
+            parameters: resolveGenerativeParameters(s.type, {
+              ...s.parameters,
+              ...paramUpdates,
+            }),
+          };
+        });
+
+        const updatedGenLayer: GenerativeLayer = {
+          ...genLayer,
+          sublayers: nextSublayers,
+        };
+
+        const nextLayers = [...targetFrame.layers];
+        nextLayers[genLayerIndex] = updatedGenLayer;
+
+        const updatedFrame: Frame = {
+          ...targetFrame,
+          layers: nextLayers,
+          updatedAt: Date.now(),
+        };
+
+        const nextFrames = [...prev];
+        nextFrames[frameIndex] = updatedFrame;
+
+        if (options?.skipHistory) {
+          const timerKey = "sublayer_param_" + sublayerId;
+          if (debounceTimersRef.current[timerKey]) {
+            clearTimeout(debounceTimersRef.current[timerKey]);
+          }
+          debounceTimersRef.current[timerKey] = setTimeout(() => {
+            if (typeof dbSaveFrame === "function") {
+              Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
+            }
+          }, 500);
+        } else {
+          if (typeof dbSaveFrame === "function") {
+            Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
+          }
+        }
+
+        return nextFrames;
+      });
+    },
+    [activeFrame, recordDiscreteSnapshot, startOrContinueParamInteraction]
+  );
 
   // ---------------------------------------------------------------------------
   // Global Undo / Redo
@@ -2129,6 +2545,8 @@ export function StudioProvider({
     canRedo: future.length > 0,
     undo,
     redo,
+    startOrContinueParamInteraction,
+    commitParamInteraction,
 
     // Animation / Timeline
     timeline,
@@ -2171,12 +2589,18 @@ export function StudioProvider({
     saveCurrentStackAsLook,
     deleteUserLook,
 
-    // Background
+    // Background & Generative Sublayers (Stage 3A)
     hasActiveBackground,
     isBackgroundPanelOpen,
     setIsBackgroundPanelOpen,
     updateActiveBackground,
     resetActiveBackground,
+    activeSublayers,
+    addSublayer,
+    removeSublayer,
+    reorderSublayers,
+    updateSublayer,
+    updateSublayerParameters,
 
     // Viewport
     setViewport,

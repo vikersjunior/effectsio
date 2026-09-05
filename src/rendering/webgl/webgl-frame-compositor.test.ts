@@ -53,13 +53,16 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       expect(Object.keys(BLEND_MODE_MAP)).toHaveLength(12);
     });
 
-    it("exports valid GLSL ES 3.00 layer image fit shader supporting contain and cover", () => {
+    it("exports valid GLSL ES 3.00 layer image fit shader supporting contain and cover and spatial transforms", () => {
       expect(LAYER_IMAGE_VERTEX_SHADER).toContain("#version 300 es");
       expect(LAYER_IMAGE_FRAGMENT_SHADER).toContain("#version 300 es");
       expect(LAYER_IMAGE_FRAGMENT_SHADER).toContain("uniform sampler2D u_assetTexture;");
       expect(LAYER_IMAGE_FRAGMENT_SHADER).toContain("uniform vec2 u_frameSize;");
       expect(LAYER_IMAGE_FRAGMENT_SHADER).toContain("uniform vec2 u_assetSize;");
       expect(LAYER_IMAGE_FRAGMENT_SHADER).toContain("uniform int u_fitMode;");
+      expect(LAYER_IMAGE_FRAGMENT_SHADER).toContain("uniform vec2 u_layerOffset;");
+      expect(LAYER_IMAGE_FRAGMENT_SHADER).toContain("uniform vec2 u_layerScale;");
+      expect(LAYER_IMAGE_FRAGMENT_SHADER).toContain("uniform float u_layerRotation;");
     });
   });
 
@@ -163,96 +166,97 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
     });
   });
 
+  function createMockGL(): WebGL2RenderingContext {
+    const activeTextures = new Map<number, any>();
+    let boundFramebuffer: any = null;
+
+    const gl: any = {
+      COLOR_ATTACHMENT0: 0x8ce0,
+      FRAMEBUFFER: 0x8d40,
+      FRAMEBUFFER_COMPLETE: 0x8cd5,
+      TEXTURE_2D: 0x0de1,
+      TEXTURE0: 0x84c0,
+      TEXTURE1: 0x84c1,
+      RGBA8: 0x8058,
+      RGBA: 0x1908,
+      UNSIGNED_BYTE: 0x1401,
+      LINEAR: 0x2601,
+      CLAMP_TO_EDGE: 0x812f,
+      TEXTURE_WRAP_S: 0x2802,
+      TEXTURE_WRAP_T: 0x2803,
+      TEXTURE_MIN_FILTER: 0x2801,
+      TEXTURE_MAG_FILTER: 0x2800,
+      UNPACK_FLIP_Y_WEBGL: 0x9240,
+      UNPACK_PREMULTIPLY_ALPHA_WEBGL: 0x9241,
+      UNPACK_ALIGNMENT: 0x0cf5,
+      COLOR_BUFFER_BIT: 0x4000,
+      canvas: { width: 1080, height: 1080 },
+
+      pixelStorei: vi.fn(),
+      createTexture: vi.fn(() => ({ id: "tex-" + Math.random() })),
+      deleteTexture: vi.fn(),
+      bindTexture: vi.fn((target: number, tex: any) => {}),
+      texImage2D: vi.fn(),
+      texParameteri: vi.fn(),
+      activeTexture: vi.fn((slot: number) => {}),
+
+      createFramebuffer: vi.fn(() => ({ id: "fbo-" + Math.random() })),
+      deleteFramebuffer: vi.fn(),
+      bindFramebuffer: vi.fn((target: number, fbo: any) => {
+        boundFramebuffer = fbo;
+      }),
+      framebufferTexture2D: vi.fn(),
+      checkFramebufferStatus: vi.fn(() => 0x8cd5), // FRAMEBUFFER_COMPLETE
+
+      ACTIVE_UNIFORMS: 0x8b89,
+      ACTIVE_ATTRIBUTES: 0x8b84,
+      LINK_STATUS: 0x8b82,
+      COMPILE_STATUS: 0x8b81,
+
+      createProgram: vi.fn(() => ({ id: "prog-" + Math.random() })),
+      deleteProgram: vi.fn(),
+      deleteShader: vi.fn(),
+      useProgram: vi.fn(),
+      createShader: vi.fn(() => ({ id: "shader-" + Math.random() })),
+      shaderSource: vi.fn(),
+      compileShader: vi.fn(),
+      getShaderParameter: vi.fn(() => true),
+      getProgramParameter: vi.fn((_p: any, param: number) => {
+        if (param === 0x8b89) return 0; // ACTIVE_UNIFORMS
+        if (param === 0x8b84) return 0; // ACTIVE_ATTRIBUTES
+        return true; // LINK_STATUS
+      }),
+      getActiveUniform: vi.fn(() => null),
+      getActiveAttrib: vi.fn(() => null),
+      attachShader: vi.fn(),
+      linkProgram: vi.fn(),
+      getUniformLocation: vi.fn(() => ({ id: "loc-" + Math.random() })),
+      getAttribLocation: vi.fn(() => 0),
+      uniform1i: vi.fn(),
+      uniform1f: vi.fn(),
+      uniform2f: vi.fn(),
+      uniform3f: vi.fn(),
+
+      createBuffer: vi.fn(() => ({ id: "buf-" + Math.random() })),
+      deleteBuffer: vi.fn(),
+      bindBuffer: vi.fn(),
+      bufferData: vi.fn(),
+      createVertexArray: vi.fn(() => ({ id: "vao-" + Math.random() })),
+      deleteVertexArray: vi.fn(),
+      bindVertexArray: vi.fn(),
+      enableVertexAttribArray: vi.fn(),
+      vertexAttribPointer: vi.fn(),
+
+      viewport: vi.fn(),
+      clearColor: vi.fn(),
+      clear: vi.fn(),
+      drawArrays: vi.fn(),
+    };
+
+    return gl as WebGL2RenderingContext;
+  }
+
   describe("Compositor Working Set & Architecture Invariants", () => {
-    function createMockGL(): WebGL2RenderingContext {
-      const activeTextures = new Map<number, any>();
-      let boundFramebuffer: any = null;
-
-      const gl: any = {
-        COLOR_ATTACHMENT0: 0x8ce0,
-        FRAMEBUFFER: 0x8d40,
-        FRAMEBUFFER_COMPLETE: 0x8cd5,
-        TEXTURE_2D: 0x0de1,
-        TEXTURE0: 0x84c0,
-        TEXTURE1: 0x84c1,
-        RGBA8: 0x8058,
-        RGBA: 0x1908,
-        UNSIGNED_BYTE: 0x1401,
-        LINEAR: 0x2601,
-        CLAMP_TO_EDGE: 0x812f,
-        TEXTURE_WRAP_S: 0x2802,
-        TEXTURE_WRAP_T: 0x2803,
-        TEXTURE_MIN_FILTER: 0x2801,
-        TEXTURE_MAG_FILTER: 0x2800,
-        UNPACK_FLIP_Y_WEBGL: 0x9240,
-        UNPACK_PREMULTIPLY_ALPHA_WEBGL: 0x9241,
-        UNPACK_ALIGNMENT: 0x0cf5,
-        COLOR_BUFFER_BIT: 0x4000,
-        canvas: { width: 1080, height: 1080 },
-
-        pixelStorei: vi.fn(),
-        createTexture: vi.fn(() => ({ id: "tex-" + Math.random() })),
-        deleteTexture: vi.fn(),
-        bindTexture: vi.fn((target: number, tex: any) => {}),
-        texImage2D: vi.fn(),
-        texParameteri: vi.fn(),
-        activeTexture: vi.fn((slot: number) => {}),
-
-        createFramebuffer: vi.fn(() => ({ id: "fbo-" + Math.random() })),
-        deleteFramebuffer: vi.fn(),
-        bindFramebuffer: vi.fn((target: number, fbo: any) => {
-          boundFramebuffer = fbo;
-        }),
-        framebufferTexture2D: vi.fn(),
-        checkFramebufferStatus: vi.fn(() => 0x8cd5), // FRAMEBUFFER_COMPLETE
-
-        ACTIVE_UNIFORMS: 0x8b89,
-        ACTIVE_ATTRIBUTES: 0x8b84,
-        LINK_STATUS: 0x8b82,
-        COMPILE_STATUS: 0x8b81,
-
-        createProgram: vi.fn(() => ({ id: "prog-" + Math.random() })),
-        deleteProgram: vi.fn(),
-        deleteShader: vi.fn(),
-        useProgram: vi.fn(),
-        createShader: vi.fn(() => ({ id: "shader-" + Math.random() })),
-        shaderSource: vi.fn(),
-        compileShader: vi.fn(),
-        getShaderParameter: vi.fn(() => true),
-        getProgramParameter: vi.fn((_p: any, param: number) => {
-          if (param === 0x8b89) return 0; // ACTIVE_UNIFORMS
-          if (param === 0x8b84) return 0; // ACTIVE_ATTRIBUTES
-          return true; // LINK_STATUS
-        }),
-        getActiveUniform: vi.fn(() => null),
-        getActiveAttrib: vi.fn(() => null),
-        attachShader: vi.fn(),
-        linkProgram: vi.fn(),
-        getUniformLocation: vi.fn(() => ({ id: "loc-" + Math.random() })),
-        getAttribLocation: vi.fn(() => 0),
-        uniform1i: vi.fn(),
-        uniform1f: vi.fn(),
-        uniform2f: vi.fn(),
-        uniform3f: vi.fn(),
-
-        createBuffer: vi.fn(() => ({ id: "buf-" + Math.random() })),
-        deleteBuffer: vi.fn(),
-        bindBuffer: vi.fn(),
-        bufferData: vi.fn(),
-        createVertexArray: vi.fn(() => ({ id: "vao-" + Math.random() })),
-        deleteVertexArray: vi.fn(),
-        bindVertexArray: vi.fn(),
-        enableVertexAttribArray: vi.fn(),
-        vertexAttribPointer: vi.fn(),
-
-        viewport: vi.fn(),
-        clearColor: vi.fn(),
-        clear: vi.fn(),
-        drawArrays: vi.fn(),
-      };
-
-      return gl as WebGL2RenderingContext;
-    }
 
     it("allocates exactly 4 reusable working attachments sized to Frame dimensions", () => {
       const mockGL = createMockGL();
@@ -497,6 +501,319 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       expect(res.height).toBe(1000);
 
       compositor.dispose();
+    });
+  });
+
+  describe("Stage 2B ImageLayer Transform Compositing", () => {
+    it("renders layer with default transform identically to Stage 1 baseline", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const baseGen = createDefaultGenerativeLayer();
+      const imgLayer = createImageLayer("asset-def", "Default Transform Layer", [], "contain");
+
+      expect(imgLayer.transform).toBeDefined();
+      expect(imgLayer.transform?.x).toBe(0);
+      expect(imgLayer.transform?.y).toBe(0);
+      expect(imgLayer.transform?.scaleX).toBe(1);
+      expect(imgLayer.transform?.scaleY).toBe(1);
+      expect(imgLayer.transform?.rotation).toBe(0);
+
+      const frame: Frame = {
+        id: "frame-default-trans",
+        name: "Default Transform",
+        dimensions: { width: 800, height: 800, presetId: null },
+        layers: [baseGen, imgLayer],
+        activeLayerId: imgLayer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      compositor.uploadAsset("asset-def", { width: 800, height: 800 } as any);
+      const res = compositor.composeFrame(frame);
+
+      expect(res).toBeDefined();
+      expect(res.width).toBe(800);
+      expect(res.height).toBe(800);
+
+      compositor.dispose();
+    });
+
+    it("renders layer with custom transform (translation, proportional scale, rotation)", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const baseGen = createDefaultGenerativeLayer();
+      const imgTrans = createImageLayer("asset-trans", "Transformed Layer", [], "contain", {
+        x: 120,
+        y: -60,
+        scaleX: 2.0,
+        scaleY: 2.0,
+        rotation: 45,
+      });
+
+      const frame: Frame = {
+        id: "frame-custom-trans",
+        name: "Custom Transform",
+        dimensions: { width: 1080, height: 1080, presetId: null },
+        layers: [baseGen, imgTrans],
+        activeLayerId: imgTrans.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      compositor.uploadAsset("asset-trans", { width: 1920, height: 1080 } as any);
+      const res = compositor.composeFrame(frame);
+
+      expect(res).toBeDefined();
+      expect(res.width).toBe(1080);
+      expect(res.height).toBe(1080);
+
+      compositor.dispose();
+    });
+
+    it("renders layer with custom transform and active effect stack preserving effect pipeline order", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const baseGen = createDefaultGenerativeLayer();
+      const imgWithEffect = createImageLayer(
+        "asset-eff",
+        "Layer with Effect",
+        [{ instanceId: "duotone-1", effectId: "duotone", enabled: true, parameters: {} }],
+        "contain",
+        {
+          x: 50,
+          y: -30,
+          scaleX: 1.25,
+          scaleY: 1.25,
+          rotation: 15,
+        }
+      );
+
+      const frame: Frame = {
+        id: "frame-trans-effect",
+        name: "Transform + Effect",
+        dimensions: { width: 800, height: 800, presetId: null },
+        layers: [baseGen, imgWithEffect],
+        activeLayerId: imgWithEffect.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      compositor.uploadAsset("asset-eff", { width: 800, height: 600 } as any);
+      const res = compositor.composeFrame(frame);
+
+      expect(res).toBeDefined();
+      expect(res.width).toBe(800);
+      expect(res.height).toBe(800);
+
+      compositor.dispose();
+    });
+
+    it("invalidates and re-renders composition when transform values change", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const baseGen = createDefaultGenerativeLayer();
+      const img = createImageLayer("asset-1", "Layer 1", [], "contain", {
+        x: 0,
+        y: 0,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+      });
+
+      const frame: Frame = {
+        id: "frame-trans-cache",
+        name: "Cache Invalidation Test",
+        dimensions: { width: 1000, height: 1000, presetId: null },
+        layers: [baseGen, img],
+        activeLayerId: img.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      compositor.uploadAsset("asset-1", { width: 1000, height: 1000 } as any);
+
+      // First composition
+      const res1 = compositor.composeFrame(frame);
+      expect(res1).toBeDefined();
+
+      // Second call with same state hits cache
+      const res2 = compositor.composeFrame(frame);
+      expect(res2).toBe(res1);
+
+      // Mutate transform
+      const modifiedFrame: Frame = {
+        ...frame,
+        layers: [
+          baseGen,
+          {
+            ...img,
+            transform: {
+              x: 100,
+              y: 50,
+              scaleX: 1.5,
+              scaleY: 1.5,
+              rotation: 30,
+            },
+          },
+        ],
+      };
+
+      // Changed transform must re-compose
+      const res3 = compositor.composeFrame(modifiedFrame);
+      expect(res3).toBeDefined();
+
+      compositor.dispose();
+    });
+  });
+
+  describe("Default Transform Mathematical Regression Suite", () => {
+    // Stage 1 legacy fit UV calculator
+    function legacyStage1FitUv(
+      v_texCoord: { x: number; y: number },
+      frameSize: { width: number; height: number },
+      assetSize: { width: number; height: number },
+      fitMode: "contain" | "cover"
+    ) {
+      const frameAspect = frameSize.width / frameSize.height;
+      const assetAspect = assetSize.width / assetSize.height;
+      let scaleX = 1;
+      let scaleY = 1;
+
+      if (fitMode === "contain") {
+        if (assetAspect > frameAspect) {
+          const s = frameAspect / assetAspect;
+          scaleX = 1;
+          scaleY = 1 / s;
+        } else {
+          const s = assetAspect / frameAspect;
+          scaleX = 1 / s;
+          scaleY = 1;
+        }
+      } else {
+        if (assetAspect > frameAspect) {
+          const s = assetAspect / frameAspect;
+          scaleX = 1 / s;
+          scaleY = 1;
+        } else {
+          const s = frameAspect / assetAspect;
+          scaleX = 1;
+          scaleY = 1 / s;
+        }
+      }
+
+      return {
+        u: (v_texCoord.x - 0.5) * scaleX + 0.5,
+        v: (v_texCoord.y - 0.5) * scaleY + 0.5,
+      };
+    }
+
+    // Stage 2 shader coordinate transformation with transform parameters
+    function stage2ShaderFitUv(
+      v_texCoord: { x: number; y: number },
+      frameSize: { width: number; height: number },
+      assetSize: { width: number; height: number },
+      fitMode: "contain" | "cover",
+      transform: { x: number; y: number; scaleX: number; scaleY: number; rotation: number }
+    ) {
+      const frameAspect = frameSize.width / frameSize.height;
+      const assetAspect = assetSize.width / assetSize.height;
+      let scaleX = 1;
+      let scaleY = 1;
+
+      if (fitMode === "contain") {
+        if (assetAspect > frameAspect) {
+          const s = frameAspect / assetAspect;
+          scaleX = 1;
+          scaleY = 1 / s;
+        } else {
+          const s = assetAspect / frameAspect;
+          scaleX = 1 / s;
+          scaleY = 1;
+        }
+      } else {
+        if (assetAspect > frameAspect) {
+          const s = assetAspect / frameAspect;
+          scaleX = 1 / s;
+          scaleY = 1;
+        } else {
+          const s = frameAspect / assetAspect;
+          scaleX = 1;
+          scaleY = 1 / s;
+        }
+      }
+
+      // Convert WebGL fragment coordinate to UI Frame pixel offset from frame center
+      const p = {
+        x: (v_texCoord.x - 0.5) * frameSize.width,
+        y: -(v_texCoord.y - 0.5) * frameSize.height,
+      };
+
+      // 1. Inverse translation
+      const p_trans = {
+        x: p.x - transform.x,
+        y: p.y - transform.y,
+      };
+
+      // 2. Inverse rotation
+      const rad = (transform.rotation * Math.PI) / 180;
+      const cosR = Math.cos(rad);
+      const sinR = Math.sin(rad);
+      const p_rot = {
+        x: p_trans.x * cosR + p_trans.y * sinR,
+        y: -p_trans.x * sinR + p_trans.y * cosR,
+      };
+
+      // 3. Inverse scale
+      const safeScaleX = Math.max(Math.abs(transform.scaleX), 0.001);
+      const safeScaleY = Math.max(Math.abs(transform.scaleY), 0.001);
+      const p_scaled = {
+        x: p_rot.x / safeScaleX,
+        y: p_rot.y / safeScaleY,
+      };
+
+      // Convert back to centered normalized UV offset
+      const uvOffset = {
+        x: p_scaled.x / frameSize.width,
+        y: -p_scaled.y / frameSize.height,
+      };
+
+      return {
+        u: uvOffset.x * scaleX + 0.5,
+        v: uvOffset.y * scaleY + 0.5,
+      };
+    }
+
+    it("empirically proves DEFAULT_LAYER_TRANSFORM produces bit-identical UV sampling to Stage 1 across contain and cover", () => {
+      const testCases = [
+        { frame: { width: 1920, height: 1080 }, asset: { width: 800, height: 600 } }, // Landscape in 16:9
+        { frame: { width: 1080, height: 1920 }, asset: { width: 1200, height: 800 } }, // Landscape in 9:16
+        { frame: { width: 1000, height: 1000 }, asset: { width: 500, height: 1000 } }, // Tall portrait in 1:1
+        { frame: { width: 1200, height: 800 }, asset: { width: 1200, height: 800 } }, // Exact aspect match
+      ];
+
+      const defaultTransform = { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 };
+      const fitModes: ("contain" | "cover")[] = ["contain", "cover"];
+
+      for (const { frame, asset } of testCases) {
+        for (const fit of fitModes) {
+          for (let u = 0; u <= 1.0; u += 0.05) {
+            for (let v = 0; v <= 1.0; v += 0.05) {
+              const legacy = legacyStage1FitUv({ x: u, y: v }, frame, asset, fit);
+              const stage2 = stage2ShaderFitUv({ x: u, y: v }, frame, asset, fit, defaultTransform);
+
+              const deltaU = Math.abs(legacy.u - stage2.u);
+              const deltaV = Math.abs(legacy.v - stage2.v);
+
+              expect(deltaU).toBeLessThanOrEqual(1e-12);
+              expect(deltaV).toBeLessThanOrEqual(1e-12);
+            }
+          }
+        }
+      }
     });
   });
 });

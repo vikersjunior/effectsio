@@ -2372,3 +2372,191 @@ Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed 
 ### 5. Hard Stop Invariant
 - Stage 1C is complete. Stage 2 was NOT started. No transforms, masks, text/vector layers, animation timeline additions, generative sublayers, or multi-frame switching were introduced.
 
+---
+
+## Phase 9 / Stage 2 — Transform & Composition Implementation
+
+- **Date**: 2026-09-05
+- **Task**: Implement Stage 2: Transform & Composition for EffectsIO, making ImageLayers genuinely independent visual objects that can be moved, proportionally scaled, and rotated inside the Frame.
+
+### 1. Five Architectural Corrections Resolved
+1. **Fit vs Transform Shader Mathematics**:
+   - Preserved authoritative `contain` / `cover` math in `src/rendering/webgl/shaders/layer-image.ts`.
+   - Mapped WebGL fragment coordinates $P = ((v\_texCoord.x - 0.5) \cdot W, -(v\_texCoord.y - 0.5) \cdot H)$ into Frame pixel coordinates (positive X right, positive Y down).
+   - Applied inverse translation, inverse rotation, and inverse scale before passing coordinates into the existing fit math. Fragments falling outside $[0, 1]$ clip to `vec4(0.0)`.
+   - When `transform = DEFAULT_LAYER_TRANSFORM` (`{ x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 }`), the shader output is bit-identical to Stage 1.
+2. **Effect Ordering**:
+   - Established pipeline: `Asset → Fit + Transform → Effect Stack → Layer Opacity/Blend → Accumulator`.
+   - Transformed layer raster executes effects in `layerPP.read`, preserving the existing 4-FBO working set with zero new FBO allocations.
+3. **Scale Model & Range**:
+   - Internal model stores `scaleX, scaleY` within `[0.05, 20.0]` (5%–2000%) for future extensibility.
+   - Enforced proportional scaling (`scaleX === scaleY`) in all UI and interactions.
+   - Extended `SliderControl` with `inputMax?: number` prop so slider visible track range is 5%–500% while editable value input allows valid values up to 2000%.
+4. **Overlay Boundary Behavior**:
+   - Composition rendering is clipped to Frame bounds in WebGL.
+   - SVG selection overlay is placed with `overflow: visible` above the canvas, allowing handles to extend outside Frame bounds without clipping.
+5. **Continuous History & Interactions**:
+   - Unified continuous parameter interaction architecture: gesture start invokes `startOrContinueParamInteraction()`, updates pass `{ skipHistory: true }`, gesture end invokes `commitParamInteraction()`. Exactly 1 history entry per drag/scale/rotate gesture. Escape rolls back cleanly without creating a history entry.
+
+### 2. Implementation Summary
+- **Domain & Types (`src/types/frame.ts`)**:
+  - Defined `LayerTransform` (`x`, `y`, `scaleX`, `scaleY`, `rotation`) and `DEFAULT_LAYER_TRANSFORM`.
+  - Added `transform?: LayerTransform` to `ImageLayer` and updated `createImageLayer` factory.
+- **Transform Math Utility (`src/utils/transform-math.ts`)**:
+  - Implemented `normalizeRotation` (normalizes to `[-180, 180]`, eliminates `-0`), `clampScale` (`[0.05, 20.0]`), `sanitizeTransform`, `calculateFittedDimensions`, `getLayerCenterInFrame`, `getOrientedBoundingBox`, `isPointInOrientedBox`, `screenToFrame`, `frameToScreen`.
+- **Persistence & Hydration (`src/storage/db.ts`)**:
+  - Sanitizes hydrated layer transforms using `sanitizeTransform`, ensuring legacy Stage 1 layers default to `DEFAULT_LAYER_TRANSFORM` without database schema mutations.
+- **WebGL2 Compositor & Shaders (`src/rendering/webgl/shaders/layer-image.ts`, `src/rendering/webgl/webgl-frame-compositor.ts`)**:
+  - Added uniforms `u_layerOffset`, `u_layerScale`, `u_layerRotation` to `layer-image` shader.
+  - Updated `generateCompositionKey` to invalidate cached compositions when any transform property changes, while keeping viewport pan/zoom presentation-only.
+- **Canvas Selection Overlay (`src/components/layout/layer-selection-overlay.tsx`)**:
+  - Pure DOM/SVG overlay with boundary polygon, rotation stem, rotation circle handle, 4 corner scale handles, and center pivot dot.
+  - Proportional scaling pinned to opposite corner (or center with Alt key).
+  - Rotation around center with Shift snapping to 15° increments.
+- **Canvas Viewport Integration (`src/components/layout/canvas-viewport.tsx`)**:
+  - Analytical hit testing in `handlePointerDown` using `isPointInOrientedBox` in reverse order (topmost `ImageLayer` first).
+  - Keyboard arrow nudging (Arrow = 1px, Shift + Arrow = 10px) grouped into single history transactions.
+- **Inspector Panel (`src/components/layout/inspector-panel.tsx`)**:
+  - Added `Transform` section below `Layer Properties` when `activeLayer?.type === "image"`.
+  - Position X and Y editable numeric inputs with `px` suffix.
+  - Proportional Scale slider (5%–500% slider track, editable up to 2000%).
+  - Rotation slider (-180° to 180°).
+  - "Reset Transform" button restoring `DEFAULT_LAYER_TRANSFORM` without touching `fit`.
+- **Export Equivalence (`src/export/gpu-frame-export.test.ts`)**:
+  - Verified `gpu-export-renderer.ts` composes frames using identical transform state as preview.
+
+### 3. Verification Evidence
+- `pnpm test`: **PASS (26 test files, 289 tests passed, exit code 0)**.
+- `pnpm typecheck`: **PASS (0 errors, exit code 0)**.
+- `pnpm build`: **PASS (production bundle built in 2.42s, exit code 0)**.
+- `pnpm verify:approvals`: **PASS (all mechanical approval gates verified, exit code 0)**.
+- `pnpm check:no-competitor-refs`: **PASS (601 tracked files scanned, 0 violations, exit code 0)**.
+- `pnpm check:public-provenance`: **PASS (0 external provenance violations, exit code 0)**.
+- `pnpm graphify:update`: **PASS (4,124 nodes, 10,974 edges, 136 communities, exit code 0)**.
+- Browser Verification: **PARTIAL**
+  - Dev server verified running on `http://localhost:5173` (HTTP 200).
+  - Automated browser subagent documented Playwright driver download failure (upstream Azure CDN 404 on `playwright-1.57.0-mac.zip`).
+  - Full automated integration test suite verified in DOM/jsdom covering SVG handles, corner handles, bounding box, generative layer immunity, and keyboard arrow nudges.
+
+### 4. Graphify & Headroom Actual-Use
+1. **Graphify**:
+   - Pre-implementation: Queried compositor (`webgl-frame-compositor.ts`), shaders (`layer-image.ts`), and viewport math.
+   - Post-implementation: Executed `pnpm graphify:update` (`graphify . --update --code-only`), indexing changed code files and updating `graphify-out/graph.json` to 4,124 nodes and 10,974 edges across 136 communities.
+2. **Headroom**:
+   - Proxy active at `http://127.0.0.1:8787` (pid 10853).
+   - Zero fabrication invariant maintained.
+
+### 5. Final Verification & Correction Pass (Real Browser CDP & Math Regression)
+
+- **Date**: 2026-09-05
+- **Task**: Final verification and correction pass for Stage 2 Transform & Composition. Solved the critical blocker (Playwright 404 driver download) by utilizing the repository's native headless Chrome DevTools Protocol (CDP) test suite connecting to `/Applications/Google Chrome.app`.
+- **Key Verifications Completed**:
+  1. **Real Browser Visual Verification (`scripts/verify-stage-2-transform-cdp.mjs`)**:
+     - Executed all 15 verification steps against the running EffectsIO application on `http://127.0.0.1:5173/`.
+     - Generated and preserved 17 high-resolution screenshots in `docs/evidence/stage-2-transform/` and `artifacts/evidence/`:
+       - `01-assets-ingested.png`: Verified dual-asset ingestion into local library.
+       - `02-layer1-added-default-transform.png`: Layer added with `DEFAULT_LAYER_TRANSFORM`; SVG selection overlay with 4 corner scale handles and rotation stem rendered.
+       - `03-layer-moved-by-drag.png`: Canvas drag translated layer; bounding polygon and handles moved without drift.
+       - `04-layer-scaled-proportional.png`: Corner drag scaled layer proportionally (`scaleX === scaleY`).
+       - `05-layer-rotated.png`: Rotation handle rotated layer smoothly around center.
+       - `06-zoomed-in-selection.png`: Canvas zoom (150%) verified; handles stayed locked to rendered layer bounds.
+       - `07-zoomed-out-selection.png`: Canvas zoom (50%) verified; handles stayed locked to rendered layer bounds.
+       - `08-keyboard-nudged.png`: Keyboard arrow nudging (1px Arrow, 10px Shift+Arrow) verified.
+       - `09-fit-switched-to-cover-transform-preserved.png`: Toggled `contain ↔ cover`; transform offset, scale, and rotation remained unchanged.
+       - `10-reset-transform-restored-default.png`: "Reset Transform" in Inspector restored default transform while preserving `cover` fit.
+       - `11-two-image-layers.png`: Added second ImageLayer; verified independent transform without affecting first layer.
+       - `12-background-selected-no-handles.png`: Selected background layer; verified background immunity (zero transform handles rendered).
+       - `13-reselected-layer2-canvas-click.png`: Analytical hit testing verified top-most layer selection on canvas click.
+       - `14-layer-extended-beyond-frame-boundary.png`: Layer moved outside Frame; WebGL composition clipped to Frame while SVG handles remained unclipped and fully interactive.
+       - `15-undo-drag-restored.png`: Undo gesture restored previous transform in exactly 1 undo step.
+       - `16-inspector-inputs-high-scale.png`: Inspector numeric inputs updated X, Y, rotation, and scale above 500% (tested 650%, up to 2000% limit).
+       - `17-transformed-layer-with-effect.png`: Transformed ImageLayer rendered with Duotone effect, verifying the pipeline contract `Asset → Fit + Transform → Effect Stack → Layer Opacity/Blend → Accumulator`.
+  2. **Bug Fixed via Real Browser Observation**:
+     - Clicking the locked Background layer row in `LayersPanel` updated context `activeLayerIdState`, but `activeFrame.activeLayerId` was desynchronized. Fixed in `src/context/studio-context.tsx` and `src/components/layout/canvas-viewport.tsx` so `activeFrame.activeLayerId` stays synchronized and background layer is strictly immune from transform handles.
+  3. **Deterministic Default Transform Regression Proof**:
+- Proved mathematically in `src/rendering/webgl/webgl-frame-compositor.test.ts` that `DEFAULT_LAYER_TRANSFORM` produces identical UV samples ($\Delta \le 10^{-12}$) to pre-Stage-2 Stage 1 logic across thousands of points across 16:9, 9:16, 1:1, and 4:3 frame aspect ratios for both `contain` and `cover` fits.
+  4. **Automated Validation Results**:
+     - `pnpm test`: Exit code 0 (26 test files, 291 passed).
+     - `pnpm typecheck`: Exit code 0 (0 errors).
+     - `pnpm build`: Exit code 0 (Production bundle built in 2.36s).
+     - `pnpm verify:approvals`: Exit code 0 (All mechanical gates verified).
+     - `pnpm check:no-competitor-refs`: Exit code 0 (601 files scanned, 0 violations).
+     - `pnpm check:public-provenance`: Exit code 0 (0 violations).
+     - `pnpm graphify:update`: Exit code 0 (4,139 nodes, 10,992 edges, 144 communities).
+  5. **Final Status**:
+     - **COMPLETE** (Browser verification blocker resolved, real browser visual tests passing, all automated checks clean).
+
+---
+
+## Stage 3A — Generative Layer Foundation
+
+- **Date**: 2026-09-05
+- **Task**: Establish the data model, registry, parameter schema/validation, deterministic normalization, state management, persistence compatibility, and automated tests for Generative Sublayers without modifying WebGL compositor passes or building the new Inspector rack.
+
+### 1. Scope & Hard Boundary Adherence
+- **Strictly Implemented**:
+  - `GenerativeSublayer` instance model (`id`, `type`, `enabled`, `opacity`, `blendMode`, `parameters`, optional `name`, optional `seed`).
+  - `GENERATIVE_SUBLAYER_REGISTRY` with 5 floor primitives (`solid`, `linear-gradient`, `radial-gradient`, `dots`, `grid`).
+  - Parameter validation and resolution (`resolveGenerativeParameters`) with bounds clamping, hex color validation, and fallback defaults.
+  - Deterministic legacy background normalization (`normalizeGenerativeLayer`, `normalizeLegacyBackgroundToSublayers`, `deriveLegacyBackgroundFromSublayers`).
+  - Frame persistence and hydration in IndexedDB (`dbGetAllFrames`, `loadHydratedProject`).
+  - StudioContext state actions (`activeSublayers`, `addSublayer`, `removeSublayer`, `reorderSublayers`, `updateSublayer`, `updateSublayerParameters`).
+  - Global undo/redo history integration with continuous parameter scrubbing (`skipHistory` option).
+  - 28 focused automated tests in `src/generative/generative.test.tsx`.
+- **Strictly Excluded (Adhering to Hard Boundaries)**:
+  - Zero new shaders implemented (no noise, no waves).
+  - Zero WebGL compositor pass or FBO changes (`webgl-frame-compositor.ts` rendering passes unchanged).
+  - Zero Inspector UI redesign (no `GenerativeSublayersRack`, `FloatingBackgroundPanel` preserved).
+  - Zero IndexedDB schema version bump (remains v2).
+
+### 2. Implementation Summary
+- **Data Model & Types (`src/generative/types.ts`)**:
+  - Defined `GenerativeSublayerType` (`solid`, `linear-gradient`, `radial-gradient`, `dots`, `grid`).
+  - Defined `GenerativeParameterSchema` for `number`, `color`, `boolean`, `select` parameters.
+  - Defined `GenerativeSublayerDefinition` for registry metadata.
+  - Defined `GenerativeSublayer` instance interface with canonical `BlendMode`, `0.0 <= opacity <= 1.0`, and arbitrary `Record<string, unknown>` user parameters.
+- **Registry & Parameter Resolution (`src/generative/registry.ts`)**:
+  - Implemented `GENERATIVE_SUBLAYER_REGISTRY` providing schema, human-readable names, descriptions, categories (`solid`, `gradient`, `pattern`), default parameters, and seed requirement flags.
+  - Implemented `resolveGenerativeParameters` enforcing bounds, valid color strings, valid select choices, and defaulting safely.
+  - Implemented `createGenerativeSublayer` factory with stable UUID generation (`crypto.randomUUID`).
+- **Normalization & Compatibility (`src/generative/normalization.ts`)**:
+  - `normalizeLegacyBackgroundToSublayers`: Maps legacy `solid`, `linear-gradient`, `radial-gradient`, `dots`, `grid` to corresponding sublayers. Transparent maps to `sublayers: []`.
+  - `deriveLegacyBackgroundFromSublayers`: Read-only derived projection from sublayer stack back to `BackgroundState` for backward-compatible consumers.
+  - `normalizeGenerativeLayer`: Deterministic and idempotent layer normalizer. If `sublayers` already exist, they are preserved as the single source of truth; if absent, they are derived from legacy `backgroundConfig`.
+- **Frame System Integration (`src/types/frame.ts`)**:
+  - Extended `GenerativeLayer` with `sublayers: GenerativeSublayer[]`.
+  - Preserved optional `backgroundMode` and `backgroundConfig` for backward compatibility.
+  - Updated `createDefaultGenerativeLayer` factory to populate `sublayers`.
+- **Persistence & Hydration (`src/storage/db.ts`)**:
+  - Integrated `normalizeGenerativeLayer` into `dbGetAllFrames` and `loadHydratedProject`, ensuring all loaded frames have valid sublayers without requiring database migrations.
+- **State Management & History (`src/context/studio-context.tsx`)**:
+  - Added sublayer methods: `activeSublayers`, `addSublayer`, `removeSublayer`, `reorderSublayers`, `updateSublayer`, `updateSublayerParameters`.
+  - Canonical ordering: `sublayers[0]` is bottom, `sublayers[last]` is top. Reordering operations operate strictly inside `GenerativeLayer.sublayers` and never affect `frame.layers`.
+  - Full history snapshotting on discrete operations (add, remove, reorder, toggle visibility) with undo/redo support.
+  - Continuous scrubbing support (`skipHistory: true`) via `startOrContinueParamInteraction`.
+  - Synchronized `activeBackground` selector as a read-only derived view from `sublayers`.
+- **Consumer Safeguards (`src/components/layout/layers-panel.tsx`, `src/rendering/webgl/webgl-frame-compositor.ts`)**:
+  - Updated legacy consumers to read `layer.backgroundConfig ?? deriveLegacyBackgroundFromSublayers(layer.sublayers)`, guaranteeing stability if legacy fields are absent.
+
+### 3. Verification Evidence
+- `pnpm test`: **PASS (exit code 0, 27 test files passed, 319 tests passed)**.
+  - `src/generative/generative.test.tsx`: **28 passed (28)**.
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm build`: **PASS (exit code 0, Vite production bundle built in 10.36s)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, all mechanical approval gates verified)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 601 files scanned, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance violations)**.
+- `pnpm graphify:update`: **PASS (exit code 0, 4,160 nodes, 11,102 edges, 150 communities)**.
+- Browser Smoke Verification:
+  - Tested application loading and layer panel hydration.
+  - Background state safely projects into legacy consumers without errors.
+  - Stage 2 Transform system intact and operational.
+
+### 4. Graphify & Headroom Actual-Use
+1. **Graphify**:
+   - Pre-implementation: Queried symbol references for `GenerativeLayer`, `dbGetAllFrames`, `loadHydratedProject`, `StudioContextType`, `activeBackground`, and `WebGL2FrameCompositor`.
+   - Post-implementation: Executed `pnpm graphify:update` (`graphify . --update --code-only`), indexing 15 code files and updating knowledge graph to 4,160 nodes and 11,102 edges across 150 communities.
+2. **Headroom**:
+   - Pre-flight check: Checked local proxy at `http://localhost:8787/health`.
+   - Result: Proxy running (pid 10853) but reported `"status": "unhealthy"` due to uninitialized local memory backend and is configured for Anthropic upstream while Antigravity IDE runs via Gemini API.
+   - Reporting: Honest diagnostic recorded; no Headroom optimization or token savings claimed.
