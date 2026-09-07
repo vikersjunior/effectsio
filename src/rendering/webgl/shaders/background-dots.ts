@@ -30,6 +30,7 @@ uniform float u_patternSpacing;
 uniform float u_time;
 uniform float u_opacity;
 uniform float u_bgOpacity;
+uniform float u_dotSize;
 
 void main() {
     vec2 timeShift = u_time > 0.0 ? vec2(sin(u_time * 0.8) * 8.0, cos(u_time * 0.8) * 8.0) : vec2(0.0);
@@ -39,8 +40,9 @@ void main() {
     vec2 center = vec2(spacing * 0.5);
     float dist = length(cell - center);
 
-    // Antialiased 2px radius circle
-    float dotMask = smoothstep(2.5, 1.5, dist);
+    // Antialiased dot circle (default 2px radius / 4px diameter matching original)
+    float dotRadius = max(0.5, (u_dotSize > 0.0 ? u_dotSize : 4.0) * 0.5);
+    float dotMask = smoothstep(dotRadius + 0.5, dotRadius - 0.5, dist);
     vec3 bg = u_bgColor * u_bgOpacity;
     vec3 color = mix(bg, u_color, dotMask * u_opacity);
     fragColor = vec4(color, 1.0);

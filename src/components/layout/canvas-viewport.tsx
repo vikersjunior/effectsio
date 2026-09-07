@@ -174,6 +174,9 @@ export function CanvasViewport({
       });
       if (compGl) {
         gpuCompositorRef.current = new WebGL2FrameCompositor(compGl);
+        if (typeof window !== "undefined") {
+          (window as any).__gpuCompositor = gpuCompositorRef.current;
+        }
       }
     } catch (err) {
       console.warn("GPU frame compositor setup failed, will use CPU fallback:", err);
@@ -192,6 +195,9 @@ export function CanvasViewport({
       if (gpuCompositorRef.current) {
         gpuCompositorRef.current.dispose();
         gpuCompositorRef.current = null;
+        if (typeof window !== "undefined") {
+          (window as any).__gpuCompositor = null;
+        }
       }
     };
   }, []);
@@ -320,17 +326,18 @@ export function CanvasViewport({
       const currentPanY = sanitizeNumber(transientPanRef.current.panY, viewport.panY);
       const currentZoom = sanitizeNumber(transientZoomRef.current, viewport.zoom);
 
-      // 5. Render Transformed Active Image & Processed Effect Stack Layer
-      const isSourceLoaded = activeAsset && loadedSourceImage && loadedSourceImage.id === activeAsset.id;
+      // 5. Render Transformed Frame / Active Image & Processed Layer Stack
+      const isSourceLoaded = Boolean(activeAsset && loadedSourceImage && loadedSourceImage.id === activeAsset.id);
+      const hasFrameLayers = Boolean(activeFrame && activeFrame.layers && activeFrame.layers.length > 0);
 
-      if (isSourceLoaded && loadedSourceImage) {
+      if (isSourceLoaded || hasFrameLayers) {
         const scale = currentZoom / 100;
-        const renderSource = loadedSourceImage.img;
-        let w = activeAsset.width;
-        let h = activeAsset.height;
+        const renderSource = loadedSourceImage?.img ?? null;
+        let w = activeFrame ? activeFrame.dimensions.width : (activeAsset ? activeAsset.width : 800);
+        let h = activeFrame ? activeFrame.dimensions.height : (activeAsset ? activeAsset.height : 600);
 
-        // Render processed output via Stage 1B GPU Multi-Layer Compositor, or CPU fallback
-        let renderProcessed: HTMLImageElement | HTMLCanvasElement = renderSource;
+        // Render processed output via Stage 1B/3B GPU Multi-Layer Compositor, or CPU fallback
+        let renderProcessed: HTMLImageElement | HTMLCanvasElement | null = renderSource;
         let multiLayerComposited = false;
 
         if (activeFrame && gpuCompositorRef.current && compCanvasRef.current) {
@@ -353,7 +360,7 @@ export function CanvasViewport({
           }
         }
 
-        if (!multiLayerComposited && activeEffectStack && activeEffectStack.some((item) => item.enabled !== false)) {
+        if (!multiLayerComposited && renderSource && activeAsset && activeEffectStack && activeEffectStack.some((item) => item.enabled !== false)) {
           let gpuRenderSuccess = false;
           if (gpuPipelineRef.current && canExecuteStackOnGPU(activeEffectStack)) {
             try {
@@ -481,7 +488,7 @@ export function CanvasViewport({
           ctx.restore();
         };
 
-        if (viewport.splitView) {
+        if (viewport.splitView && renderSource && renderProcessed) {
           // VIEWPORT-SPACE Split View Clipping: splitX exists in 100% CSS Viewport space (0..width)
           const splitPos = Math.max(0, Math.min(1, viewport.splitPosition ?? 0.5));
           const splitX = width * splitPos;
@@ -512,9 +519,11 @@ export function CanvasViewport({
           ctx.lineTo(splitX, height);
           ctx.stroke();
           ctx.restore();
-        } else {
-          // Full View: Render Processed Image Output
+        } else if (renderProcessed) {
+          // Full View: Render Processed Frame/Image Output
           drawTransformedImage(renderProcessed);
+        } else if (renderSource) {
+          drawTransformedImage(renderSource);
         }
       } else {
         // Empty Viewport State is rendered via DOM overlay (Figma node 137:6167)
@@ -537,6 +546,11 @@ export function CanvasViewport({
       drawFrameRef.current(currentTimeRef.current);
     });
   }, []);
+
+  // Request draw whenever drawFrame changes (activeFrame updates, layers, sublayers, etc.)
+  React.useEffect(() => {
+    requestDraw();
+  }, [drawFrame, requestDraw]);
 
   // Sync currentTimeRef when timeline.currentTime changes externally (seek / step)
   React.useEffect(() => {

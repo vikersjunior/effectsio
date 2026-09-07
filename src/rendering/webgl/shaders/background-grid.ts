@@ -30,6 +30,7 @@ uniform float u_patternSpacing;
 uniform float u_time;
 uniform float u_opacity;
 uniform float u_bgOpacity;
+uniform float u_lineWidth;
 
 void main() {
     vec2 timeShift = u_time > 0.0 ? vec2(u_time * 6.0, u_time * 4.0) : vec2(0.0);
@@ -42,8 +43,10 @@ void main() {
     float distToLineY = min(cell.y, spacing - cell.y);
     float distToLine = min(distToLineX, distToLineY);
 
-    // Antialiased 1px grid line
-    float lineMask = smoothstep(1.0, 0.0, distToLine);
+    // Antialiased grid line (default 1px width matching original)
+    float lineWidth = max(0.5, (u_lineWidth > 0.0 ? u_lineWidth : 1.0));
+    float halfWidth = lineWidth * 0.5;
+    float lineMask = smoothstep(halfWidth + 0.5, halfWidth - 0.5, distToLine);
     vec3 bg = u_bgColor * u_bgOpacity;
     vec3 color = mix(bg, u_color, lineMask * u_opacity);
     fragColor = vec4(color, 1.0);

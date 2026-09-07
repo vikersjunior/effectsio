@@ -176,4 +176,132 @@ describe("Stage 2 Transform & Composition Export Equivalence Suite", () => {
 
     compositor.dispose();
   });
+
+  it("ensures preview composition and export composition use identical GenerativeLayer sublayer accumulation pipeline", () => {
+    const genLayer = createDefaultGenerativeLayer();
+    genLayer.visible = true;
+    genLayer.sublayers = [
+      {
+        id: "sub-1",
+        type: "solid",
+        enabled: true,
+        opacity: 1,
+        blendMode: "normal",
+        parameters: { color: "#111827" },
+      },
+      {
+        id: "sub-2",
+        type: "dots",
+        enabled: true,
+        opacity: 0.7,
+        blendMode: "screen",
+        parameters: { dotColor: "#6366f1", backgroundColor: "#000000", spacing: 20, dotSize: 3 },
+      },
+    ];
+
+    const frame: Frame = {
+      id: "frame-gen-export",
+      name: "Gen Export Frame",
+      dimensions: { width: 1920, height: 1080, presetId: "16:9" },
+      layers: [genLayer],
+      activeLayerId: genLayer.id,
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+
+    const drawArraysCalls: any[] = [];
+    const mockGL: any = {
+      COLOR_ATTACHMENT0: 0x8ce0,
+      FRAMEBUFFER: 0x8d40,
+      FRAMEBUFFER_COMPLETE: 0x8cd5,
+      TEXTURE_2D: 0x0de1,
+      TEXTURE0: 0x84c0,
+      TEXTURE1: 0x84c1,
+      RGBA8: 0x8058,
+      RGBA: 0x1908,
+      UNSIGNED_BYTE: 0x1401,
+      LINEAR: 0x2601,
+      CLAMP_TO_EDGE: 0x812f,
+      TEXTURE_WRAP_S: 0x2802,
+      TEXTURE_WRAP_T: 0x2803,
+      TEXTURE_MIN_FILTER: 0x2801,
+      TEXTURE_MAG_FILTER: 0x2800,
+      UNPACK_FLIP_Y_WEBGL: 0x9240,
+      UNPACK_PREMULTIPLY_ALPHA_WEBGL: 0x9241,
+      UNPACK_ALIGNMENT: 0x0cf5,
+      COLOR_BUFFER_BIT: 0x4000,
+      ACTIVE_UNIFORMS: 0x8b89,
+      ACTIVE_ATTRIBUTES: 0x8b84,
+      LINK_STATUS: 0x8b82,
+      COMPILE_STATUS: 0x8b81,
+      canvas: { width: 1920, height: 1080 },
+
+      pixelStorei: vi.fn(),
+      createTexture: vi.fn(() => ({ id: "tex-gen" })),
+      deleteTexture: vi.fn(),
+      bindTexture: vi.fn(),
+      texImage2D: vi.fn(),
+      texParameteri: vi.fn(),
+      activeTexture: vi.fn(),
+
+      createFramebuffer: vi.fn(() => ({ id: "fbo-gen" })),
+      deleteFramebuffer: vi.fn(),
+      bindFramebuffer: vi.fn(),
+      framebufferTexture2D: vi.fn(),
+      checkFramebufferStatus: vi.fn(() => 0x8cd5),
+
+      createProgram: vi.fn(() => ({ id: "prog-gen" })),
+      deleteProgram: vi.fn(),
+      deleteShader: vi.fn(),
+      useProgram: vi.fn(),
+      createShader: vi.fn(() => ({ id: "shader-gen" })),
+      shaderSource: vi.fn(),
+      compileShader: vi.fn(),
+      getShaderParameter: vi.fn(() => true),
+      getShaderInfoLog: vi.fn(() => ""),
+      getProgramInfoLog: vi.fn(() => ""),
+      getProgramParameter: vi.fn((_p: any, param: number) => {
+        if (param === 0x8b82) return true; // LINK_STATUS
+        if (param === 0x8b81) return true; // COMPILE_STATUS
+        return 0;
+      }),
+      getActiveUniform: vi.fn(() => null),
+      getActiveAttrib: vi.fn(() => null),
+      attachShader: vi.fn(),
+      linkProgram: vi.fn(),
+      getUniformLocation: vi.fn((_p: any, name: string) => ({ name })),
+      getAttribLocation: vi.fn(() => 0),
+
+      uniform1i: vi.fn(),
+      uniform1f: vi.fn(),
+      uniform2f: vi.fn(),
+
+      createBuffer: vi.fn(() => ({ id: "buf-gen" })),
+      deleteBuffer: vi.fn(),
+      bindBuffer: vi.fn(),
+      bufferData: vi.fn(),
+      createVertexArray: vi.fn(() => ({ id: "vao-gen" })),
+      deleteVertexArray: vi.fn(),
+      bindVertexArray: vi.fn(),
+      enableVertexAttribArray: vi.fn(),
+      vertexAttribPointer: vi.fn(),
+
+      viewport: vi.fn(),
+      clearColor: vi.fn(),
+      clear: vi.fn(),
+      drawArrays: vi.fn((...args: any[]) => drawArraysCalls.push(args)),
+    };
+
+    const compositor = new WebGL2FrameCompositor(mockGL);
+    const attachment = compositor.composeFrame(frame);
+    expect(attachment).toBeDefined();
+    expect(attachment.width).toBe(1920);
+    expect(attachment.height).toBe(1080);
+
+    // 2 sublayers: each draws primitive to scratch FBO (1 draw) + composites into layerPingPong (1 draw)
+    // plus cross-layer composite into accumulator (1 draw) = 5 draw calls total
+    expect(drawArraysCalls.length).toBe(5);
+
+    compositor.dispose();
+  });
 });

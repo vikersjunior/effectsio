@@ -12,6 +12,7 @@
     "check:no-competitor-refs": "node scripts/check-no-competitor-refs.mjs",
     "check:public-provenance": "node scripts/check-public-provenance.mjs",
     "verify:approvals": "node scripts/check-approval-gates.mjs",
+    "verify:stage-3b-cdp": "node scripts/verify-stage-3b-cdp.mjs",
     "verify:all": "node scripts/check-no-competitor-refs.mjs && node scripts/check-public-provenance.mjs && node scripts/check-approval-gates.mjs && tsc -p tsconfig.json --noEmit && vitest run src --passWithNoTests",
     "agent:proxy": "node scripts/headroom-proxy.mjs",
     "agent:stats": "node scripts/headroom-stats.mjs",

@@ -2560,3 +2560,99 @@ Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed 
    - Pre-flight check: Checked local proxy at `http://localhost:8787/health`.
    - Result: Proxy running (pid 10853) but reported `"status": "unhealthy"` due to uninitialized local memory backend and is configured for Anthropic upstream while Antigravity IDE runs via Gemini API.
    - Reporting: Honest diagnostic recorded; no Headroom optimization or token savings claimed.
+
+---
+
+## Stage 3B: Generative Rendering Pipeline
+
+- **Date**: 2026-09-07
+- **Task**: Implement Stage 3B Generative Rendering Pipeline. Render and composite GenerativeLayer sublayers through the existing WebGL2 compositor, strictly bounding the GPU working set to the existing 5 FBOs, preserving visual defaults, protecting Stage 2 transform capabilities, and verifying all 15 scenarios in real headless Chrome via CDP.
+
+### 1. Architectural Decisions & Resource Guarantees
+- **5-FBO Resource Set Invariant**:
+  - Maintained the exact 5-FBO total working set: `accumulatorPair` (2 FBOs), `layerPingPong` (2 FBOs), and `GPUBackgroundRenderer.backgroundFbo` (1 FBO).
+  - Zero FBO allocations per sublayer; zero growing FBO pools.
+  - Added `getWorkingSetStats()` telemetry to `WebGL2FrameCompositor` to empirically expose accumulator, ping-pong, and scratch FBO counts.
+- **Scratch-Texture Lifecycle Proof**:
+  - Evaluated and verified `backgroundFbo` lifecycle: allocated and resized strictly on demand, owned by `GPUBackgroundRenderer`, reused across sublayers.
+  - When rendering sublayer `s`, primitive is rendered into `backgroundFbo.framebuffer`, and `backgroundFbo.texture` is bound as source texture Unit 1 while `layerPingPong.write.framebuffer` is the active render target and `layerPingPong.read.texture` is bound as backdrop Unit 0.
+  - Because `backgroundFbo.texture`, `layerPingPong.read.texture`, and `layerPingPong.write.framebuffer` are physically distinct GPU objects, WebGL feedback loops are mathematically and empirically impossible.
+- **Two-Level Composition Hierarchy**:
+  - Sublayer opacity and blend mode apply during intra-layer accumulation in `layerPingPong` (accumulating sublayer `s` over composite of sublayers `0..s-1`).
+  - GenerativeLayer opacity and blend mode apply strictly during cross-layer accumulation in `accumulatorPair` (accumulating GenerativeLayer over lower frame layers).
+- **Empty-Stack Cleanliness**:
+  - When `sublayers` is empty (or all sublayers disabled), `renderGenerativeLayer` clears `layerPingPong.read` to transparent black (`vec4(0.0)`) and returns immediately without drawing to accumulator, eliminating stale frame content, white flashes, or uninitialized memory.
+- **Conservative Shader Extensions**:
+  - `background-dots.ts`: Added `uniform float u_dotSize;` defaulting to `4.0` (radius 2.0px) with antialiasing formula identical to original default output.
+  - `background-grid.ts`: Added `uniform float u_lineWidth;` defaulting to `1.0` with antialiasing formula identical to original default output.
+- **Cache Invalidation Integration**:
+  - Extended `generateCompositionKey` in `WebGL2FrameCompositor` to serialize sublayer count, IDs, types, enabled flags, opacities, blend modes, seeds, and parameters.
+  - Viewport camera pan and zoom use `renderPresentation` directly, keeping `lastCompositionKey` intact without re-accumulating layers.
+- **Export Parity**:
+  - `renderGPUFrameExport` continues to consume `WebGL2FrameCompositor` directly on offscreen WebGL2 canvas, guaranteeing preview and export pipeline equivalence.
+
+### 2. Files Modified
+- `src/rendering/webgl/shaders/background-dots.ts`:
+  - Added `uniform float u_dotSize;` with backwards-compatible default antialiasing behavior.
+- `src/rendering/webgl/shaders/background-grid.ts`:
+  - Added `uniform float u_lineWidth;` with backwards-compatible default antialiasing behavior.
+- `src/rendering/webgl/webgl-background.ts`:
+  - Updated `GPU_BACKGROUND_REGISTRY` for dots and grid to pass `u_dotSize` and `u_lineWidth`.
+  - Added `getScratchFbo()` getter.
+  - Implemented `renderSublayerToTexture(width, height, sublayer, time)` with parameter resolution for all 5 floor primitives (`solid`, `linear-gradient`, `radial-gradient`, `dots`, `grid`).
+- `src/rendering/webgl/webgl-frame-compositor.ts`:
+  - Extended `generateCompositionKey` to serialize normalized sublayer properties and ordering.
+  - Implemented `renderGenerativeLayer` with sequential intra-layer accumulation in `layerPingPong` using `backgroundFbo` as temporary scratch target.
+  - Added `getBackgroundRenderer()` and `getWorkingSetStats()` inspection methods.
+- `src/components/layout/canvas-viewport.tsx`:
+  - Exposed `(window as any).__gpuCompositor` for empirical browser telemetry.
+  - Allowed active frames with GenerativeLayers to render through the compositor before an image asset is uploaded.
+  - Added automatic `requestDraw()` trigger on `drawFrame` updates.
+- `src/rendering/webgl/webgl-frame-compositor.test.ts`:
+  - Added 8 comprehensive automated tests for Stage 3B covering all 5 floor primitives, multi-sublayer accumulation, ordering, opacity isolation, empty-stack transparency, cache invalidation, and Stage 2 ImageLayer transform regression protection.
+- `src/export/gpu-frame-export.test.ts`:
+  - Added GenerativeLayer sublayer export parity test.
+- `scripts/verify-stage-3b-cdp.mjs`:
+  - Created real-browser CDP verification script covering all 15 scenarios and 5-FBO working set telemetry.
+- `package.json`:
+  - Registered `"verify:stage-3b-cdp": "node scripts/verify-stage-3b-cdp.mjs"`.
+
+### 3. Verification Evidence
+- `pnpm test`: **PASS (exit code 0, 27 test files passed, 328 tests passed)**.
+  - `src/rendering/webgl/webgl-frame-compositor.test.ts`: **29 passed (29)**.
+  - `src/export/gpu-frame-export.test.ts`: **2 passed (2)**.
+  - `src/generative/generative.test.tsx`: **28 passed (28)**.
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm build`: **PASS (exit code 0, Vite production bundle built in 2.00s)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, all mechanical approval gates verified)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 611 files scanned, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance violations)**.
+- `pnpm graphify:update`: **PASS (exit code 0, 4,179 nodes, 11,130 edges, 147 communities)**.
+- Real Browser CDP Verification (`node scripts/verify-stage-3b-cdp.mjs`):
+  - **16/16 criteria passed empirically (15 user criteria + 5-FBO total working set invariant check)**:
+    1. Solid Sublayer: Rendered deep indigo, 5 FBOs verified.
+    2. Linear Gradient: Rendered 135deg linear gradient pink to purple.
+    3. Radial Gradient: Rendered radial gradient cyan to slate.
+    4. Dots Sublayer: Rendered dots grid with `dotSize=3.5`, `spacing=28`.
+    5. Grid Sublayer: Rendered grid with `lineWidth=1.5`, `spacing=36`.
+    6. Multiple Sublayers: Accumulated 3 sublayers using exactly 5 FBOs.
+    7. Sublayer Reordering: Reordering invalidated composition key.
+    8. Enable / Disable: Disabled sublayer cleanly removed from composite.
+    9. Sublayer Opacity: Smooth attenuation verified.
+    10. Blend Modes: W3C overlay blend mode composited correctly.
+    11. Empty Stack & Transparency: Yielded clean transparent black.
+    12. ImageLayer + GenerativeLayer: ImageLayer composited over generative backdrop.
+    13. Stage 2 Transforms: ImageLayer transformed with x=80, y=-50, scale=1.3, rot=25deg.
+    14. Viewport Pan & Zoom: Camera interaction preserved composition cache without rebuilding.
+    15. Frame Export Parity: Offscreen GPU export rendered 400x400 PNG with matching composition.
+    16. Invariant Check: Verified exactly 2 accumulator FBOs, 2 layer ping-pong FBOs, and 1 background scratch FBO (5 total).
+  - Screenshots saved in `docs/evidence/stage-3b/` and artifact directory.
+
+### 4. Graphify & Headroom Actual-Use
+1. **Graphify**:
+   - Pre-implementation: Queried symbol and architectural dependencies for `WebGL2FrameCompositor`, `GPUBackgroundRenderer`, `renderGPUFrameExport`, and `canvas-viewport.tsx`.
+   - Post-implementation: Executed `pnpm graphify:update` (`graphify . --update --code-only`), re-extracting 10 modified code files and updating knowledge graph to 4,179 nodes and 11,130 edges across 147 communities.
+2. **Headroom**:
+   - Pre-flight check: Verified Headroom proxy daemon running on `http://127.0.0.1:8787` (`pnpm agent:stats` exit code 0).
+   - Usage: 0 requests proxied directly through Headroom as Antigravity IDE communicates with Google Deepmind model APIs; zero token savings or compression claimed.
+

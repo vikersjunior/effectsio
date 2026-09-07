@@ -666,10 +666,10 @@
     "semantic_hash": "2010dfc68a9c9b503a7d63a8faaf3c13"
   },
   "package.json": {
-    "mtime": 1788342151.05,
-    "seen": 1788342347.3273568,
-    "ast_hash": "663b6f2c500c1aecbd907653595eaa9c",
-    "semantic_hash": "663b6f2c500c1aecbd907653595eaa9c"
+    "mtime": 1788791792.69,
+    "seen": 1788793216.638775,
+    "ast_hash": "44417517871b4e75943751e2b90f6976",
+    "semantic_hash": "44417517871b4e75943751e2b90f6976"
   },
   "scripts/browser-verify-phase7-5.mjs": {
     "mtime": 1787923067.22,
@@ -786,10 +786,10 @@
     "semantic_hash": "32435e428f1673ce778cfeb508efd419"
   },
   "src/components/layout/canvas-viewport.tsx": {
-    "mtime": 1788639499.45,
-    "seen": 1788639817.219485,
-    "ast_hash": "48cd9cf9cda03cdbbebee30e50b926b6",
-    "semantic_hash": "48cd9cf9cda03cdbbebee30e50b926b6"
+    "mtime": 1788793026.22,
+    "seen": 1788793216.641891,
+    "ast_hash": "d86a822a608ec13cd1494b3e51659bb8",
+    "semantic_hash": "d86a822a608ec13cd1494b3e51659bb8"
   },
   "src/components/layout/index.ts": {
     "mtime": 1788609378.31,
@@ -1566,16 +1566,16 @@
     "semantic_hash": "6667549c0110e8d8b2fc6e4f957b7a0c"
   },
   "src/rendering/webgl/shaders/background-dots.ts": {
-    "mtime": 1788455919.34,
-    "seen": 1788457357.1325219,
-    "ast_hash": "8790c04bf41f1e3a06dd6fb00a418053",
-    "semantic_hash": "8790c04bf41f1e3a06dd6fb00a418053"
+    "mtime": 1788790885.92,
+    "seen": 1788791546.470164,
+    "ast_hash": "e9b6e11a88daa5962a1509f677afe868",
+    "semantic_hash": "e9b6e11a88daa5962a1509f677afe868"
   },
   "src/rendering/webgl/shaders/background-grid.ts": {
-    "mtime": 1788455933.74,
-    "seen": 1788457357.1325262,
-    "ast_hash": "a1c4994db6643240afdba86e43fa397f",
-    "semantic_hash": "a1c4994db6643240afdba86e43fa397f"
+    "mtime": 1788790898.34,
+    "seen": 1788791546.470171,
+    "ast_hash": "d1ca5c12db0c6d6241347bc4ad8dcb0b",
+    "semantic_hash": "d1ca5c12db0c6d6241347bc4ad8dcb0b"
   },
   "src/rendering/webgl/shaders/background-linear-gradient.ts": {
     "mtime": 1787925696.15,
@@ -1680,10 +1680,10 @@
     "semantic_hash": "b42a392f62db8046faf35abd9fa018be"
   },
   "src/rendering/webgl/webgl-background.ts": {
-    "mtime": 1788455954.95,
-    "seen": 1788457357.135305,
-    "ast_hash": "d6d057908e943a85f7231e7ac807a057",
-    "semantic_hash": "d6d057908e943a85f7231e7ac807a057"
+    "mtime": 1788791679.61,
+    "seen": 1788793216.657259,
+    "ast_hash": "00ae805377e67d2b0b3a0889a243c21c",
+    "semantic_hash": "00ae805377e67d2b0b3a0889a243c21c"
   },
   "src/rendering/webgl/webgl-context.ts": {
     "mtime": 1787798110.06,
@@ -1962,16 +1962,16 @@
     "semantic_hash": "f20da2533529b9a7744c7aa7b555f9a4"
   },
   "src/rendering/webgl/webgl-frame-compositor.test.ts": {
-    "mtime": 1788639756.09,
-    "seen": 1788639817.2474911,
-    "ast_hash": "667b8f2b59edeae28cdd82a71fff0eda",
-    "semantic_hash": "667b8f2b59edeae28cdd82a71fff0eda"
+    "mtime": 1788791292.81,
+    "seen": 1788791546.5279958,
+    "ast_hash": "6c09dbf44ab7b9a24cbae9612bb0967f",
+    "semantic_hash": "6c09dbf44ab7b9a24cbae9612bb0967f"
   },
   "src/rendering/webgl/webgl-frame-compositor.ts": {
-    "mtime": 1788646659.79,
-    "seen": 1788647782.671152,
-    "ast_hash": "8fe55f82afc6ea7372731d3239ee3617",
-    "semantic_hash": "8fe55f82afc6ea7372731d3239ee3617"
+    "mtime": 1788791728.96,
+    "seen": 1788793216.6576462,
+    "ast_hash": "7f603d3bc270727b7690229c54b013b4",
+    "semantic_hash": "7f603d3bc270727b7690229c54b013b4"
   },
   "src/components/layout/layers-panel.test.tsx": {
     "mtime": 1788610554.77,
@@ -1992,10 +1992,10 @@
     "semantic_hash": "617e93bed520ba7a3f6b2d1e8e5f75bf"
   },
   "src/export/gpu-frame-export.test.ts": {
-    "mtime": 1788637611.49,
-    "seen": 1788637779.3490071,
-    "ast_hash": "cfdd7b825c6f13b2bd458127c788c8b7",
-    "semantic_hash": "cfdd7b825c6f13b2bd458127c788c8b7"
+    "mtime": 1788791384.13,
+    "seen": 1788791546.465675,
+    "ast_hash": "44bbc1497c36b037907c67a3d91767cf",
+    "semantic_hash": "44bbc1497c36b037907c67a3d91767cf"
   },
   "src/utils/transform-math.test.ts": {
     "mtime": 1788636728.39,
@@ -2044,5 +2044,11 @@
     "seen": 1788647782.6628218,
     "ast_hash": "61e43dfb08dfd288f9aa27f99ee0c76f",
     "semantic_hash": "61e43dfb08dfd288f9aa27f99ee0c76f"
+  },
+  "scripts/verify-stage-3b-cdp.mjs": {
+    "mtime": 1788793064.78,
+    "seen": 1788793216.6401112,
+    "ast_hash": "1677c136c315717e1275a493dcfca285",
+    "semantic_hash": "1677c136c315717e1275a493dcfca285"
   }
 }

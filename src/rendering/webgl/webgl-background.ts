@@ -1,4 +1,5 @@
 import type { BackgroundState, BackgroundType } from "../../types/look";
+import type { GenerativeSublayer } from "../../generative/types";
 import type { CompiledProgram } from "./webgl-types";
 import { createProgram, setUniform } from "./webgl-shader";
 import { createFullscreenQuad, type FullscreenQuad } from "./webgl-quad";
@@ -119,6 +120,7 @@ export const GPU_BACKGROUND_REGISTRY: Record<BackgroundType, GPUBackgroundShader
       setUniform(gl, program, "u_color", { type: "3f", value: color });
       setUniform(gl, program, "u_bgColor", { type: "3f", value: bgColor });
       setUniform(gl, program, "u_patternSpacing", { type: "1f", value: spacing });
+      setUniform(gl, program, "u_dotSize", { type: "1f", value: 4.0 });
       setUniform(gl, program, "u_opacity", { type: "1f", value: opacity });
       setUniform(gl, program, "u_bgOpacity", { type: "1f", value: bgOpacity });
       setUniform(gl, program, "u_time", { type: "1f", value: time });
@@ -139,6 +141,7 @@ export const GPU_BACKGROUND_REGISTRY: Record<BackgroundType, GPUBackgroundShader
       setUniform(gl, program, "u_color", { type: "3f", value: color });
       setUniform(gl, program, "u_bgColor", { type: "3f", value: bgColor });
       setUniform(gl, program, "u_patternSpacing", { type: "1f", value: spacing });
+      setUniform(gl, program, "u_lineWidth", { type: "1f", value: 1.0 });
       setUniform(gl, program, "u_opacity", { type: "1f", value: opacity });
       setUniform(gl, program, "u_bgOpacity", { type: "1f", value: bgOpacity });
       setUniform(gl, program, "u_time", { type: "1f", value: time });
@@ -256,6 +259,13 @@ export class GPUBackgroundRenderer {
   }
 
   /**
+   * Returns the currently allocated scratch FBO attachment or null if unallocated.
+   */
+  public getScratchFbo(): { framebuffer: WebGLFramebuffer; texture: WebGLTexture; width: number; height: number } | null {
+    return this.backgroundFbo;
+  }
+
+  /**
    * Renders the specified procedural background to an offscreen FBO texture.
    * Deterministically binds `time` uniform.
    */
@@ -282,6 +292,119 @@ export class GPUBackgroundRenderer {
       def.bindUniforms(gl, program, state, width, height, time);
       this.quad.draw();
       gl.useProgram(null);
+    }
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return fbo.texture;
+  }
+
+  /**
+   * Stage 3B: Renders a GenerativeSublayer floor primitive to the reusable scratch FBO texture.
+   * Consumes normalized sublayer parameters and draws to backgroundFbo without feedback loops.
+   */
+  public renderSublayerToTexture(
+    width: number,
+    height: number,
+    sublayer: GenerativeSublayer,
+    time = 0,
+  ): WebGLTexture {
+    const gl = this.gl;
+    const fbo = this.ensureBackgroundFbo(width, height);
+
+    gl.viewport(0, 0, width, height);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo.framebuffer);
+
+    const type = sublayer.type;
+    const params = sublayer.parameters ?? {};
+
+    switch (type) {
+      case "solid": {
+        const program = this.getProgram("solid");
+        gl.useProgram(program.program);
+        const color = hexToNormalizedRgb(params.color, "#000000");
+        setUniform(gl, program, "u_color", { type: "3f", value: color });
+        setUniform(gl, program, "u_opacity", { type: "1f", value: 1.0 });
+        setUniform(gl, program, "u_time", { type: "1f", value: time });
+        this.quad.draw();
+        gl.useProgram(null);
+        break;
+      }
+      case "linear-gradient": {
+        const program = this.getProgram("linear-gradient");
+        gl.useProgram(program.program);
+        const startColor = hexToNormalizedRgb(params.startColor, "#000000");
+        const endColor = hexToNormalizedRgb(params.endColor, "#3b82f6");
+        const angle = typeof params.angle === "number" ? params.angle : 135;
+
+        setUniform(gl, program, "u_resolution", { type: "2f", value: [width, height] });
+        setUniform(gl, program, "u_startColor", { type: "3f", value: startColor });
+        setUniform(gl, program, "u_endColor", { type: "3f", value: endColor });
+        setUniform(gl, program, "u_angle", { type: "1f", value: angle });
+        setUniform(gl, program, "u_time", { type: "1f", value: time });
+        this.quad.draw();
+        gl.useProgram(null);
+        break;
+      }
+      case "radial-gradient": {
+        const program = this.getProgram("radial-gradient");
+        gl.useProgram(program.program);
+        const startColor = hexToNormalizedRgb(params.startColor, "#000000");
+        const endColor = hexToNormalizedRgb(params.endColor, "#3b82f6");
+
+        setUniform(gl, program, "u_resolution", { type: "2f", value: [width, height] });
+        setUniform(gl, program, "u_startColor", { type: "3f", value: startColor });
+        setUniform(gl, program, "u_endColor", { type: "3f", value: endColor });
+        setUniform(gl, program, "u_time", { type: "1f", value: time });
+        this.quad.draw();
+        gl.useProgram(null);
+        break;
+      }
+      case "dots": {
+        const program = this.getProgram("dots");
+        gl.useProgram(program.program);
+        const color = hexToNormalizedRgb(params.dotColor, "#ffffff");
+        const bgColor = hexToNormalizedRgb(params.backgroundColor, "#000000");
+        const spacing = Math.max(8, typeof params.spacing === "number" ? params.spacing : 24);
+        const dotSize = Math.max(1, typeof params.dotSize === "number" ? params.dotSize : 2);
+
+        setUniform(gl, program, "u_resolution", { type: "2f", value: [width, height] });
+        setUniform(gl, program, "u_color", { type: "3f", value: color });
+        setUniform(gl, program, "u_bgColor", { type: "3f", value: bgColor });
+        setUniform(gl, program, "u_patternSpacing", { type: "1f", value: spacing });
+        setUniform(gl, program, "u_dotSize", { type: "1f", value: dotSize });
+        setUniform(gl, program, "u_opacity", { type: "1f", value: 1.0 });
+        setUniform(gl, program, "u_bgOpacity", { type: "1f", value: 1.0 });
+        setUniform(gl, program, "u_time", { type: "1f", value: time });
+        this.quad.draw();
+        gl.useProgram(null);
+        break;
+      }
+      case "grid": {
+        const program = this.getProgram("grid");
+        gl.useProgram(program.program);
+        const color = hexToNormalizedRgb(params.lineColor, "#ffffff");
+        const bgColor = hexToNormalizedRgb(params.backgroundColor, "#000000");
+        const spacing = Math.max(8, typeof params.spacing === "number" ? params.spacing : 24);
+        const lineWidth = Math.max(1, typeof params.lineWidth === "number" ? params.lineWidth : 1);
+
+        setUniform(gl, program, "u_resolution", { type: "2f", value: [width, height] });
+        setUniform(gl, program, "u_color", { type: "3f", value: color });
+        setUniform(gl, program, "u_bgColor", { type: "3f", value: bgColor });
+        setUniform(gl, program, "u_patternSpacing", { type: "1f", value: spacing });
+        setUniform(gl, program, "u_lineWidth", { type: "1f", value: lineWidth });
+        setUniform(gl, program, "u_opacity", { type: "1f", value: 1.0 });
+        setUniform(gl, program, "u_bgOpacity", { type: "1f", value: 1.0 });
+        setUniform(gl, program, "u_time", { type: "1f", value: time });
+        this.quad.draw();
+        gl.useProgram(null);
+        break;
+      }
+      default: {
+        console.warn(`[GPUBackgroundRenderer] Unsupported generative sublayer type: "${type}". Fallback to transparent.`);
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        break;
+      }
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);

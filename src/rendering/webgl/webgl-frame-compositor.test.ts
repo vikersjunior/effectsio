@@ -18,6 +18,7 @@ import {
   createDefaultGenerativeLayer,
   createImageLayer,
 } from "../../types/frame";
+import { createGenerativeSublayer } from "../../generative/registry";
 
 describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
   describe("Shader Contract & W3C Blend Mode Coverage", () => {
@@ -814,6 +815,374 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
           }
         }
       }
+    });
+  });
+
+  describe("Stage 3B: Generative Rendering Pipeline Suite", () => {
+    it("renders each of the 5 Stage 3A floor primitives individually", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const primitives = [
+        createGenerativeSublayer("solid", { parameters: { color: "#ff0000" } }),
+        createGenerativeSublayer("linear-gradient", {
+          parameters: { startColor: "#ff0000", endColor: "#0000ff", angle: 90 },
+        }),
+        createGenerativeSublayer("radial-gradient", {
+          parameters: { startColor: "#00ff00", endColor: "#000000" },
+        }),
+        createGenerativeSublayer("dots", {
+          parameters: { dotColor: "#ffffff", backgroundColor: "#111111", spacing: 32, dotSize: 4 },
+        }),
+        createGenerativeSublayer("grid", {
+          parameters: { lineColor: "#ffffff", backgroundColor: "#111111", spacing: 20, lineWidth: 2 },
+        }),
+      ];
+
+      for (const sub of primitives) {
+        const genLayer = createDefaultGenerativeLayer();
+        genLayer.visible = true;
+        genLayer.sublayers = [sub];
+
+        const frame: Frame = {
+          id: `frame-${sub.type}`,
+          name: `Frame ${sub.type}`,
+          dimensions: { width: 800, height: 600, presetId: null },
+          layers: [genLayer],
+          activeLayerId: genLayer.id,
+          createdAt: 1000,
+          updatedAt: 1000,
+        };
+
+        const result = compositor.composeFrame(frame, undefined, 0, true);
+        expect(result).toBeDefined();
+        expect(result.width).toBe(800);
+        expect(result.height).toBe(600);
+        expect(mockGL.drawArrays).toHaveBeenCalled();
+      }
+
+      compositor.dispose();
+    });
+
+    it("composites multiple sublayers in strict bottom-to-top order with intra-layer ping-pong", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const sub1 = createGenerativeSublayer("solid", {
+        parameters: { color: "#000000" },
+        opacity: 1.0,
+        blendMode: "normal",
+      });
+      const sub2 = createGenerativeSublayer("linear-gradient", {
+        parameters: { startColor: "#ff0000", endColor: "#0000ff", angle: 45 },
+        opacity: 0.8,
+        blendMode: "screen",
+      });
+      const sub3 = createGenerativeSublayer("dots", {
+        parameters: { dotColor: "#ffffff", backgroundColor: "#000000", spacing: 16, dotSize: 2 },
+        opacity: 0.5,
+        blendMode: "overlay",
+      });
+
+      const genLayer = createDefaultGenerativeLayer();
+      genLayer.visible = true;
+      genLayer.sublayers = [sub1, sub2, sub3];
+
+      const frame: Frame = {
+        id: "frame-multi-sublayers",
+        name: "Multi Sublayers Frame",
+        dimensions: { width: 1080, height: 1080, presetId: "1:1" },
+        layers: [genLayer],
+        activeLayerId: genLayer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      (mockGL.drawArrays as any).mockClear();
+      const result = compositor.composeFrame(frame, undefined, 0, true);
+      expect(result).toBeDefined();
+
+      // For 3 sublayers: each sublayer renders primitive (1 draw) + blends into layerPP (1 draw) = 6 draws,
+      // plus cross-layer blend into accumulator (1 draw) = 7 draws total.
+      expect((mockGL.drawArrays as any).mock.calls.length).toBe(7);
+
+      compositor.dispose();
+    });
+
+    it("verifies changing sublayer order changes the composition key and draw sequencing", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const subA = createGenerativeSublayer("solid", {
+        parameters: { color: "#ff0000" },
+      });
+      const subB = createGenerativeSublayer("grid", {
+        parameters: { lineColor: "#ffffff", backgroundColor: "#000000", spacing: 24, lineWidth: 1 },
+      });
+
+      const gen1 = createDefaultGenerativeLayer();
+      gen1.sublayers = [subA, subB];
+
+      const gen2 = createDefaultGenerativeLayer();
+      gen2.sublayers = [subB, subA];
+
+      const frame1: Frame = {
+        id: "frame-order-1",
+        name: "Order 1",
+        dimensions: { width: 800, height: 800, presetId: null },
+        layers: [gen1],
+        activeLayerId: gen1.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const frame2: Frame = {
+        id: "frame-order-2",
+        name: "Order 2",
+        dimensions: { width: 800, height: 800, presetId: null },
+        layers: [gen2],
+        activeLayerId: gen2.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const key1 = (compositor as any).generateCompositionKey(frame1);
+      const key2 = (compositor as any).generateCompositionKey(frame2);
+
+      expect(key1).not.toEqual(key2);
+
+      compositor.dispose();
+    });
+
+    it("skips disabled sublayers without generating draw calls for them", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const enabledSub = createGenerativeSublayer("solid", {
+        enabled: true,
+        parameters: { color: "#ff0000" },
+      });
+      const disabledSub = createGenerativeSublayer("grid", {
+        enabled: false,
+        parameters: { lineColor: "#00ff00", backgroundColor: "#000000", spacing: 20, lineWidth: 1 },
+      });
+
+      const genLayer = createDefaultGenerativeLayer();
+      genLayer.visible = true;
+      genLayer.sublayers = [enabledSub, disabledSub];
+
+      const frame: Frame = {
+        id: "frame-disabled",
+        name: "Frame Disabled",
+        dimensions: { width: 800, height: 800, presetId: null },
+        layers: [genLayer],
+        activeLayerId: genLayer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      (mockGL.drawArrays as any).mockClear();
+      compositor.composeFrame(frame, undefined, 0, true);
+
+      // Only 1 enabled sublayer: 1 primitive draw + 1 blend draw + 1 cross-layer blend draw = 3 draws
+      expect((mockGL.drawArrays as any).mock.calls.length).toBe(3);
+
+      compositor.dispose();
+    });
+
+    it("handles an empty sublayers stack by producing clean transparent output", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const genEmpty = createDefaultGenerativeLayer();
+      genEmpty.visible = true;
+      genEmpty.sublayers = [];
+
+      const frame: Frame = {
+        id: "frame-empty",
+        name: "Frame Empty",
+        dimensions: { width: 800, height: 800, presetId: null },
+        layers: [genEmpty],
+        activeLayerId: genEmpty.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      (mockGL.clearColor as any).mockClear();
+      (mockGL.drawArrays as any).mockClear();
+
+      const result = compositor.composeFrame(frame, undefined, 0, true);
+      expect(result).toBeDefined();
+
+      // Confirms layerPingPong.read was cleared to transparent black (0, 0, 0, 0)
+      expect(mockGL.clearColor).toHaveBeenCalledWith(0, 0, 0, 0);
+
+      compositor.dispose();
+    });
+
+    it("verifies sublayer opacity and GenerativeLayer opacity operate at separate levels", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      // Populate mock uniform locations for blend program introspection
+      (compositor as any).blendProgram.uniformLocations.set("u_opacity", { id: "loc_opacity" });
+      (compositor as any).blendProgram.uniformLocations.set("u_blendMode", { id: "loc_blendMode" });
+      (compositor as any).blendProgram.uniformLocations.set("u_backdrop", { id: "loc_backdrop" });
+      (compositor as any).blendProgram.uniformLocations.set("u_source", { id: "loc_source" });
+
+      const sub = createGenerativeSublayer("solid", {
+        opacity: 0.6,
+        blendMode: "normal",
+        parameters: { color: "#ff0000" },
+      });
+
+      const genLayer = createDefaultGenerativeLayer();
+      genLayer.visible = true;
+      genLayer.opacity = 0.5; // GenerativeLayer frame-level opacity
+      genLayer.blendMode = "multiply"; // GenerativeLayer frame-level blend mode
+      genLayer.sublayers = [sub];
+
+      const frame: Frame = {
+        id: "frame-opacities",
+        name: "Frame Opacities",
+        dimensions: { width: 500, height: 500, presetId: null },
+        layers: [genLayer],
+        activeLayerId: genLayer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const uniformCalls: { name: string; value: unknown }[] = [];
+      mockGL.uniform1f = vi.fn((_loc, v) => uniformCalls.push({ name: "1f", value: v }));
+      mockGL.uniform1i = vi.fn((_loc, v) => uniformCalls.push({ name: "1i", value: v }));
+
+      compositor.composeFrame(frame, undefined, 0, true);
+
+      // Verify that 0.6 was passed for sublayer blend and 0.5 was passed for cross-layer blend
+      const opacityCalls = uniformCalls.filter((u) => u.name === "1f" && (u.value === 0.6 || u.value === 0.5));
+      expect(opacityCalls.some((c) => c.value === 0.6)).toBe(true);
+      expect(opacityCalls.some((c) => c.value === 0.5)).toBe(true);
+
+      compositor.dispose();
+    });
+
+    it("invalidates composition cache when any sublayer parameter or property changes", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const baseSub = createGenerativeSublayer("dots", {
+        parameters: { dotColor: "#ffffff", backgroundColor: "#000000", spacing: 24, dotSize: 2 },
+      });
+
+      const genLayer = createDefaultGenerativeLayer();
+      genLayer.visible = true;
+      genLayer.sublayers = [baseSub];
+
+      const baseFrame: Frame = {
+        id: "frame-cache",
+        name: "Cache Frame",
+        dimensions: { width: 800, height: 800, presetId: null },
+        layers: [genLayer],
+        activeLayerId: genLayer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const baseKey = (compositor as any).generateCompositionKey(baseFrame);
+
+      // 1. Change parameter (spacing)
+      const modParams = {
+        ...baseFrame,
+        layers: [{
+          ...genLayer,
+          sublayers: [{
+            ...baseSub,
+            parameters: { ...baseSub.parameters, spacing: 32 },
+          }],
+        }],
+      };
+      expect((compositor as any).generateCompositionKey(modParams)).not.toBe(baseKey);
+
+      // 2. Change sublayer opacity
+      const modOpacity = {
+        ...baseFrame,
+        layers: [{
+          ...genLayer,
+          sublayers: [{ ...baseSub, opacity: 0.4 }],
+        }],
+      };
+      expect((compositor as any).generateCompositionKey(modOpacity)).not.toBe(baseKey);
+
+      // 3. Change sublayer blend mode
+      const modBlend = {
+        ...baseFrame,
+        layers: [{
+          ...genLayer,
+          sublayers: [{ ...baseSub, blendMode: "multiply" as const }],
+        }],
+      };
+      expect((compositor as any).generateCompositionKey(modBlend)).not.toBe(baseKey);
+
+      // 4. Change sublayer enabled
+      const modEnabled = {
+        ...baseFrame,
+        layers: [{
+          ...genLayer,
+          sublayers: [{ ...baseSub, enabled: false }],
+        }],
+      };
+      expect((compositor as any).generateCompositionKey(modEnabled)).not.toBe(baseKey);
+
+      compositor.dispose();
+    });
+
+    it("retains complete Stage 2 ImageLayer rendering, transform, and effect stack capability over GenerativeLayer", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const genLayer = createDefaultGenerativeLayer();
+      genLayer.visible = true;
+      genLayer.sublayers = [
+        createGenerativeSublayer("solid", { parameters: { color: "#1e1b4b" } }),
+        createGenerativeSublayer("linear-gradient", {
+          parameters: { startColor: "#3b82f6", endColor: "#9333ea", angle: 135 },
+          blendMode: "screen",
+          opacity: 0.8,
+        }),
+      ];
+
+      const imgLayer = createImageLayer(
+        "asset-hero",
+        "Hero Image",
+        [{ instanceId: "eff-1", effectId: "black-and-white", enabled: true, parameters: {} }],
+        "cover",
+      );
+      imgLayer.transform = { x: 50, y: -30, scaleX: 1.2, scaleY: 1.2, rotation: 15 };
+      imgLayer.opacity = 0.9;
+      imgLayer.blendMode = "overlay";
+
+      const frame: Frame = {
+        id: "frame-regression",
+        name: "Regression Frame",
+        dimensions: { width: 1920, height: 1080, presetId: "16:9" },
+        layers: [genLayer, imgLayer],
+        activeLayerId: imgLayer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      compositor.uploadAsset("asset-hero", { width: 1200, height: 800 } as any);
+
+      (mockGL.drawArrays as any).mockClear();
+      const resultFBO = compositor.composeFrame(frame, undefined, 0, true);
+      expect(resultFBO).toBeDefined();
+      expect(resultFBO.width).toBe(1920);
+      expect(resultFBO.height).toBe(1080);
+
+      // Draw calls: 2 sublayers (4 draws) + gen cross-layer (1 draw) + img fit (1 draw) + bw effect (1 draw) + img cross-layer (1 draw) = 8 draws
+      expect((mockGL.drawArrays as any).mock.calls.length).toBe(8);
+
+      compositor.dispose();
     });
   });
 });

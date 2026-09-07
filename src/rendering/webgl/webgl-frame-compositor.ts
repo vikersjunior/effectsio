@@ -2,7 +2,10 @@ import type { Frame, Layer, GenerativeLayer, ImageLayer, BlendMode } from "../..
 import { DEFAULT_LAYER_TRANSFORM } from "../../types/frame";
 import type { EffectInstance, EffectStack } from "../../types/asset";
 import { DEFAULT_BACKGROUND_STATE, type BackgroundState } from "../../types/look";
-import { deriveLegacyBackgroundFromSublayers } from "../../generative/normalization";
+import {
+  normalizeGenerativeLayer,
+  deriveLegacyBackgroundFromSublayers,
+} from "../../generative/normalization";
 import type { CompiledProgram, FBOTextureAttachment } from "./webgl-types";
 import { createWebGL2Context } from "./webgl-context";
 import { createProgram, setUniform } from "./webgl-shader";
@@ -234,12 +237,15 @@ export class WebGL2FrameCompositor {
       );
 
       if (layer.type === "generative") {
-        const bg =
-          layer.backgroundConfig ??
-          (layer.sublayers ? deriveLegacyBackgroundFromSublayers(layer.sublayers) : DEFAULT_BACKGROUND_STATE);
-        parts.push(
-          `bg:${bg.type}:${bg.color}:${bg.gradientEndColor}:${bg.gradientAngle}:${bg.patternSpacing}:${bg.patternBackgroundColor}`,
-        );
+        const normalized = normalizeGenerativeLayer(layer);
+        const sublayers = normalized.sublayers ?? [];
+        parts.push(`gen:${sublayers.length}`);
+        for (let s = 0; s < sublayers.length; s++) {
+          const sub = sublayers[s]!;
+          parts.push(
+            `sub[${s}]:${sub.id}:${sub.type}:${sub.enabled}:${sub.opacity}:${sub.blendMode}:${sub.seed ?? ""}:${JSON.stringify(sub.parameters ?? {})}`,
+          );
+        }
       } else if (layer.type === "image") {
         const t = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
         parts.push(`img:${layer.assetId}:${layer.fit}:${t.x}:${t.y}:${t.scaleX}:${t.scaleY}:${t.rotation}`);
@@ -357,7 +363,16 @@ export class WebGL2FrameCompositor {
   }
 
   /**
-   * Renders a GenerativeLayer backdrop into `layerPingPong` and returns the resulting texture.
+   * Stage 3B: Renders a GenerativeLayer composite into `layerPingPong` and returns the resulting texture.
+   * Consumes normalized sublayers sequentially, accumulating them through layerPingPong
+   * using the reusable procedural scratch FBO (backgroundFbo) as the primitive target.
+   *
+   * Working set invariant:
+   * - Exactly 5 FBOs total in the compositor: accumulatorPair (2), layerPingPong (2), backgroundFbo (1).
+   * - Zero new FBO allocations per sublayer.
+   * - Zero WebGL feedback loops: backgroundFbo (source) and layerPingPong.read (backdrop)
+   *   are always distinct from layerPingPong.write (render target).
+   * - Empty sublayer stack (or all disabled) yields clean transparent black vec4(0.0).
    */
   private renderGenerativeLayer(
     layer: GenerativeLayer,
@@ -366,36 +381,82 @@ export class WebGL2FrameCompositor {
     time = 0,
   ): WebGLTexture {
     const gl = this.gl;
-    const targetFBO = this.layerPingPong!.write;
-    const bgState =
-      layer.backgroundConfig ??
-      (layer.sublayers ? deriveLegacyBackgroundFromSublayers(layer.sublayers) : DEFAULT_BACKGROUND_STATE);
+    const layerPP = this.layerPingPong!;
 
+    // 1. Always start with layerPingPong.read cleared to transparent black
     gl.viewport(0, 0, width, height);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, targetFBO.framebuffer);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, layerPP.read.framebuffer);
+    gl.clearColor(0.0, 0.0, 0.0, 0.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
 
-    if (bgState.type === "transparent") {
-      gl.clearColor(0.0, 0.0, 0.0, 0.0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-    } else {
-      const bgTex = this.backgroundRenderer.renderBackgroundToTexture(width, height, bgState, time);
-      // Blit the generated background texture into our layer ping-pong target
-      gl.bindFramebuffer(gl.FRAMEBUFFER, targetFBO.framebuffer);
-      gl.useProgram(this.passThroughProgram.program);
+    // 2. Normalize GenerativeLayer to canonical sublayers representation
+    const normalized = normalizeGenerativeLayer(layer);
+    const sublayers = normalized.sublayers ?? [];
+    const activeSublayers = sublayers.filter(
+      (sub) => sub.enabled !== false && sub.opacity > 0,
+    );
+
+    // 3. Fast path: Empty or entirely disabled stack produces clean transparent output
+    if (activeSublayers.length === 0) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      return layerPP.read.texture;
+    }
+
+    // 4. Sequentially render each enabled sublayer and composite into layerPingPong
+    for (let s = 0; s < activeSublayers.length; s++) {
+      const sub = activeSublayers[s]!;
+
+      // Step A: Render the floor primitive into the scratch FBO (backgroundFbo)
+      const subTex = this.backgroundRenderer.renderSublayerToTexture(
+        width,
+        height,
+        sub,
+        time,
+      );
+
+      // Step B: Composite sublayer over accumulated intra-layer composite in layerPP
+      // Target: layerPP.write.framebuffer
+      // Backdrop: layerPP.read.texture (Accumulated result of sublayers 0..s-1)
+      // Source: subTex (backgroundFbo.texture)
+      gl.viewport(0, 0, width, height);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, layerPP.write.framebuffer);
+
+      gl.useProgram(this.blendProgram.program);
+
+      // Texture Unit 0: Backdrop (layerPP.read)
       gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, bgTex);
-      setUniform(gl, this.passThroughProgram, "u_texture", { type: "1i", value: 0 });
-      setUniform(gl, this.passThroughProgram, "u_resolution", { type: "2f", value: [width, height] });
-      setUniform(gl, this.passThroughProgram, "u_time", { type: "1f", value: time });
+      gl.bindTexture(gl.TEXTURE_2D, layerPP.read.texture);
+      setUniform(gl, this.blendProgram, "u_backdrop", { type: "1i", value: 0 });
+
+      // Texture Unit 1: Source (subTex from scratch FBO)
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, subTex);
+      setUniform(gl, this.blendProgram, "u_source", { type: "1i", value: 1 });
+
+      // Sublayer blending and opacity
+      const blendModeInt = BLEND_MODE_MAP[sub.blendMode] ?? 0;
+      setUniform(gl, this.blendProgram, "u_blendMode", { type: "1i", value: blendModeInt });
+      setUniform(gl, this.blendProgram, "u_opacity", {
+        type: "1f",
+        value: Math.max(0.0, Math.min(1.0, sub.opacity)),
+      });
+
       this.quad.draw();
+
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, null);
       gl.useProgram(null);
+
+      // Step C: Swap layerPingPong so write becomes the new accumulated read backdrop
+      layerPP.swap();
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    this.layerPingPong!.swap();
 
-    return this.layerPingPong!.read.texture;
+    // Final accumulated GenerativeLayer result resides in layerPP.read.texture
+    return layerPP.read.texture;
   }
 
   /**
@@ -632,6 +693,38 @@ export class WebGL2FrameCompositor {
 
   public getWorkingDimensions(): { width: number; height: number } {
     return { width: this.workingWidth, height: this.workingHeight };
+  }
+
+  public getBackgroundRenderer(): GPUBackgroundRenderer {
+    return this.backgroundRenderer;
+  }
+
+  /**
+   * Returns empirical telemetry about compositor FBO allocations.
+   * Total FBO count is guaranteed to remain strictly bounded to at most 5:
+   * accumulatorPair (2), layerPingPong (2), backgroundFbo (1).
+   */
+  public getWorkingSetStats(): {
+    accumulatorFbos: number;
+    layerPingPongFbos: number;
+    backgroundScratchFbos: number;
+    totalFbos: number;
+    workingDimensions: { width: number; height: number };
+    isComposited: boolean;
+    lastCompositionKey: string;
+  } {
+    const accumCount = this.accumulatorPair ? 2 : 0;
+    const ppCount = this.layerPingPong ? 2 : 0;
+    const bgCount = this.backgroundRenderer.getScratchFbo() ? 1 : 0;
+    return {
+      accumulatorFbos: accumCount,
+      layerPingPongFbos: ppCount,
+      backgroundScratchFbos: bgCount,
+      totalFbos: accumCount + ppCount + bgCount,
+      workingDimensions: { width: this.workingWidth, height: this.workingHeight },
+      isComposited: this.isComposited,
+      lastCompositionKey: this.lastCompositionKey,
+    };
   }
 
   /**
