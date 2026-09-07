@@ -34,7 +34,7 @@ import { useStudioStore } from "../../context/studio-context";
 import type { ImageLayer, GenerativeLayer } from "../../types/frame";
 import type { Asset } from "../../types/asset";
 import { DEFAULT_BACKGROUND_STATE } from "../../types/look";
-import { deriveLegacyBackgroundFromSublayers } from "../../generative/normalization";
+import { deriveLegacyBackgroundFromBackgrounds } from "../../generative/normalization";
 
 interface SortableLayerRowProps {
   layer: ImageLayer;
@@ -150,6 +150,7 @@ interface BackgroundRowProps {
   isSelected: boolean;
   onSelect: () => void;
   onToggleVisibility: (e: React.MouseEvent) => void;
+  onRemove: (e: React.MouseEvent) => void;
 }
 
 function BackgroundRow({
@@ -157,11 +158,14 @@ function BackgroundRow({
   isSelected,
   onSelect,
   onToggleVisibility,
+  onRemove,
 }: BackgroundRowProps): React.JSX.Element {
+  const backgrounds = layer.backgrounds ?? layer.sublayers ?? [];
   const bgConfig =
     layer.backgroundConfig ??
-    (layer.sublayers ? deriveLegacyBackgroundFromSublayers(layer.sublayers) : DEFAULT_BACKGROUND_STATE);
+    (backgrounds.length > 0 ? deriveLegacyBackgroundFromBackgrounds(backgrounds) : DEFAULT_BACKGROUND_STATE);
   const isVisible = layer.visible !== false;
+  const count = backgrounds.length;
 
   return (
     <div
@@ -177,7 +181,7 @@ function BackgroundRow({
       )}
       style={{ opacity: isVisible ? 1 : 0.6 }}
     >
-      {/* 1. Permanent Locked Icon (cannot be dragged or reordered) */}
+      {/* 1. Permanent Locked Icon */}
       <div
         className="p-0.5 text-[color:var(--muted-foreground)] shrink-0 opacity-60"
         title="Background is locked at base"
@@ -210,13 +214,36 @@ function BackgroundRow({
         )}
       </div>
 
-      {/* 3. Layer Name */}
-      <span className="flex-1 min-w-0 text-xs font-medium text-[color:var(--foreground)] truncate">
-        {layer.name || "Background"}
-      </span>
+      {/* 3. Layer Name & Count */}
+      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+        <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
+          {layer.name || "Background"}
+        </span>
+        {count > 0 && (
+          <span
+            data-testid="background-count-badge"
+            className="text-3xs font-mono px-1.5 py-0.5 rounded-full bg-[color:var(--secondary)] text-[color:var(--muted-foreground)] shrink-0"
+          >
+            {count}
+          </span>
+        )}
+      </div>
 
-      {/* 4. Action Buttons (Locked badge & Visibility toggle) */}
+      {/* 4. Action Buttons (Remove on hover, Visibility toggle) */}
       <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          data-testid="remove-background-layer"
+          onClick={onRemove}
+          title="Remove background layer"
+          aria-label="Remove background layer"
+          className="size-6 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-all p-0 cursor-pointer"
+        >
+          <TrashIcon size={ICON_SIZES.sm} />
+        </Button>
+
         <Button
           type="button"
           variant="ghost"
@@ -224,7 +251,7 @@ function BackgroundRow({
           onClick={onToggleVisibility}
           title={isVisible ? "Hide background" : "Show background"}
           aria-label={isVisible ? "Hide background" : "Show background"}
-          className="size-6 rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors p-0"
+          className="size-6 rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors p-0 cursor-pointer"
         >
           {isVisible ? (
             <EyeIcon size={ICON_SIZES.md} />
@@ -251,6 +278,8 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
     removeLayer,
     addLayerFromAsset,
     assets,
+    setIsBackgroundPanelOpen,
+    addBackgroundLayer,
   } = useStudioStore();
 
   const [isAddPopoverOpen, setIsAddPopoverOpen] = React.useState(false);
@@ -267,11 +296,11 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
   );
 
   const layers = activeFrame?.layers || [];
-  const baseBackground = layers[0] as GenerativeLayer | undefined;
+  const baseBackground = layers.find((l): l is GenerativeLayer => l.type === "generative");
 
   // Visual stack: ImageLayers displayed in reverse array order (top layer at top of UI list)
   const imageLayers = React.useMemo(() => {
-    return layers.slice(1).filter((l): l is ImageLayer => l.type === "image").reverse();
+    return layers.filter((l): l is ImageLayer => l.type === "image").reverse();
   }, [layers]);
 
   const assetMap = React.useMemo(() => {
@@ -289,8 +318,9 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
     const fromIndex = activeFrame.layers.findIndex((l) => l.id === active.id);
     const toIndex = activeFrame.layers.findIndex((l) => l.id === over.id);
 
-    // Hard invariant: never reorder index 0 (GenerativeLayer)
-    if (fromIndex > 0 && toIndex > 0) {
+    // Hard invariant: never reorder beneath index 0 if GenerativeLayer exists
+    const minIndex = baseBackground ? 1 : 0;
+    if (fromIndex >= minIndex && toIndex >= minIndex) {
       reorderLayers(fromIndex, toIndex);
     }
   };
@@ -316,7 +346,7 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
                 {...triggerProps}
                 variant="ghost"
                 size="icon-sm"
-                title="Add layer from assets"
+                title="Add layer"
                 aria-label="Add layer"
                 className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] [&_svg]:!size-4"
               >
@@ -330,6 +360,31 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
             sideOffset={8}
             className="w-56 p-2 flex flex-col gap-1 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg"
           >
+            {!baseBackground && (
+              <div className="flex flex-col gap-1 pb-1 mb-1 border-b border-[color:var(--border)]">
+                <button
+                  type="button"
+                  data-testid="add-background-layer-button"
+                  onClick={() => {
+                    addBackgroundLayer();
+                    setIsAddPopoverOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+                >
+                  <div className="size-5 rounded-xs bg-[color:color-mix(in_oklab,var(--primary)_15%,transparent)] text-[color:var(--primary)] flex items-center justify-center shrink-0 border border-[color:color-mix(in_oklab,var(--primary)_30%,transparent)]">
+                    <SquareIcon size={12} weight="bold" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-[color:var(--foreground)]">
+                      Background Layer
+                    </span>
+                    <span className="text-2xs text-[color:var(--muted-foreground)]">
+                      Base canvas background
+                    </span>
+                  </div>
+                </button>
+              </div>
+            )}
             <span className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
               Add Layer from Assets
             </span>
@@ -405,12 +460,19 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
             <BackgroundRow
               layer={baseBackground}
               isSelected={activeLayerId === baseBackground.id}
-              onSelect={() => setActiveLayerId(baseBackground.id)}
+              onSelect={() => {
+                setActiveLayerId(baseBackground.id);
+                setIsBackgroundPanelOpen(true);
+              }}
               onToggleVisibility={(e) => {
                 e.stopPropagation();
                 updateLayer(baseBackground.id, {
                   visible: baseBackground.visible === false ? true : false,
                 });
+              }}
+              onRemove={(e) => {
+                e.stopPropagation();
+                removeLayer(baseBackground.id);
               }}
             />
           )}
@@ -419,3 +481,4 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
     </div>
   );
 }
+

@@ -8,7 +8,7 @@ import {
 } from "../types/frame";
 import { sanitizeTransform } from "../utils/transform-math";
 import {
-  deriveLegacyBackgroundFromSublayers,
+  deriveLegacyBackgroundFromBackgrounds,
   normalizeGenerativeLayer,
 } from "../generative/normalization";
 
@@ -493,9 +493,10 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
             mergedEffectStacks[layer.assetId] = layer.effectStack;
           }
           if (baseGen && baseGen.type === "generative" && !mergedBackgrounds[layer.assetId]) {
+            const bgItems = baseGen.backgrounds || baseGen.sublayers;
             const derivedBg =
               baseGen.backgroundConfig ??
-              (baseGen.sublayers ? deriveLegacyBackgroundFromSublayers(baseGen.sublayers) : undefined);
+              (bgItems ? deriveLegacyBackgroundFromBackgrounds(bgItems) : undefined);
             if (derivedBg) {
               mergedBackgrounds[layer.assetId] = derivedBg;
             }

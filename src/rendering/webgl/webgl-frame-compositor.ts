@@ -238,12 +238,12 @@ export class WebGL2FrameCompositor {
 
       if (layer.type === "generative") {
         const normalized = normalizeGenerativeLayer(layer);
-        const sublayers = normalized.sublayers ?? [];
-        parts.push(`gen:${sublayers.length}`);
-        for (let s = 0; s < sublayers.length; s++) {
-          const sub = sublayers[s]!;
+        const backgrounds = normalized.backgrounds ?? normalized.sublayers ?? [];
+        parts.push(`gen:${backgrounds.length}`);
+        for (let s = 0; s < backgrounds.length; s++) {
+          const bg = backgrounds[s]!;
           parts.push(
-            `sub[${s}]:${sub.id}:${sub.type}:${sub.enabled}:${sub.opacity}:${sub.blendMode}:${sub.seed ?? ""}:${JSON.stringify(sub.parameters ?? {})}`,
+            `bg[${s}]:${bg.id}:${bg.type}:${bg.enabled}:${bg.opacity}:${bg.blendMode}:${bg.seed ?? ""}:${JSON.stringify(bg.parameters ?? {})}`,
           );
         }
       } else if (layer.type === "image") {
@@ -389,35 +389,35 @@ export class WebGL2FrameCompositor {
     gl.clearColor(0.0, 0.0, 0.0, 0.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // 2. Normalize GenerativeLayer to canonical sublayers representation
+    // 2. Normalize GenerativeLayer to canonical backgrounds representation
     const normalized = normalizeGenerativeLayer(layer);
-    const sublayers = normalized.sublayers ?? [];
-    const activeSublayers = sublayers.filter(
-      (sub) => sub.enabled !== false && sub.opacity > 0,
+    const backgrounds = normalized.backgrounds ?? normalized.sublayers ?? [];
+    const activeBackgrounds = backgrounds.filter(
+      (bg) => bg.enabled !== false && bg.opacity > 0,
     );
 
     // 3. Fast path: Empty or entirely disabled stack produces clean transparent output
-    if (activeSublayers.length === 0) {
+    if (activeBackgrounds.length === 0) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       return layerPP.read.texture;
     }
 
-    // 4. Sequentially render each enabled sublayer and composite into layerPingPong
-    for (let s = 0; s < activeSublayers.length; s++) {
-      const sub = activeSublayers[s]!;
+    // 4. Sequentially render each enabled background and composite into layerPingPong
+    for (let s = 0; s < activeBackgrounds.length; s++) {
+      const bg = activeBackgrounds[s]!;
 
       // Step A: Render the floor primitive into the scratch FBO (backgroundFbo)
-      const subTex = this.backgroundRenderer.renderSublayerToTexture(
+      const bgTex = this.backgroundRenderer.renderBackgroundItemToTexture(
         width,
         height,
-        sub,
+        bg,
         time,
       );
 
-      // Step B: Composite sublayer over accumulated intra-layer composite in layerPP
+      // Step B: Composite background over accumulated intra-layer composite in layerPP
       // Target: layerPP.write.framebuffer
-      // Backdrop: layerPP.read.texture (Accumulated result of sublayers 0..s-1)
-      // Source: subTex (backgroundFbo.texture)
+      // Backdrop: layerPP.read.texture (Accumulated result of backgrounds 0..s-1)
+      // Source: bgTex (backgroundFbo.texture)
       gl.viewport(0, 0, width, height);
       gl.bindFramebuffer(gl.FRAMEBUFFER, layerPP.write.framebuffer);
 
@@ -428,17 +428,17 @@ export class WebGL2FrameCompositor {
       gl.bindTexture(gl.TEXTURE_2D, layerPP.read.texture);
       setUniform(gl, this.blendProgram, "u_backdrop", { type: "1i", value: 0 });
 
-      // Texture Unit 1: Source (subTex from scratch FBO)
+      // Texture Unit 1: Source (bgTex from scratch FBO)
       gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, subTex);
+      gl.bindTexture(gl.TEXTURE_2D, bgTex);
       setUniform(gl, this.blendProgram, "u_source", { type: "1i", value: 1 });
 
-      // Sublayer blending and opacity
-      const blendModeInt = BLEND_MODE_MAP[sub.blendMode] ?? 0;
+      // Background item blending and opacity
+      const blendModeInt = BLEND_MODE_MAP[bg.blendMode] ?? 0;
       setUniform(gl, this.blendProgram, "u_blendMode", { type: "1i", value: blendModeInt });
       setUniform(gl, this.blendProgram, "u_opacity", {
         type: "1f",
-        value: Math.max(0.0, Math.min(1.0, sub.opacity)),
+        value: Math.max(0.0, Math.min(1.0, bg.opacity)),
       });
 
       this.quad.draw();

@@ -1,5 +1,5 @@
 import type { BackgroundState, BackgroundType } from "../../types/look";
-import type { GenerativeSublayer } from "../../generative/types";
+import type { BackgroundItem, GenerativeSublayer } from "../../types/frame";
 import type { CompiledProgram } from "./webgl-types";
 import { createProgram, setUniform } from "./webgl-shader";
 import { createFullscreenQuad, type FullscreenQuad } from "./webgl-quad";
@@ -299,13 +299,26 @@ export class GPUBackgroundRenderer {
   }
 
   /**
+   * Renders a BackgroundItem floor primitive to the reusable scratch FBO texture.
+   * Consumes normalized background parameters and draws to backgroundFbo without feedback loops.
+   */
+  public renderBackgroundItemToTexture(
+    width: number,
+    height: number,
+    item: BackgroundItem,
+    time = 0,
+  ): WebGLTexture {
+    return this.renderSublayerToTexture(width, height, item, time);
+  }
+
+  /**
    * Stage 3B: Renders a GenerativeSublayer floor primitive to the reusable scratch FBO texture.
    * Consumes normalized sublayer parameters and draws to backgroundFbo without feedback loops.
    */
   public renderSublayerToTexture(
     width: number,
     height: number,
-    sublayer: GenerativeSublayer,
+    sublayer: BackgroundItem,
     time = 0,
   ): WebGLTexture {
     const gl = this.gl;

@@ -351,7 +351,7 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
 
   describe("5. Idempotence & Document Normalization", () => {
     it("is idempotent when normalizing a legacy GenerativeLayer multiple times", () => {
-      const legacyLayer: GenerativeLayer = {
+      const legacyLayer: Partial<GenerativeLayer> & { type: "generative" } = {
         id: "gen-legacy",
         name: "Background",
         visible: true,
@@ -367,17 +367,18 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
           opacity: 90,
         },
         sublayers: undefined as any,
+        backgrounds: undefined as any,
         createdAt: 1000,
         updatedAt: 1000,
       };
 
       const normalizedOnce = normalizeGenerativeLayer(legacyLayer);
-      expect(normalizedOnce.sublayers).toHaveLength(1);
-      expect(normalizedOnce.sublayers[0].type).toBe("solid");
-      expect(normalizedOnce.sublayers[0].parameters.color).toBe("#4f46e5");
+      expect(normalizedOnce.backgrounds).toHaveLength(1);
+      expect(normalizedOnce.backgrounds[0].type).toBe("solid");
+      expect(normalizedOnce.backgrounds[0].parameters.color).toBe("#4f46e5");
 
       const normalizedTwice = normalizeGenerativeLayer(normalizedOnce);
-      expect(normalizedTwice.sublayers).toEqual(normalizedOnce.sublayers);
+      expect(normalizedTwice.backgrounds).toEqual(normalizedOnce.backgrounds);
       expect(normalizedTwice.id).toBe(normalizedOnce.id);
     });
 
@@ -387,7 +388,7 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
         parameters: { spacing: 36 },
       });
 
-      const layerWithSublayers: GenerativeLayer = {
+      const layerWithSublayers: Partial<GenerativeLayer> & { type: "generative" } = {
         id: "gen-active",
         name: "Background",
         visible: true,
@@ -402,19 +403,20 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
           color: "#000000",
         },
         sublayers: [existingSublayer], // sublayer says grid
+        backgrounds: [existingSublayer],
         createdAt: 1000,
         updatedAt: 1000,
       };
 
       const result = normalizeGenerativeLayer(layerWithSublayers);
-      expect(result.sublayers).toHaveLength(1);
-      expect(result.sublayers[0].type).toBe("grid");
-      expect(result.sublayers[0].id).toBe("existing-sublayer-1");
-      expect(result.sublayers[0].parameters.spacing).toBe(36);
+      expect(result.backgrounds).toHaveLength(1);
+      expect(result.backgrounds[0].type).toBe("grid");
+      expect(result.backgrounds[0].id).toBe("existing-sublayer-1");
+      expect(result.backgrounds[0].parameters.spacing).toBe(36);
     });
 
     it("preserves non-destructive legacy fields on GenerativeLayer during hydration", () => {
-      const legacyLayer: GenerativeLayer = {
+      const legacyLayer: Partial<GenerativeLayer> & { type: "generative" } = {
         id: "gen-1",
         name: "Background",
         visible: true,
@@ -428,6 +430,7 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
           type: "dots",
           color: "#ff0000",
         },
+        backgrounds: undefined as any,
         sublayers: undefined as any,
         createdAt: 12345,
         updatedAt: 12345,
@@ -508,7 +511,8 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
 
       const frame = createDefaultFrame("frame-persistence-test");
       const genLayer = frame.layers[0] as GenerativeLayer;
-      genLayer.sublayers = [customSublayer1, customSublayer2];
+      genLayer.backgrounds = [customSublayer1, customSublayer2];
+      genLayer.sublayers = genLayer.backgrounds;
 
       await dbSaveFrame(frame);
 
@@ -516,21 +520,21 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       const allFrames = await dbGetAllFrames();
       expect(allFrames).toHaveLength(1);
       const retrievedGenLayer = allFrames[0].layers[0] as GenerativeLayer;
-      expect(retrievedGenLayer.sublayers).toHaveLength(2);
-      expect(retrievedGenLayer.sublayers[0].id).toBe("persist-sub-1");
-      expect(retrievedGenLayer.sublayers[0].type).toBe("solid");
-      expect(retrievedGenLayer.sublayers[0].parameters.color).toBe("#1e293b");
-      expect(retrievedGenLayer.sublayers[1].id).toBe("persist-sub-2");
-      expect(retrievedGenLayer.sublayers[1].type).toBe("grid");
-      expect(retrievedGenLayer.sublayers[1].parameters.spacing).toBe(32);
+      expect(retrievedGenLayer.backgrounds).toHaveLength(2);
+      expect(retrievedGenLayer.backgrounds[0].id).toBe("persist-sub-1");
+      expect(retrievedGenLayer.backgrounds[0].type).toBe("solid");
+      expect(retrievedGenLayer.backgrounds[0].parameters.color).toBe("#1e293b");
+      expect(retrievedGenLayer.backgrounds[1].id).toBe("persist-sub-2");
+      expect(retrievedGenLayer.backgrounds[1].type).toBe("grid");
+      expect(retrievedGenLayer.backgrounds[1].parameters.spacing).toBe(32);
 
       // Verify full project hydration
       const hydrated = await loadHydratedProject();
       expect(hydrated.frames).toHaveLength(1);
       const hydratedGenLayer = hydrated.frames[0].layers[0] as GenerativeLayer;
-      expect(hydratedGenLayer.sublayers).toHaveLength(2);
-      expect(hydratedGenLayer.sublayers[0].id).toBe("persist-sub-1");
-      expect(hydratedGenLayer.sublayers[1].id).toBe("persist-sub-2");
+      expect(hydratedGenLayer.backgrounds).toHaveLength(2);
+      expect(hydratedGenLayer.backgrounds[0].id).toBe("persist-sub-1");
+      expect(hydratedGenLayer.backgrounds[1].id).toBe("persist-sub-2");
 
       if (originalIDB) {
         globalThis.window.indexedDB = originalIDB;
@@ -581,10 +585,10 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       const frames = await dbGetAllFrames();
       expect(frames).toHaveLength(1);
       const genLayer = frames[0].layers[0] as GenerativeLayer;
-      expect(genLayer.sublayers).toBeDefined();
-      expect(genLayer.sublayers).toHaveLength(1);
-      expect(genLayer.sublayers[0].type).toBe("solid");
-      expect(genLayer.sublayers[0].parameters.color).toBe("#059669");
+      expect(genLayer.backgrounds).toBeDefined();
+      expect(genLayer.backgrounds).toHaveLength(1);
+      expect(genLayer.backgrounds[0].type).toBe("solid");
+      expect(genLayer.backgrounds[0].parameters.color).toBe("#059669");
 
       if (originalIDB) {
         globalThis.window.indexedDB = originalIDB;

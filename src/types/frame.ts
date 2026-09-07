@@ -1,8 +1,7 @@
 import type { EffectStack } from "./asset";
 import type { BackgroundState, BackgroundType } from "./look";
 import { DEFAULT_BACKGROUND_STATE } from "./look";
-import type { GenerativeSublayer } from "../generative/types";
-import { normalizeLegacyBackgroundToSublayers } from "../generative/normalization";
+import { normalizeLegacyBackgroundToBackgrounds } from "../generative/normalization";
 
 /**
  * Selected Stage 1 subset of blend modes implemented according to
@@ -21,6 +20,21 @@ export type BlendMode =
   | "soft-light"
   | "difference"
   | "exclusion";
+
+export const BLEND_MODE_OPTIONS = [
+  { value: "normal", label: "Normal" },
+  { value: "multiply", label: "Multiply" },
+  { value: "screen", label: "Screen" },
+  { value: "overlay", label: "Overlay" },
+  { value: "darken", label: "Darken" },
+  { value: "lighten", label: "Lighten" },
+  { value: "color-dodge", label: "Color Dodge" },
+  { value: "color-burn", label: "Color Burn" },
+  { value: "hard-light", label: "Hard Light" },
+  { value: "soft-light", label: "Soft Light" },
+  { value: "difference", label: "Difference" },
+  { value: "exclusion", label: "Exclusion" },
+] as const;
 
 export interface FrameDimensions {
   width: number;
@@ -78,17 +92,49 @@ export interface ImageLayer extends BaseLayer {
   transform?: LayerTransform;
 }
 
+export const BACKGROUND_ITEM_TYPES = [
+  "solid",
+  "linear-gradient",
+  "radial-gradient",
+  "dots",
+  "grid",
+] as const;
+
+export type BackgroundItemType = (typeof BACKGROUND_ITEM_TYPES)[number];
+
+/**
+ * BackgroundItem represents an independent stackable background element
+ * in the background stack owned by GenerativeLayer.
+ */
+export interface BackgroundItem {
+  id: string;
+  type: BackgroundItemType;
+  enabled: boolean;
+  opacity: number; // Clamped to [0.0, 1.0]
+  blendMode: BlendMode; // W3C blend mode over preceding backgrounds
+  parameters: Record<string, unknown>;
+  name?: string;
+  seed?: number;
+}
+
+/** @deprecated Use BackgroundItem instead */
+export type GenerativeSublayer = BackgroundItem;
+/** @deprecated Use BackgroundItemType instead */
+export type GenerativeSublayerType = BackgroundItemType;
+
 /**
  * GenerativeLayer represents procedural canvas background content.
  *
- * Stage 3A: GenerativeLayer owns an ordered stack of GenerativeSublayers.
- * `sublayers` is the canonical source of truth.
- * Legacy `backgroundMode` and `backgroundConfig` are preserved for backward
- * compatibility and non-destructive hydration.
+ * GenerativeLayer owns an ordered stack of BackgroundItems.
+ * `backgrounds` is the single canonical runtime source of truth.
+ * Legacy `sublayers`, `backgroundMode`, and `backgroundConfig` are preserved
+ * solely for non-destructive hydration and migration compatibility.
  */
 export interface GenerativeLayer extends BaseLayer {
   type: "generative";
-  sublayers: GenerativeSublayer[];
+  backgrounds: BackgroundItem[];
+  /** @deprecated Kept for backward compatibility and hydration migration only */
+  sublayers?: BackgroundItem[];
   backgroundMode?: BackgroundType;
   backgroundConfig?: BackgroundState;
 }
@@ -134,6 +180,7 @@ export function createDefaultGenerativeLayer(backgroundConfig?: BackgroundState)
   const now = Date.now();
   const hasExplicitConfig = Boolean(backgroundConfig);
   const config = backgroundConfig ? { ...backgroundConfig } : { ...DEFAULT_BACKGROUND_STATE };
+  const backgrounds = normalizeLegacyBackgroundToBackgrounds(config);
   return {
     id: typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `gen-${Date.now()}`,
     name: "Background",
@@ -142,7 +189,8 @@ export function createDefaultGenerativeLayer(backgroundConfig?: BackgroundState)
     blendMode: "normal",
     effectStack: [],
     type: "generative",
-    sublayers: normalizeLegacyBackgroundToSublayers(config),
+    backgrounds,
+    sublayers: backgrounds,
     backgroundMode: config.type,
     backgroundConfig: config,
     createdAt: now,

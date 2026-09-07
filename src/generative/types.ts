@@ -1,58 +1,56 @@
 import type { BlendMode } from "../types/frame";
+import {
+  BACKGROUND_ITEM_TYPES,
+  type BackgroundItemType,
+  type BackgroundItem,
+  type GenerativeSublayer,
+  type GenerativeSublayerType,
+} from "../types/frame";
 
-export const GENERATIVE_SUBLAYER_TYPES = [
-  "solid",
-  "linear-gradient",
-  "radial-gradient",
-  "dots",
-  "grid",
-] as const;
+export {
+  BACKGROUND_ITEM_TYPES,
+  type BackgroundItemType,
+  type BackgroundItem,
+  type GenerativeSublayer,
+  type GenerativeSublayerType,
+};
 
-export type GenerativeSublayerType = (typeof GENERATIVE_SUBLAYER_TYPES)[number];
+// Backward-compatible alias
+export const GENERATIVE_SUBLAYER_TYPES = BACKGROUND_ITEM_TYPES;
 
-export type GenerativeSublayerCategory = "color" | "gradient" | "pattern";
+export type BackgroundItemCategory = "color" | "gradient" | "pattern";
+export type GenerativeSublayerCategory = BackgroundItemCategory;
 
-export type GenerativeParameterType = "number" | "color" | "boolean" | "select";
+export type BackgroundParameterType = "number" | "color" | "boolean" | "select";
+export type GenerativeParameterType = BackgroundParameterType;
 
-export interface GenerativeParameterOption {
+export interface BackgroundParameterOption {
   label: string;
   value: string | number;
 }
+export type GenerativeParameterOption = BackgroundParameterOption;
 
-export interface GenerativeParameterSchema {
+export interface BackgroundParameterSchema {
   name: string;
   label: string;
-  type: GenerativeParameterType;
+  type: BackgroundParameterType;
   defaultValue: unknown;
   min?: number;
   max?: number;
   step?: number;
   unit?: string;
   description: string;
-  options?: readonly GenerativeParameterOption[];
+  options?: readonly BackgroundParameterOption[];
 }
+export type GenerativeParameterSchema = BackgroundParameterSchema;
 
-export interface GenerativeSublayerDefinition {
-  type: GenerativeSublayerType;
+export interface BackgroundItemDefinition {
+  type: BackgroundItemType;
   name: string;
-  category: GenerativeSublayerCategory;
+  category: BackgroundItemCategory;
   description: string;
-  parameters: readonly GenerativeParameterSchema[];
+  parameters: readonly BackgroundParameterSchema[];
   defaultParameters: Record<string, unknown>;
   requiresSeed?: boolean;
 }
-
-/**
- * Minimal persisted instance model for an individual generative sublayer.
- * Belongs inside GenerativeLayer.sublayers.
- */
-export interface GenerativeSublayer {
-  id: string;
-  type: GenerativeSublayerType;
-  enabled: boolean;
-  opacity: number; // Clamped to [0.0, 1.0]
-  blendMode: BlendMode; // W3C blend mode over preceding sublayers
-  parameters: Record<string, unknown>;
-  name?: string;
-  seed?: number;
-}
+export type GenerativeSublayerDefinition = BackgroundItemDefinition;

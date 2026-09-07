@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import React from "react";
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 import { StudioProvider, useStudioStore } from "../../context/studio-context";
 import { InspectorPanel } from "./inspector-panel";
 import { FloatingBackgroundPanel } from "./floating-background-panel";
+import { LayersPanel } from "./layers-panel";
 import type { Asset } from "../../types/asset";
 
 const sampleAsset: Asset = {
@@ -20,316 +21,336 @@ const sampleAsset: Asset = {
   createdAt: Date.now(),
 };
 
-function BackgroundTestHost() {
+function FullTestStudioHost({ onStore }: { onStore?: (store: ReturnType<typeof useStudioStore>) => void }) {
   const store = useStudioStore();
+  React.useEffect(() => {
+    onStore?.(store);
+  }, [store, onStore]);
+
   return (
     <div className="relative w-full h-full">
       <span data-testid="is-hydrated">{String(store.isHydrated)}</span>
-      <span data-testid="has-bg">{String(store.hasActiveBackground)}</span>
-      <span data-testid="bg-type">{store.activeBackground.type}</span>
+      <span data-testid="active-layer-id">{store.activeLayerId || "none"}</span>
+      <span data-testid="bg-count">{store.activeBackgrounds.length}</span>
       <button
-        data-testid="setup-asset"
+        data-testid="setup-image-asset"
         onClick={async () => {
           await store.addAssets([sampleAsset]);
+          store.addLayerFromAsset(sampleAsset.id);
         }}
       >
-        Setup Asset
+        Setup Image Layer
       </button>
+      <button
+        data-testid="select-background-layer"
+        onClick={() => {
+          const gen = store.activeFrame?.layers.find((l) => l.type === "generative");
+          if (gen) store.setActiveLayerId(gen.id);
+        }}
+      >
+        Select Background Layer
+      </button>
+      <LayersPanel />
       <InspectorPanel />
       <FloatingBackgroundPanel />
     </div>
   );
 }
 
-describe("Correction 02.4 — Background Section & Floating Parameter Panel", () => {
+describe("EffectsIO — Authoritative Background Workflow Suite", () => {
   afterEach(() => {
     cleanup();
   });
 
-  it("1. Background section renders with + when no background is active", async () => {
-    render(
-      <StudioProvider>
-        <BackgroundTestHost />
-      </StudioProvider>
-    );
+  describe("A. Context Boundary (Image vs Background Selection)", () => {
+    it("Image selected -> NO Background section, NO Add Background control", async () => {
+      render(
+        <StudioProvider>
+          <FullTestStudioHost />
+        </StudioProvider>
+      );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-    });
-
-    fireEvent.click(screen.getByTestId("setup-asset"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Background")).toBeDefined();
-      expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
-      expect(screen.queryByRole("button", { name: /Remove background/i })).toBeNull();
-    });
-  });
-
-  it("2-4. Clicking + directly opens floating Add Background panel without intermediate popover", async () => {
-    render(
-      <StudioProvider>
-        <BackgroundTestHost />
-      </StudioProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-    });
-
-    fireEvent.click(screen.getByTestId("setup-asset"));
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
-    });
-
-    // Directly click Background +
-    fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-
-    // Directly opens floating Add Background panel!
-    await waitFor(() => {
-      expect(screen.getByRole("dialog", { name: /Add Background/i })).toBeDefined();
-      expect(screen.getByText("Add Background")).toBeDefined();
-      // Verify all 5 controls in exact order: Alpha, Solid, Gradient, Dot Pattern, Grid Pattern
-      const buttons = screen.getAllByRole("button").filter((b) => {
-        const ariaLabel = b.getAttribute("aria-label") || "";
-        return ["Alpha", "Solid", "Gradient", "Dot Pattern", "Grid Pattern"].includes(ariaLabel);
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
-      expect(buttons.length).toBe(5);
-      expect(buttons[0].getAttribute("aria-label")).toBe("Alpha");
-      expect(buttons[1].getAttribute("aria-label")).toBe("Solid");
-      expect(buttons[2].getAttribute("aria-label")).toBe("Gradient");
-      expect(buttons[3].getAttribute("aria-label")).toBe("Dot Pattern");
-      expect(buttons[4].getAttribute("aria-label")).toBe("Grid Pattern");
+
+      // Add image layer and select it
+      fireEvent.click(screen.getByTestId("setup-image-asset"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Layer Properties")).toBeDefined();
+        expect(screen.getByText("Transform")).toBeDefined();
+        expect(screen.getByText("Effects")).toBeDefined();
+        expect(screen.getByText("Looks")).toBeDefined();
+        // Mandatory Context Boundary: NO Background section
+        expect(screen.queryByTestId("add-background-button")).toBeNull();
+        expect(screen.queryByRole("dialog", { name: /Background Parameters/i })).toBeNull();
+      });
+    });
+
+    it("Background selected -> Background section appears with permanent '+' control", async () => {
+      render(
+        <StudioProvider>
+          <FullTestStudioHost />
+        </StudioProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
+
+      // Setup image then switch to Background layer
+      fireEvent.click(screen.getByTestId("setup-image-asset"));
+      await waitFor(() => {
+        expect(screen.queryByTestId("add-background-button")).toBeNull();
+      });
+
+      fireEvent.click(screen.getByTestId("select-background-layer"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Layer Properties")).toBeDefined();
+        // Background section is visible exclusively because Background Layer is selected
+        expect(screen.getByTestId("add-background-button")).toBeDefined();
+      });
     });
   });
 
-  it("5-9. Activating background changes + to −, displays active row, and − removes background", async () => {
-    render(
-      <StudioProvider>
-        <BackgroundTestHost />
-      </StudioProvider>
-    );
+  describe("B. Permanent '+' Control & Add Workflow", () => {
+    it("'+' button permanently remains '+' after adding backgrounds (never becomes '−')", async () => {
+      let storeRef!: ReturnType<typeof useStudioStore>;
+      render(
+        <StudioProvider>
+          <FullTestStudioHost onStore={(s) => { storeRef = s; }} />
+        </StudioProvider>
+      );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
 
-    fireEvent.click(screen.getByTestId("setup-asset"));
+      fireEvent.click(screen.getByTestId("select-background-layer"));
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("add-background-button")).toBeDefined();
+      });
 
-    // Click Background +
-    fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
+      // Click '+' to open Add Background Popover
+      fireEvent.click(screen.getByTestId("add-background-button"));
 
-    // Now active: + becomes − and row is visible
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Remove background/i })).toBeDefined();
-      expect(screen.queryByRole("button", { name: /Add background/i })).toBeNull();
-      expect(screen.getByTestId("has-bg").textContent).toBe("true");
-      expect(screen.getByTestId("bg-type").textContent).toBe("solid");
-      expect(screen.getByRole("dialog", { name: /Add Background/i })).toBeDefined();
-    });
+      // Popover shows floor primitives
+      await waitFor(() => {
+        expect(screen.getByTestId("add-bg-solid")).toBeDefined();
+        expect(screen.getByTestId("add-bg-linear-gradient")).toBeDefined();
+        expect(screen.getByTestId("add-bg-radial-gradient")).toBeDefined();
+        expect(screen.getByTestId("add-bg-dots")).toBeDefined();
+        expect(screen.getByTestId("add-bg-grid")).toBeDefined();
+      });
 
-    // Clicking − in Inspector removes background
-    fireEvent.click(screen.getByRole("button", { name: /Remove background/i }));
+      // Add Solid
+      fireEvent.click(screen.getByTestId("add-bg-solid"));
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
-      expect(screen.queryByRole("button", { name: /Remove background/i })).toBeNull();
-      expect(screen.getByTestId("has-bg").textContent).toBe("false");
-      // Floating panel closes
-      expect(screen.queryByRole("dialog", { name: /Add Background/i })).toBeNull();
-    });
-  });
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds.length).toBe(1);
+        // Header button must PERMANENTLY remain '+'
+        expect(screen.getByTestId("add-background-button")).toBeDefined();
+        const bgHeader = screen.getByTestId("background-section-header");
+        expect(within(bgHeader).queryByRole("button", { name: /remove/i })).toBeNull();
+      });
 
-  it("10-13. Floating editor close (X) closes editor without removing background, and clicking row reopens it", async () => {
-    render(
-      <StudioProvider>
-        <BackgroundTestHost />
-      </StudioProvider>
-    );
+      // Add another background (Linear Gradient)
+      fireEvent.click(screen.getByTestId("add-background-button"));
+      await waitFor(() => {
+        expect(screen.getByTestId("add-bg-linear-gradient")).toBeDefined();
+      });
+      fireEvent.click(screen.getByTestId("add-bg-linear-gradient"));
 
-    await waitFor(() => {
-      expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-    });
-
-    fireEvent.click(screen.getByTestId("setup-asset"));
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
-    });
-
-    // Add Solid
-    fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("dialog", { name: /Add Background/i })).toBeDefined();
-    });
-
-    // Close floating panel via X
-    fireEvent.click(screen.getByRole("button", { name: /Close parameters/i }));
-
-    await waitFor(() => {
-      // Panel closed
-      expect(screen.queryByRole("dialog", { name: /Add Background/i })).toBeNull();
-      // Background remains active!
-      expect(screen.getByTestId("has-bg").textContent).toBe("true");
-      expect(screen.getByRole("button", { name: /Remove background/i })).toBeDefined();
-    });
-
-    // Reopen by clicking the active background row in inspector
-    const row = screen.getByText(/#E20000/i).closest('[role="button"]')!;
-    fireEvent.click(row);
-
-    await waitFor(() => {
-      expect(screen.getByRole("dialog", { name: /Add Background/i })).toBeDefined();
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds.length).toBe(2);
+        // Header button STILL remains '+'
+        expect(screen.getByTestId("add-background-button")).toBeDefined();
+      });
     });
   });
 
-  it("14-15. Switching background type maintains single active background and updates parameters in place", async () => {
-    render(
-      <StudioProvider>
-        <BackgroundTestHost />
-      </StudioProvider>
-    );
+  describe("C. Stack Rows & Independent Controls", () => {
+    it("each background item has its own remove control, visibility toggle, and compact opacity", async () => {
+      let storeRef!: ReturnType<typeof useStudioStore>;
+      render(
+        <StudioProvider>
+          <FullTestStudioHost onStore={(s) => { storeRef = s; }} />
+        </StudioProvider>
+      );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
+
+      fireEvent.click(screen.getByTestId("select-background-layer"));
+
+      // Add Solid and Grid
+      fireEvent.click(screen.getByTestId("add-background-button"));
+      fireEvent.click(await screen.findByTestId("add-bg-solid"));
+
+      fireEvent.click(screen.getByTestId("add-background-button"));
+      fireEvent.click(await screen.findByTestId("add-bg-grid"));
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds.length).toBe(2);
+      });
+
+      const solidId = storeRef.activeBackgrounds[0].id;
+      const gridId = storeRef.activeBackgrounds[1].id;
+
+      const solidRow = screen.getByTestId(`background-row-${solidId}`);
+      const gridRow = screen.getByTestId(`background-row-${gridId}`);
+
+      expect(solidRow).toBeDefined();
+      expect(gridRow).toBeDefined();
+
+      // Visibility toggle on solid row only
+      const solidEye = screen.getByTestId(`visibility-toggle-${solidId}`);
+      fireEvent.click(solidEye);
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].enabled).toBe(false);
+        expect(storeRef.activeBackgrounds[1].enabled).toBe(true);
+      });
+
+      // Remove Grid item using its own '-' button
+      const gridRemove = screen.getByTestId(`remove-background-${gridId}`);
+      fireEvent.click(gridRemove);
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds.length).toBe(1);
+        expect(storeRef.activeBackgrounds[0].id).toBe(solidId);
+      });
     });
 
-    fireEvent.click(screen.getByTestId("setup-asset"));
+    it("independent opacity and blend mode per background item", async () => {
+      let storeRef!: ReturnType<typeof useStudioStore>;
+      render(
+        <StudioProvider>
+          <FullTestStudioHost onStore={(s) => { storeRef = s; }} />
+        </StudioProvider>
+      );
 
-    // Add Solid
-    await waitFor(() => screen.getByRole("button", { name: /Add background/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("bg-type").textContent).toBe("solid");
-      expect(screen.getByRole("dialog", { name: /Add Background/i })).toBeDefined();
-    });
+      fireEvent.click(screen.getByTestId("select-background-layer"));
 
-    // Switch to Gradient using toolbar icon in floating panel
-    const gradientBtn = screen.getByRole("button", { name: "Gradient" });
-    fireEvent.click(gradientBtn);
+      // Add Solid then Grid
+      fireEvent.click(screen.getByTestId("add-background-button"));
+      fireEvent.click(await screen.findByTestId("add-bg-solid"));
+      fireEvent.click(screen.getByTestId("add-background-button"));
+      fireEvent.click(await screen.findByTestId("add-bg-grid"));
 
-    await waitFor(() => {
-      expect(screen.getByTestId("bg-type").textContent).toBe("linear-gradient");
-      expect(screen.getByTestId("has-bg").textContent).toBe("true");
-      // Gradient controls are visible
-      expect(screen.getByText("Steps")).toBeDefined();
-      expect(screen.getByRole("button", { name: /Reverse Gradient/i })).toBeDefined();
-      expect(screen.getByRole("button", { name: /Reset Gradient/i })).toBeDefined();
-    });
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds.length).toBe(2);
+      });
 
-    // Switch to Alpha
-    const alphaBtn = screen.getByRole("button", { name: "Alpha" });
-    fireEvent.click(alphaBtn);
+      const [solid, grid] = storeRef.activeBackgrounds;
 
-    await waitFor(() => {
-      expect(screen.getByTestId("bg-type").textContent).toBe("transparent");
-      expect(screen.getByTestId("has-bg").textContent).toBe("true");
-      expect(screen.getByText(/Transparent alpha background active/i)).toBeDefined();
-    });
+      // Update grid opacity to 70% and blend mode to overlay
+      storeRef.updateBackgroundItem(grid.id, { opacity: 0.7, blendMode: "overlay" });
 
-    // Switch to Dot Pattern
-    const dotBtn = screen.getByRole("button", { name: "Dot Pattern" });
-    fireEvent.click(dotBtn);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("bg-type").textContent).toBe("dots");
-      expect(screen.getByTestId("has-bg").textContent).toBe("true");
-      expect(screen.getByText("Dot Spacing")).toBeDefined();
-    });
-
-    // Switch to Grid Pattern
-    const gridBtn = screen.getByRole("button", { name: "Grid Pattern" });
-    fireEvent.click(gridBtn);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("bg-type").textContent).toBe("grid");
-      expect(screen.getByTestId("has-bg").textContent).toBe("true");
-      expect(screen.getByText("Grid Spacing")).toBeDefined();
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[1].opacity).toBe(0.7);
+        expect(storeRef.activeBackgrounds[1].blendMode).toBe("overlay");
+        // Solid remains unchanged at 100% and normal
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(1.0);
+        expect(storeRef.activeBackgrounds[0].blendMode).toBe("normal");
+      });
     });
   });
 
-  it("16-20. All 5 type buttons in floating panel toolbar have accessible tooltips/labels", async () => {
-    render(
-      <StudioProvider>
-        <BackgroundTestHost />
-      </StudioProvider>
-    );
+  describe("D. Floating Parameter Editor", () => {
+    it("clicking a background item opens FloatingBackgroundPanel to edit that item's parameters", async () => {
+      let storeRef!: ReturnType<typeof useStudioStore>;
+      render(
+        <StudioProvider>
+          <FullTestStudioHost onStore={(s) => { storeRef = s; }} />
+        </StudioProvider>
+      );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
 
-    fireEvent.click(screen.getByTestId("setup-asset"));
+      fireEvent.click(screen.getByTestId("select-background-layer"));
 
-    // Add Solid
-    await waitFor(() => screen.getByRole("button", { name: /Add background/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
+      // Add Dots background
+      fireEvent.click(screen.getByTestId("add-background-button"));
+      fireEvent.click(await screen.findByTestId("add-bg-dots"));
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Alpha" })).toBeDefined();
-      expect(screen.getByRole("button", { name: "Solid" })).toBeDefined();
-      expect(screen.getByRole("button", { name: "Gradient" })).toBeDefined();
-      expect(screen.getByRole("button", { name: "Dot Pattern" })).toBeDefined();
-      expect(screen.getByRole("button", { name: "Grid Pattern" })).toBeDefined();
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds.length).toBe(1);
+        expect(screen.getByRole("dialog", { name: /Background Parameters/i })).toBeDefined();
+        expect(screen.getByText("Dot Size")).toBeDefined();
+        expect(screen.getByText("Dot Spacing")).toBeDefined();
+      });
+
+      // Close floating panel
+      fireEvent.click(screen.getByRole("button", { name: /Close parameters/i }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog", { name: /Background Parameters/i })).toBeNull();
+      });
+
+      // Click stack row to reopen parameter editor
+      const dotsId = storeRef.activeBackgrounds[0].id;
+      fireEvent.click(screen.getByTestId(`background-row-${dotsId}`));
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog", { name: /Background Parameters/i })).toBeDefined();
+      });
     });
   });
 
-  it("21-34. Gradient editor: supports interactive stop nodes on track, Steps +, Reverse, and Reset", async () => {
-    render(
-      <StudioProvider>
-        <BackgroundTestHost />
-      </StudioProvider>
-    );
+  describe("E. Background Layer Lifecycle", () => {
+    it("background layer can be deleted, showing empty canvas, and recreated via LayersPanel", async () => {
+      let storeRef!: ReturnType<typeof useStudioStore>;
+      render(
+        <StudioProvider>
+          <FullTestStudioHost onStore={(s) => { storeRef = s; }} />
+        </StudioProvider>
+      );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
 
-    fireEvent.click(screen.getByTestId("setup-asset"));
+      // Confirm background layer is present
+      const bgRow = screen.getByTestId("locked-background-row");
+      expect(bgRow).toBeDefined();
 
-    // Add Background and switch to Gradient
-    await waitFor(() => screen.getByRole("button", { name: /Add background/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
+      // Delete the Background Layer
+      const removeBgLayerBtn = screen.getByTestId("remove-background-layer");
+      fireEvent.click(removeBgLayerBtn);
 
-    await waitFor(() => screen.getByRole("button", { name: "Gradient" }));
-    fireEvent.click(screen.getByRole("button", { name: "Gradient" }));
+      await waitFor(() => {
+        expect(screen.queryByTestId("locked-background-row")).toBeNull();
+        expect(storeRef.activeFrame?.layers.some((l) => l.type === "generative")).toBe(false);
+      });
 
-    await waitFor(() => {
-      expect(screen.getByText("Steps")).toBeDefined();
-      expect(screen.getByRole("button", { name: /Reverse Gradient/i })).toBeDefined();
-      expect(screen.getByRole("button", { name: /Reset Gradient/i })).toBeDefined();
-      expect(screen.getByRole("button", { name: /Add gradient stop/i })).toBeDefined();
-      // Track stop nodes
-      expect(screen.getByRole("button", { name: "Gradient stop 1" })).toBeDefined();
-      expect(screen.getByRole("button", { name: "Gradient stop 2" })).toBeDefined();
-    });
+      // Recreate Background Layer via Add Layer popover
+      const addLayerBtn = screen.getByRole("button", { name: "Add layer" });
+      fireEvent.click(addLayerBtn);
 
-    // Add Stop via Steps +
-    fireEvent.click(screen.getByRole("button", { name: /Add gradient stop/i }));
+      const addBgOption = await screen.findByTestId("add-background-layer-button");
+      fireEvent.click(addBgOption);
 
-    await waitFor(() => {
-      // 3 stop nodes on the track
-      expect(screen.getByRole("button", { name: "Gradient stop 3" })).toBeDefined();
-      // 3 stop rows in Steps
-      const removeButtons = screen.getAllByRole("button", { name: /Remove stop/i });
-      expect(removeButtons.length).toBe(3);
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("locked-background-row")).toBeDefined();
+        expect(storeRef.activeBackgrounds.length).toBe(0);
+      });
 
-    // Reverse gradient
-    fireEvent.click(screen.getByRole("button", { name: /Reverse Gradient/i }));
-
-    // Reset gradient
-    fireEvent.click(screen.getByRole("button", { name: /Reset Gradient/i }));
-    await waitFor(() => {
-      const removeButtons = screen.getAllByRole("button", { name: /Remove stop/i });
-      expect(removeButtons.length).toBe(2);
+      // Empty background state displays 'No backgrounds' in Inspector
+      fireEvent.click(screen.getByTestId("select-background-layer"));
+      await waitFor(() => {
+        expect(screen.getByText("No backgrounds")).toBeDefined();
+      });
     });
   });
 });

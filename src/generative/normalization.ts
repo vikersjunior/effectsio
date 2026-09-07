@@ -1,15 +1,15 @@
 import { DEFAULT_BACKGROUND_STATE, type BackgroundState } from "../types/look";
-import type { GenerativeLayer } from "../types/frame";
-import { createGenerativeSublayer, resolveGenerativeParameters } from "./registry";
-import { GENERATIVE_SUBLAYER_TYPES, type GenerativeSublayer } from "./types";
+import type { GenerativeLayer, BackgroundItem, BackgroundItemType } from "../types/frame";
+import { BACKGROUND_ITEM_TYPES } from "../types/frame";
+import { createBackgroundItem, resolveBackgroundItemParameters } from "./registry";
 
 /**
- * Converts a legacy BackgroundState into an array of GenerativeSublayers.
- * Transparent background normalizes to an empty sublayers array ([]).
+ * Converts a legacy BackgroundState into an array of BackgroundItems.
+ * Transparent background normalizes to an empty backgrounds array ([]).
  */
-export function normalizeLegacyBackgroundToSublayers(
+export function normalizeLegacyBackgroundToBackgrounds(
   config?: BackgroundState
-): GenerativeSublayer[] {
+): BackgroundItem[] {
   if (!config || config.type === "transparent") {
     return [];
   }
@@ -21,7 +21,7 @@ export function normalizeLegacyBackgroundToSublayers(
   switch (config.type) {
     case "solid": {
       return [
-        createGenerativeSublayer("solid", {
+        createBackgroundItem("solid", {
           enabled: isVisible,
           opacity,
           blendMode: "normal",
@@ -33,7 +33,7 @@ export function normalizeLegacyBackgroundToSublayers(
     }
     case "linear-gradient": {
       return [
-        createGenerativeSublayer("linear-gradient", {
+        createBackgroundItem("linear-gradient", {
           enabled: isVisible,
           opacity,
           blendMode: "normal",
@@ -47,7 +47,7 @@ export function normalizeLegacyBackgroundToSublayers(
     }
     case "radial-gradient": {
       return [
-        createGenerativeSublayer("radial-gradient", {
+        createBackgroundItem("radial-gradient", {
           enabled: isVisible,
           opacity,
           blendMode: "normal",
@@ -60,7 +60,7 @@ export function normalizeLegacyBackgroundToSublayers(
     }
     case "dots": {
       return [
-        createGenerativeSublayer("dots", {
+        createBackgroundItem("dots", {
           enabled: isVisible,
           opacity,
           blendMode: "normal",
@@ -75,7 +75,7 @@ export function normalizeLegacyBackgroundToSublayers(
     }
     case "grid": {
       return [
-        createGenerativeSublayer("grid", {
+        createBackgroundItem("grid", {
           enabled: isVisible,
           opacity,
           blendMode: "normal",
@@ -92,106 +92,123 @@ export function normalizeLegacyBackgroundToSublayers(
       return [];
   }
 }
+export const normalizeLegacyBackgroundToSublayers = normalizeLegacyBackgroundToBackgrounds;
 
 /**
- * Derives a read-only legacy BackgroundState from the canonical GenerativeSublayer stack.
- * Returns the state of the topmost enabled sublayer (or transparent if no sublayers or all disabled).
+ * Derives a read-only legacy BackgroundState from the canonical BackgroundItem stack.
+ * Returns the state of the topmost enabled background (or transparent if no items or all disabled).
  */
-export function deriveLegacyBackgroundFromSublayers(
-  sublayers?: readonly GenerativeSublayer[]
+export function deriveLegacyBackgroundFromBackgrounds(
+  backgrounds?: readonly BackgroundItem[]
 ): BackgroundState {
-  if (!sublayers || sublayers.length === 0) {
+  if (!backgrounds || backgrounds.length === 0) {
     return { ...DEFAULT_BACKGROUND_STATE, type: "transparent" };
   }
 
   // Canonical ordering: index 0 is bottom, last is top.
-  // Find topmost enabled sublayer; if none enabled, use topmost sublayer with visible = false.
-  const topEnabled = [...sublayers].reverse().find((s) => s.enabled);
-  const targetSublayer = topEnabled || sublayers[sublayers.length - 1];
+  // Find topmost enabled background; if none enabled, use topmost background with visible = false.
+  const topEnabled = [...backgrounds].reverse().find((s) => s.enabled);
+  const targetBackground = topEnabled || backgrounds[backgrounds.length - 1];
 
-  if (!targetSublayer) {
+  if (!targetBackground) {
     return { ...DEFAULT_BACKGROUND_STATE, type: "transparent" };
   }
 
-  const opacityPercent = Math.round(targetSublayer.opacity * 100);
+  const opacityPercent = Math.round(targetBackground.opacity * 100);
 
-  switch (targetSublayer.type) {
+  switch (targetBackground.type) {
     case "solid": {
       return {
         ...DEFAULT_BACKGROUND_STATE,
         type: "solid",
-        color: String(targetSublayer.parameters.color || "#000000"),
+        color: String(targetBackground.parameters.color || "#000000"),
         opacity: opacityPercent,
-        visible: targetSublayer.enabled,
+        visible: targetBackground.enabled,
       };
     }
     case "linear-gradient": {
       return {
         ...DEFAULT_BACKGROUND_STATE,
         type: "linear-gradient",
-        color: String(targetSublayer.parameters.startColor || "#000000"),
-        gradientEndColor: String(targetSublayer.parameters.endColor || "#3b82f6"),
-        gradientAngle: Number(targetSublayer.parameters.angle ?? 135),
+        color: String(targetBackground.parameters.startColor || "#000000"),
+        gradientEndColor: String(targetBackground.parameters.endColor || "#3b82f6"),
+        gradientAngle: Number(targetBackground.parameters.angle ?? 135),
         opacity: opacityPercent,
-        visible: targetSublayer.enabled,
+        visible: targetBackground.enabled,
       };
     }
     case "radial-gradient": {
       return {
         ...DEFAULT_BACKGROUND_STATE,
         type: "radial-gradient",
-        color: String(targetSublayer.parameters.startColor || "#000000"),
-        gradientEndColor: String(targetSublayer.parameters.endColor || "#3b82f6"),
+        color: String(targetBackground.parameters.startColor || "#000000"),
+        gradientEndColor: String(targetBackground.parameters.endColor || "#3b82f6"),
         opacity: opacityPercent,
-        visible: targetSublayer.enabled,
+        visible: targetBackground.enabled,
       };
     }
     case "dots": {
       return {
         ...DEFAULT_BACKGROUND_STATE,
         type: "dots",
-        color: String(targetSublayer.parameters.dotColor || "#ffffff"),
-        patternBackgroundColor: String(targetSublayer.parameters.backgroundColor || "#000000"),
-        patternSpacing: Number(targetSublayer.parameters.spacing ?? 24),
+        color: String(targetBackground.parameters.dotColor || "#ffffff"),
+        patternBackgroundColor: String(targetBackground.parameters.backgroundColor || "#000000"),
+        patternSpacing: Number(targetBackground.parameters.spacing ?? 24),
         opacity: opacityPercent,
-        visible: targetSublayer.enabled,
+        visible: targetBackground.enabled,
       };
     }
     case "grid": {
       return {
         ...DEFAULT_BACKGROUND_STATE,
         type: "grid",
-        color: String(targetSublayer.parameters.lineColor || "#ffffff"),
-        patternBackgroundColor: String(targetSublayer.parameters.backgroundColor || "#000000"),
-        patternSpacing: Number(targetSublayer.parameters.spacing ?? 24),
+        color: String(targetBackground.parameters.lineColor || "#ffffff"),
+        patternBackgroundColor: String(targetBackground.parameters.backgroundColor || "#000000"),
+        patternSpacing: Number(targetBackground.parameters.spacing ?? 24),
         opacity: opacityPercent,
-        visible: targetSublayer.enabled,
+        visible: targetBackground.enabled,
       };
     }
     default:
       return { ...DEFAULT_BACKGROUND_STATE, type: "transparent" };
   }
 }
+export const deriveLegacyBackgroundFromSublayers = deriveLegacyBackgroundFromBackgrounds;
 
 /**
  * Normalizes a GenerativeLayer document for hydration and backward compatibility.
- * If sublayers already exist, validates and sanitizes them without overwriting from legacy fields.
- * If sublayers do not exist, deterministically converts legacy backgroundConfig to sublayers.
+ * If backgrounds or legacy sublayers exist, validates and sanitizes them into canonical backgrounds.
+ * If neither exists, deterministically converts legacy backgroundConfig to backgrounds.
  * Idempotent: normalizeGenerativeLayer(normalizeGenerativeLayer(layer)) is identical.
  */
-export function normalizeGenerativeLayer(layer: GenerativeLayer): GenerativeLayer {
-  if (Array.isArray(layer.sublayers)) {
-    const sanitizedSublayers: GenerativeSublayer[] = layer.sublayers.map((s, idx) => {
-      const type = GENERATIVE_SUBLAYER_TYPES.includes(s.type) ? s.type : "solid";
-      const resolvedParams = resolveGenerativeParameters(type, s.parameters);
+export function normalizeGenerativeLayer(
+  layer: GenerativeLayer | (Partial<GenerativeLayer> & { type: "generative" })
+): GenerativeLayer {
+  const sourceItems =
+    Array.isArray(layer.backgrounds) && layer.backgrounds.length > 0
+      ? layer.backgrounds
+      : Array.isArray(layer.sublayers) && layer.sublayers.length > 0
+      ? layer.sublayers
+      : Array.isArray(layer.backgrounds)
+      ? layer.backgrounds
+      : Array.isArray(layer.sublayers)
+      ? layer.sublayers
+      : null;
+
+  if (sourceItems) {
+    const sanitizedBackgrounds: BackgroundItem[] = sourceItems.map((s, idx) => {
+      const type = BACKGROUND_ITEM_TYPES.includes(s.type as BackgroundItemType)
+        ? (s.type as BackgroundItemType)
+        : "solid";
+      const resolvedParams = resolveBackgroundItemParameters(type, s.parameters);
       const opacity =
         typeof s.opacity === "number" && Number.isFinite(s.opacity)
           ? Math.max(0.0, Math.min(1.0, s.opacity))
           : 1.0;
       const enabled = s.enabled !== undefined ? Boolean(s.enabled) : true;
-      const id = s.id || `sublayer-${Date.now()}-${idx}`;
+      const id = s.id || `bg-${Date.now()}-${idx}`;
 
-      const sanitized: GenerativeSublayer = {
+      const sanitized: BackgroundItem = {
         id,
         type,
         enabled,
@@ -207,17 +224,37 @@ export function normalizeGenerativeLayer(layer: GenerativeLayer): GenerativeLaye
     });
 
     return {
+      id: layer.id || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `gen-${Date.now()}`),
+      name: layer.name || "Background",
+      visible: layer.visible ?? true,
+      opacity: typeof layer.opacity === "number" ? layer.opacity : 1.0,
+      blendMode: layer.blendMode || "normal",
+      effectStack: layer.effectStack || [],
+      createdAt: layer.createdAt || Date.now(),
+      updatedAt: layer.updatedAt || Date.now(),
       ...layer,
-      sublayers: sanitizedSublayers,
+      type: "generative",
+      backgrounds: sanitizedBackgrounds,
+      sublayers: sanitizedBackgrounds,
     };
   }
 
-  // Legacy GenerativeLayer without sublayers
+  // Legacy GenerativeLayer without backgrounds or sublayers
   const legacyConfig = layer.backgroundConfig || DEFAULT_BACKGROUND_STATE;
-  const sublayers = normalizeLegacyBackgroundToSublayers(legacyConfig);
+  const backgrounds = normalizeLegacyBackgroundToBackgrounds(legacyConfig);
 
   return {
+    id: layer.id || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `gen-${Date.now()}`),
+    name: layer.name || "Background",
+    visible: layer.visible ?? true,
+    opacity: typeof layer.opacity === "number" ? layer.opacity : 1.0,
+    blendMode: layer.blendMode || "normal",
+    effectStack: layer.effectStack || [],
+    createdAt: layer.createdAt || Date.now(),
+    updatedAt: layer.updatedAt || Date.now(),
     ...layer,
-    sublayers,
+    type: "generative",
+    backgrounds,
+    sublayers: backgrounds,
   };
 }

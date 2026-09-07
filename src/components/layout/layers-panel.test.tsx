@@ -363,7 +363,7 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
         expect(screen.getByText("Fit")).toBeDefined();
         expect(screen.getByText("Effects")).toBeDefined();
         expect(screen.getByText("Looks")).toBeDefined();
-        expect(screen.getByText("Background")).toBeDefined();
+        expect(screen.queryByText("Background")).toBeNull();
       });
     });
 

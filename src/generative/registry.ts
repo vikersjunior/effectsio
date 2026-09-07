@@ -1,5 +1,9 @@
 import type { BlendMode } from "../types/frame";
 import type {
+  BackgroundItem,
+  BackgroundItemDefinition,
+  BackgroundItemType,
+  BackgroundParameterSchema,
   GenerativeParameterSchema,
   GenerativeSublayer,
   GenerativeSublayerDefinition,
@@ -21,9 +25,9 @@ const VALID_BLEND_MODES: readonly BlendMode[] = [
   "exclusion",
 ];
 
-export const GENERATIVE_SUBLAYER_REGISTRY: Record<
-  GenerativeSublayerType,
-  GenerativeSublayerDefinition
+export const BACKGROUND_ITEM_REGISTRY: Record<
+  BackgroundItemType,
+  BackgroundItemDefinition
 > = {
   solid: {
     type: "solid",
@@ -214,16 +218,25 @@ export const GENERATIVE_SUBLAYER_REGISTRY: Record<
   },
 };
 
+export const GENERATIVE_SUBLAYER_REGISTRY = BACKGROUND_ITEM_REGISTRY;
+
+export function getBackgroundItemDefinition(
+  type: BackgroundItemType
+): BackgroundItemDefinition | undefined {
+  return BACKGROUND_ITEM_REGISTRY[type];
+}
+export const getGenerativeSublayerDefinition = getBackgroundItemDefinition;
+
 /**
  * Validates and resolves user parameter overrides against the definition schema and defaults.
  * Preserves valid user values, clamps out-of-bounds numbers, rejects invalid options/colors,
  * and leaves the input object unmutated.
  */
-export function resolveGenerativeParameters(
-  type: GenerativeSublayerType,
+export function resolveBackgroundItemParameters(
+  type: BackgroundItemType,
   overrides?: Record<string, unknown>
 ): Record<string, unknown> {
-  const def = GENERATIVE_SUBLAYER_REGISTRY[type];
+  const def = BACKGROUND_ITEM_REGISTRY[type];
   if (!def) {
     return overrides ? { ...overrides } : {};
   }
@@ -276,22 +289,23 @@ export function resolveGenerativeParameters(
 
   return result;
 }
+export const resolveGenerativeParameters = resolveBackgroundItemParameters;
 
 /**
- * Instantiates a new, validated GenerativeSublayer model instance.
+ * Instantiates a new, validated BackgroundItem model instance.
  */
-export function createGenerativeSublayer(
-  type: GenerativeSublayerType,
-  overrides?: Partial<GenerativeSublayer>
-): GenerativeSublayer {
-  const def = GENERATIVE_SUBLAYER_REGISTRY[type];
+export function createBackgroundItem(
+  type: BackgroundItemType,
+  overrides?: Partial<BackgroundItem>
+): BackgroundItem {
+  const def = BACKGROUND_ITEM_REGISTRY[type];
   const id =
     overrides?.id ||
     (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
-      : `sublayer-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
+      : `bg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
 
-  const resolvedParams = resolveGenerativeParameters(type, overrides?.parameters);
+  const resolvedParams = resolveBackgroundItemParameters(type, overrides?.parameters);
 
   const opacity =
     typeof overrides?.opacity === "number" && Number.isFinite(overrides.opacity)
@@ -303,7 +317,7 @@ export function createGenerativeSublayer(
       ? overrides.blendMode
       : "normal";
 
-  const sublayer: GenerativeSublayer = {
+  const item: BackgroundItem = {
     id,
     type,
     enabled: overrides?.enabled !== undefined ? Boolean(overrides.enabled) : true,
@@ -313,15 +327,16 @@ export function createGenerativeSublayer(
   };
 
   if (overrides?.name !== undefined && typeof overrides.name === "string" && overrides.name.trim().length > 0) {
-    sublayer.name = overrides.name.trim();
+    item.name = overrides.name.trim();
   }
 
   if (def?.requiresSeed || overrides?.seed !== undefined) {
-    sublayer.seed =
+    item.seed =
       typeof overrides?.seed === "number" && Number.isFinite(overrides.seed)
         ? Math.floor(overrides.seed)
         : Math.floor(Math.random() * 1000000);
   }
 
-  return sublayer;
+  return item;
 }
+export const createGenerativeSublayer = createBackgroundItem;

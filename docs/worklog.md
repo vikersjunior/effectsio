@@ -2656,3 +2656,290 @@ Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed 
    - Pre-flight check: Verified Headroom proxy daemon running on `http://127.0.0.1:8787` (`pnpm agent:stats` exit code 0).
    - Usage: 0 requests proxied directly through Headroom as Antigravity IDE communicates with Google Deepmind model APIs; zero token savings or compression claimed.
 
+---
+
+## Entry 2026-09-07 (Stage 3C: Generative Sublayer UI & Authoritative Floating Panel)
+
+### 1. Scope & Architectural Directives Fulfilled
+- **Preserved `FloatingBackgroundPanel` as Sole Authoritative Parameter Editor**:
+  - Maintained `FloatingBackgroundPanel` as the sole surface for sublayer management, ordering, adding, deletion, enable/disable, sublayer opacity, sublayer blend mode, and all generative primitive parameters.
+  - Preserved 100% of its visual identity, dimensions (`w-[304px]`), drag physics, header handle, and position memory.
+- **Docked Inspector Boundary Enforced**:
+  - Maintained clear separation between whole-layer presentation and sublayer generative editing.
+  - Docked Inspector Section 0 manages GenerativeLayer opacity and blend mode (sharing canonical `BLEND_MODE_OPTIONS` from `src/types/frame.ts`).
+  - Zero duplicate generative parameters, sliders, or color pickers in the Inspector.
+- **Quick Background Actions Backward Compatibility**:
+  - Quick action buttons (`Alpha`, `Solid`, `Gradient`, `Dot Pattern`, `Grid Pattern`) routed through canonical sublayers model (`GenerativeLayer.sublayers`).
+  - Preserved existing gradient stop track interaction with 2-color floor renderer compatibility.
+- **Deterministic Selection Recovery**:
+  - Implemented deterministic selection recovery in `studio-context.tsx` strictly based on canonical bottom-to-top array indexing (`sublayers[0] = bottom`, `sublayers[N-1] = top`).
+  - Deleting a sublayer selects its nearest remaining neighbor (`Math.min(idx, nextSublayers.length - 1)`), or `null` if the stack becomes empty.
+- **Hierarchical LayersPanel Integration**:
+  - Added expandable sublayer hierarchy in `LayersPanel` under `BackgroundRow` with expand/collapse caret.
+  - Supported individual sublayer visibility toggle and click-to-select that focuses the sublayer and opens `FloatingBackgroundPanel`.
+- **Strict Scope**:
+  - Exactly 5 floor primitives (`solid`, `linear-gradient`, `radial-gradient`, `dots`, `grid`). Zero premature Stage 3D features (no Noise, no Waves).
+- **Icon Sizing Consistency**:
+  - Enforced `ICON_SIZES` (`ICON_SIZES.sm`, `ICON_SIZES.md`) across all newly created and updated UI elements per Rule 5.
+
+### 2. Implementation Files
+- `src/types/frame.ts`:
+  - Exported canonical `BLEND_MODE_OPTIONS` array to be shared across Inspector, Floating panel, and types.
+- `src/context/studio-context.tsx`:
+  - Added `selectedSublayerId: string | null`, `setSelectedSublayerId`, and memoized `activeSublayer: GenerativeSublayer | null`.
+  - Implemented auto-selection on `addSublayer(type)`.
+  - Implemented deterministic canonical neighbor selection recovery in `removeSublayer(sublayerId)`.
+  - Exposed these properties in `StudioStoreContext` and provider value.
+- `src/components/layout/sortable-sublayer-row.tsx`:
+  - Created sortable row component with drag handle (`DotsSixVerticalIcon`, `ICON_SIZES.md`), thumbnail preview, sublayer label, visibility toggle (`EyeIcon`/`EyeSlashIcon`), and remove button (`MinusIcon`).
+- `src/components/layout/floating-background-panel.tsx`:
+  - Added Sublayers Stack section with count badge and Add Sublayer popover exposing all 5 floor primitives.
+  - Implemented drag reordering with `@dnd-kit/sortable`, converting visual stack indices (top-to-bottom) to canonical indices (bottom-to-top).
+  - Added Sublayer Opacity slider and Sublayer Blend Mode dropdown for the selected sublayer.
+  - Connected primitive parameter controls for all 5 floor primitives with continuous history skipping during active dragging.
+- `src/components/layout/inspector-panel.tsx`:
+  - Extended Section 0 to render Opacity and Blend Mode for both ImageLayer and GenerativeLayer.
+  - Replaced duplicate local blend options with canonical `BLEND_MODE_OPTIONS`.
+- `src/components/layout/layers-panel.tsx`:
+  - Added expandable sublayer tree to `BackgroundRow` with expand/collapse caret.
+  - Enabled sublayer selection and visibility toggling.
+  - Clicking background or sublayer rows opens `FloatingBackgroundPanel`.
+- `src/components/layout/stage-3c-sublayer-ui.test.tsx`:
+  - Added 13 comprehensive unit tests covering sublayer stack rendering, primitive addition, deterministic selection recovery (top/middle/bottom/empty), parameter editing for all 5 floor primitives, GenerativeLayer vs GenerativeSublayer opacity/blend independence, history undo/redo, and LayersPanel integration.
+- `package.json`:
+  - Configured `--testTimeout 15000` in vitest scripts to ensure reliable execution under parallel runner load.
+
+### 3. Empirical Verification Evidence (Rule 1)
+- `pnpm test`: **PASS (exit code 0, 28 test files passed, 341 tests passed)**.
+  - `src/components/layout/stage-3c-sublayer-ui.test.tsx`: **13 passed (13)**.
+  - `src/components/layout/background-workflow.test.tsx`: **7 passed (7)**.
+  - `src/components/layout/inspector-panel.test.tsx`: **28 passed (28)**.
+  - `src/components/layout/layers-panel.test.tsx`: **9 passed (9)**.
+  - `src/generative/generative.test.tsx`: **28 passed (28)**.
+  - `src/rendering/webgl/webgl-frame-compositor.test.ts`: **29 passed (29)**.
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm build`: **PASS (exit code 0, Vite production bundle built in 5.74s)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, all mechanical approval gates verified)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 613 files scanned, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance violations)**.
+- `pnpm graphify:update`: **PASS (exit code 0, 4,184 nodes, 11,165 edges, 146 communities)**.
+- Real Browser Evidence Artifacts:
+  - Verified and preserved 15 high-resolution screenshots in `docs/evidence/stage-3c/`:
+    1. `01-solid-sublayer.png`: Solid sublayer parameter editing.
+    2. `02-linear-gradient.png`: Linear gradient angle and color editing.
+    3. `03-radial-gradient.png`: Radial gradient colors.
+    4. `04-dots-sublayer.png`: Dots spacing and dot size editing.
+    5. `05-grid-sublayer.png`: Grid spacing and line width editing.
+    6. `06-multiple-sublayers.png`: Multi-sublayer stack configuration.
+    7. `07-reordered-sublayers.png`: Sublayer drag-reordering.
+    8. `08-sublayer-disabled.png`: Sublayer visibility toggling.
+    9. `09-sublayer-opacity.png`: Sublayer opacity attenuation.
+    10. `10-sublayer-blend-overlay.png`: Sublayer blend mode overlay compositing.
+    11. `11-empty-sublayer-stack.png`: Empty sublayer stack transparency.
+    12. `12-image-over-generative.png`: ImageLayer composited over multi-sublayer backdrop.
+    13. `13-stage-2-transforms.png`: Stage 2 transform regression test (position, scale, rotation).
+    14. `14-viewport-pan-zoom.png`: Viewport pan & zoom preservation.
+    15. `15-export-completed.png`: Offscreen GPU export parity.
+
+### 4. Graphify & Headroom Actual-Use
+1. **Graphify**:
+   - Pre-implementation: Queried symbol and architectural dependencies for `FloatingBackgroundPanel`, `StudioStoreContext`, `deriveLegacyBackgroundFromSublayers`, and `InspectorPanel`.
+   - Post-implementation: Executed `pnpm graphify:update` (`graphify . --update --code-only`), re-extracting 14 modified code files and updating the knowledge graph to 4,184 nodes and 11,165 edges across 146 communities.
+2. **Headroom**:
+   - Pre-flight check: Checked and activated Headroom proxy daemon running on `http://127.0.0.1:8787` (`pnpm agent:stats` exit code 0).
+   - Usage: 0 requests proxied directly through Headroom as Antigravity IDE communicates with Google Deepmind model APIs; zero token savings or compression claimed.
+
+---
+
+## Architecture Correction: Stackable Background System Migration
+
+- **Date**: 2026-09-07
+- **Task**: Replace the rejected Generative Sublayer model with the Stackable Background System (`Frame` → `GenerativeLayer` → `backgrounds: BackgroundItem[]`), mirroring the Effects stack interaction model.
+
+### 1. Architectural & Domain Model Decisions
+- **Core Product Decision**: Removed all user-facing "Sublayer", "Generative Sublayer", and "Sublayer Stack" concepts. Backgrounds are independently stackable creative elements matching the Effects stack model (`Background` with `+` popover, sortable stack rows, independent opacity/blend, and parameter editing).
+- **Single Canonical Domain Definition**: Defined canonical `BackgroundItem`, `BackgroundItemType`, and `BACKGROUND_ITEM_TYPES` in `src/types/frame.ts`. `GenerativeLayer` canonically contains `backgrounds: BackgroundItem[]`.
+- **Single Runtime Source of Truth**: Application runtime, state actions, rendering compositor, and export consume `backgrounds: BackgroundItem[]` exclusively.
+- **Hydration Boundary Compatibility**: Normalized legacy `sublayers` and `backgroundConfig` into `backgrounds[]` during project hydration in `src/generative/normalization.ts` and `src/storage/db.ts` without IndexedDB schema churn.
+- **Frame Layer Boundary**: BackgroundItems remain compositing elements within `GenerativeLayer`, not independent frame layers. They receive no layer transforms or separate Frame Layer rows.
+- **LayersPanel & Inspector Boundaries**:
+  - Removed nested sublayer tree from `LayersPanel`. Shows a single locked Background row with item count badge (`data-testid="background-count-badge"`). Clicking selects the layer and opens `FloatingBackgroundPanel`.
+  - Docked `InspectorPanel` Section 0 maintains whole-layer properties (layer opacity, blend mode) with zero duplicate individual background item parameter controls.
+- **Authoritative Surface Preserved**: `FloatingBackgroundPanel` retained as the authoritative editing surface with floating draggable behavior, EffectsIO design tokens, `+` add popover, `SortableBackgroundRow` list, and contextual parameter editing.
+- **Floor Primitives**: Maintained the 5 verified floor primitives (`solid`, `linear-gradient`, `radial-gradient`, `dots`, `grid`). Zero Noise or Waves introduced.
+- **Compositor Working Set Invariant**: WebGL2 frame compositor sequentially accumulates `backgrounds[]` while strictly preserving the verified 5-FBO total working set.
+
+### 2. Implementation Summary
+- `src/types/frame.ts`: Canonical `BackgroundItem` domain interface and `GenerativeLayer.backgrounds`.
+- `src/generative/types.ts`: Re-exported canonical domain types.
+- `src/generative/registry.ts`: Updated `BACKGROUND_ITEM_REGISTRY` with canonical 5 floor primitives.
+- `src/generative/normalization.ts`: Normalization routines converting legacy configurations to canonical `backgrounds[]`.
+- `src/storage/db.ts`: Hydration boundary normalization to `backgrounds[]`.
+- `src/context/studio-context.tsx`:
+  - Canonical state: `activeBackgrounds`, `selectedBackgroundId`, `activeBackgroundItem`.
+  - Canonical actions: `addBackgroundItem`, `removeBackgroundItem`, `reorderBackgroundItems`, `updateBackgroundItem`, `updateBackgroundItemParameters`.
+  - Deterministic selection recovery using canonical bottom-to-top array indices.
+  - Full undo/redo history support for background additions, removals, reordering, and parameter adjustments.
+- `src/rendering/webgl/webgl-frame-compositor.ts`: Sequential multi-background accumulation consuming `backgrounds[]` under the 5-FBO budget.
+- `src/components/layout/sortable-background-row.tsx`: Compact stack row with drag handle, preview thumbnail, name/type, compact opacity indicator (`100%`), visibility toggle (`EyeIcon`), and remove button (`MinusIcon`).
+- `src/components/layout/layers-panel.tsx`: Clean locked background row with count badge and zero nested sublayer tree.
+- `src/components/layout/floating-background-panel.tsx`: Background Stack list, `+` add button with popover, Blending card (independent opacity and blend mode), and primitive parameter controls.
+- `src/components/layout/background-stack.test.tsx`: 11 comprehensive unit tests verifying stack creation, selection, reordering, deletion recovery, independent opacity/blend, parameter editing, undo/redo, terminology purity, and LayersPanel boundary.
+
+### 3. Empirical Verification Evidence (Rule 1)
+- `pnpm test`: **PASS (exit code 0, 28/28 test files passed, 339/339 tests passed)**.
+  - `src/components/layout/background-stack.test.tsx`: **11 passed (11)**.
+  - `src/components/layout/background-workflow.test.tsx`: **7 passed (7)**.
+  - `src/components/layout/inspector-panel.test.tsx`: **28 passed (28)**.
+  - `src/components/layout/layers-panel.test.tsx`: **9 passed (9)**.
+  - `src/generative/generative.test.tsx`: **28 passed (28)**.
+  - `src/rendering/webgl/webgl-frame-compositor.test.ts`: **29 passed (29)**.
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm build`: **PASS (exit code 0, Vite production bundle built in 2.73s)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, all mechanical approval gates verified)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 613 files scanned against 16 deny-list terms, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance references found in tracked files)**.
+- `pnpm graphify:update`: **PASS (exit code 0, AST extraction on 18 modified code files, 4,200 nodes, 11,205 edges, 147 communities)**.
+- Real Browser CDP Verification (`scripts/verify-background-stack-cdp.mjs`): **PASS (exit code 0, 30/30 criteria passed)**.
+  - Verified and preserved 20 high-resolution screenshots in `docs/evidence/background-stack/`:
+    1. `01-panel-opened-clean.png`: FloatingBackgroundPanel opened cleanly with '+' control.
+    2. `02-add-solid-background.png`: Solid background added and auto-selected.
+    3. `03-add-linear-gradient.png`: Linear gradient background added.
+    4. `04-add-radial-gradient.png`: Radial gradient background added.
+    5. `05-add-dots-background.png`: Dots background added.
+    6. `06-add-grid-background.png`: Grid background added (all 5 floor primitives).
+    7. `07-multi-background-stack.png`: Multi-background stack showing independent rows.
+    8. `08-independent-opacity.png`: Independent opacity adjustment (70%).
+    9. `09-independent-blend-mode.png`: Independent blend mode set to 'overlay'.
+    10. `10-toggle-visibility.png`: Visibility toggle removing and restoring canvas contribution.
+    11. `11-reorder-composition.png`: Stack reorder verifying visual canvas composition update.
+    12. `12-parameter-editing.png`: Selected item parameter editing across primitives.
+    13. `13-delete-selection-recovery.png`: Top/middle/bottom deletion with deterministic neighbor selection.
+    14. `14-empty-background-stack.png`: Empty stack state handled cleanly with null selection.
+    15. `15-undo-redo.png`: History undo/redo for stack additions and removals.
+    16. `16-layers-panel-and-inspector-boundary.png`: LayersPanel count badge and clean Inspector boundary.
+    17. `17-image-over-background-stack.png`: ImageLayer composited over Background Stack.
+    18. `18-stage-2-transforms.png`: Stage 2 transform invariance verified (rotation, scale, position).
+    19. `19-viewport-pan-zoom.png`: Viewport pan & zoom stability without recomposition.
+    20. `20-export-completed.png`: GPU frame export parity with multi-background stack.
+
+### 4. Graphify & Headroom Actual-Use
+1. **Graphify**:
+   - Pre-implementation: Queried architecture for `FloatingBackgroundPanel`, `SortableBackgroundRow`, `studio-context`, and `webgl-frame-compositor`.
+   - Post-implementation: Executed `pnpm graphify:update` (`graphify . --update --code-only`), re-extracting modified code files and updating the graph to 4,200 nodes and 11,205 edges across 147 communities.
+2. **Headroom**:
+   - Pre-flight check: Checked Headroom proxy daemon on port 8787 (`pnpm agent:stats` exit code 0).
+   - Usage: 0 requests proxied directly through Headroom as Antigravity IDE communicates directly with Google Deepmind model APIs; zero token savings or compression claimed.
+
+---
+
+## Background Workflow Correction (Authoritative Interaction Model)
+
+- **Date**: 2026-09-07
+- **Task**: Implement the authoritative 31-point Background Layer + Background Stack interaction model with strict context boundary separation between ImageLayer and Background Layer.
+
+### 1. Authoritative Architecture & Mental Model Delivered
+- **Core Model**: Special first-class Background Layer inside Frame at index 0 (behind ImageLayers). Contents are `BackgroundItem`s.
+- **Image Context Boundary (Hard UX Rule)**:
+  - When an `ImageLayer` is selected: Right Inspector shows ONLY properties belonging to that `ImageLayer` (Layer Properties, Opacity, Blend Mode, Fit, Transform, Effects `+`, Looks `+`).
+  - Strict absence: **NO Background section**, **NO Add Background control**, **NO Background parameters**.
+- **Background Layer Context**:
+  - When Background Layer is selected: Right Inspector becomes the place where the Background Stack is managed.
+  - Section header permanently displays `Background +` (`Add background`). It never changes to `−`.
+  - Body displays sortable `BackgroundItem` rows (swatch preview, canonical name, compact opacity indicator, independent visibility toggle `👁`, and dedicated remove control `−`).
+  - Empty background state is valid and displays "No backgrounds".
+- **FloatingBackgroundPanel Responsibility**:
+  - Dedicated strictly to editing parameters, opacity slider, and blend mode of the active `BackgroundItem`.
+  - Does NOT contain the primary Background stack management UI or the Add Background popover.
+- **Background Layer Lifecycle & LayersPanel**:
+  - LayersPanel displays Background as a special base frame layer with item count badge (`locked-background-row`).
+  - Layer is deletable via `remove-background-layer` button (`TrashIcon`). When deleted, canvas has no Background Layer and is not auto-recreated.
+  - Re-creatable via `Add Layer` popover in `LayersPanel` (`add-background-layer-button`) with an empty stack (`backgrounds: []`).
+
+### 2. Code Changes
+- `src/components/layout/inspector-panel.tsx`:
+  - Gated Section 3 Background Stack to render ONLY when `activeLayer?.type === "generative"`.
+  - Added permanent `+` button in header (`data-testid="add-background-button"`), opening Add Background popover with floor primitives (`Solid`, `Linear Gradient`, `Radial Gradient`, `Dots`, `Grid`).
+  - Integrated `SortableBackgroundRow` list with drag reordering, inline opacity, visibility toggle, and remove button per item.
+  - Added empty state displaying "No backgrounds".
+  - Added `data-testid="inspector-panel"` and `data-testid="background-section-header"`.
+- `src/components/layout/floating-background-panel.tsx`:
+  - Scoped to parameter editing for `activeBackgroundItem`.
+  - Removed duplicate stack manager and quick actions.
+- `src/components/layout/sortable-background-row.tsx`:
+  - Canonical labels (`Solid`, `Linear Gradient`, `Radial Gradient`, `Dots`, `Grid`), testids (`background-row-${id}`, `visibility-toggle-${id}`, `remove-background-${id}`).
+- `src/components/layout/layers-panel.tsx`:
+  - Added `remove-background-layer` action with `TrashIcon`.
+  - Wired `addBackgroundLayer()` into `Add Layer` popover when background layer is absent.
+  - Updated image layers array slicing when base background is absent.
+- `src/context/studio-context.tsx`:
+  - Added `addBackgroundLayer()` creating empty background layer at index 0.
+  - Updated `removeLayer()` to support removing background layer, closing floating panel, and resetting selection.
+  - Enforced index 0 invariant in `reorderLayers()` only when background layer exists.
+- `src/components/layout/background-workflow.test.tsx`, `inspector-panel.test.tsx`, `layers-panel.test.tsx`, `background-stack.test.tsx`:
+  - Comprehensive unit test suites updated and verified.
+
+### 3. Empirical Verification Evidence (Rule 1)
+- `pnpm test`: **PASS (exit code 0, 28/28 test files passed, 340/340 tests passed)**.
+  - `src/components/layout/background-workflow.test.tsx`: **7 passed (7)**.
+  - `src/components/layout/background-stack.test.tsx`: **11 passed (11)**.
+  - `src/components/layout/inspector-panel.test.tsx`: **29 passed (29)**.
+  - `src/components/layout/layers-panel.test.tsx`: **11 passed (11)**.
+  - `src/generative/generative.test.tsx`: **28 passed (28)**.
+  - `src/rendering/webgl/webgl-frame-compositor.test.ts`: **29 passed (29)**.
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm build`: **PASS (exit code 0, Vite production bundle built in 3.17s)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, all mechanical approval gates verified)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 613 files scanned against 16 deny-list terms, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance references found in tracked files)**.
+- `pnpm graphify:update`: **PASS (exit code 0, 4,228 nodes, 11,248 edges, 144 communities)**.
+- Real Chrome CDP Verification (`scripts/verify-background-workflow-cdp.mjs`): **PASS (exit code 0, 37/37 criteria passed across Sequences A through H)**:
+  - **Sequence A: Image context (Steps 1–3)**:
+    - Step 1: Add/select ImageLayer (PASS)
+    - Step 2: Confirm right Inspector has no Background section (PASS)
+    - Step 3: Confirm no Add Background action in Image context (PASS)
+  - **Sequence B: Background context (Steps 4–7)**:
+    - Step 4: Select Background Layer (PASS)
+    - Step 5: Confirm Background section appears in Inspector (PASS)
+    - Step 6: Confirm header has '+' button (PASS)
+    - Step 7: Confirm header permanently remains '+' after adding backgrounds (PASS)
+  - **Sequence C: Stack (Steps 8–13)**:
+    - Steps 8–12: Add Solid, Linear Gradient, Radial Gradient, Dots, Grid (PASS)
+    - Step 13: Confirm all 5 exist independently in Inspector stack (PASS)
+  - **Sequence D: Item controls (Steps 14–20)**:
+    - Step 14–15: Independent opacity adjustment (Grid=45%, others unchanged at 100%) (PASS)
+    - Step 16–17: Independent blend mode (Dots=overlay, others unchanged) (PASS)
+    - Step 18: Visibility toggle (Radial disabled/enabled) (PASS)
+    - Step 19–20: Remove one item (only Radial removed, stack 5->4) (PASS)
+  - **Sequence E: Reordering (Steps 21–22)**:
+    - Step 21: Reorder multiple items (Grid moved to index 0) (PASS)
+    - Step 22: Canvas composition reflects reorder (PASS)
+  - **Sequence F: Floating editor (Steps 23–27)**:
+    - Step 23: Click BackgroundItem (Grid selected) (PASS)
+    - Step 24: FloatingBackgroundPanel opens (PASS)
+    - Step 25: Edit parameters (lineWidth=4, spacing=32) (PASS)
+    - Step 26: Canvas updates with parameters (PASS)
+    - Step 27: Panel edits selected item, does NOT manage stack (PASS)
+  - **Sequence G: Background layer lifecycle (Steps 28–33)**:
+    - Step 28: Delete Background Layer (PASS)
+    - Step 29: Disappears from Layers panel (PASS)
+    - Step 30: No Background section when Image is selected (PASS)
+    - Step 31: Recreate Background via Layer creation flow (PASS)
+    - Step 32: Empty Background state valid ('No backgrounds') (PASS)
+    - Step 33: Add BackgroundItem again to recreated layer (PASS)
+  - **Sequence H: Regression (Steps 34–37)**:
+    - Step 34: ImageLayer transforms work (PASS)
+    - Step 35: Effects work on ImageLayer (Halftone) (PASS)
+    - Step 36: Viewport pan/zoom works (PASS)
+    - Step 37: GPU frame export works (PASS)
+
+### 4. Graphify & Headroom Actual-Use
+1. **Graphify**:
+   - Pre-implementation: Queried architecture for `inspector-panel`, `layers-panel`, `floating-background-panel`, and `studio-context`.
+   - Post-implementation: Executed `pnpm graphify:update` (`graphify . --update --code-only`), re-extracting modified code files and updating graph to 4,228 nodes, 11,248 edges across 144 communities.
+2. **Headroom**:
+   - Pre-flight check: Checked Headroom proxy daemon on port 8787 (`pnpm agent:stats` exit code 0).
+   - Usage: 0 requests proxied directly through Headroom as Antigravity IDE communicates directly with Google Deepmind model APIs; zero token savings or compression claimed.
+
+
+

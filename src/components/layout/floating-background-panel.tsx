@@ -28,15 +28,19 @@ import {
   SelectContent,
   SelectItem,
   SelectGroup,
+  StaticSelect,
+  ICON_SIZES,
 } from "../ui";
 import { useStudioStore } from "../../context/studio-context";
 import type { BackgroundType, BackgroundState } from "../../types/look";
+import { BLEND_MODE_OPTIONS, type BlendMode, type BackgroundItemType } from "../../types/frame";
 import type { GradientStop, GradientType } from "../ui/controls/control-types";
 import {
   gradientTypeOptions,
   parseStopPosition,
 } from "../ui/controls/gradient/gradient-control-utils";
 import { GradientStopsTrack } from "../ui/controls/gradient/gradient-stops-track";
+import { BACKGROUND_ITEM_REGISTRY } from "../../generative/registry";
 
 function hexToRgba(hex: string, alpha = 1): string {
   const cleanHex = (hex || "#000000").replace(/^#/, "");
@@ -57,13 +61,17 @@ function hexToRgba(hex: string, alpha = 1): string {
 
 export function FloatingBackgroundPanel(): React.JSX.Element | null {
   const {
-    activeAsset,
-    activeImageId,
-    activeBackground,
-    hasActiveBackground,
+    activeFrame,
     isBackgroundPanelOpen,
     setIsBackgroundPanelOpen,
+    activeBackground,
     updateActiveBackground,
+    activeBackgrounds,
+    selectedBackgroundId,
+    setSelectedBackgroundId,
+    activeBackgroundItem,
+    updateBackgroundItem,
+    updateBackgroundItemParameters,
   } = useStudioStore();
 
   const [position, setPosition] = React.useState<{ x: number; y: number } | null>(null);
@@ -140,7 +148,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     return `linear-gradient(90deg, ${stopStrs.join(", ")})`;
   }, [stops]);
 
-  if (!activeAsset || !activeImageId || !hasActiveBackground || !isBackgroundPanelOpen) {
+  if (!activeFrame || !isBackgroundPanelOpen) {
     return null;
   }
 
@@ -201,53 +209,6 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     }
   };
 
-  // Switch background type in-place
-  const handleSelectType = (newType: BackgroundType) => {
-    if (newType === "transparent") {
-      updateActiveBackground({
-        type: "transparent",
-        padding: activeBackground.padding ?? 0,
-      });
-    } else if (newType === "solid") {
-      updateActiveBackground({
-        type: "solid",
-        color: activeBackground.color && activeBackground.color !== "#000000" ? activeBackground.color : "#E20000",
-        opacity: activeBackground.opacity ?? 100,
-        padding: activeBackground.padding ?? 0,
-      });
-    } else if (newType === "linear-gradient") {
-      updateActiveBackground({
-        type: "linear-gradient",
-        gradientType: activeBackground.gradientType || "linear",
-        color: activeBackground.color || "#000000",
-        gradientEndColor: activeBackground.gradientEndColor || "#E20000",
-        gradientAngle: activeBackground.gradientAngle ?? 90,
-        gradientStops: stops,
-        padding: activeBackground.padding ?? 0,
-      });
-    } else if (newType === "dots") {
-      updateActiveBackground({
-        type: "dots",
-        color: activeBackground.color || "#A1A1AA",
-        opacity: activeBackground.opacity ?? 100,
-        patternBackgroundColor: activeBackground.patternBackgroundColor ?? "#000000",
-        patternBackgroundOpacity: activeBackground.patternBackgroundOpacity ?? 100,
-        patternSpacing: activeBackground.patternSpacing ?? 24,
-        padding: activeBackground.padding ?? 32,
-      });
-    } else if (newType === "grid") {
-      updateActiveBackground({
-        type: "grid",
-        color: activeBackground.color || "#A1A1AA",
-        opacity: activeBackground.opacity ?? 100,
-        patternBackgroundColor: activeBackground.patternBackgroundColor ?? "#000000",
-        patternBackgroundOpacity: activeBackground.patternBackgroundOpacity ?? 100,
-        patternSpacing: activeBackground.patternSpacing ?? 32,
-        padding: activeBackground.padding ?? 32,
-      });
-    }
-  };
-
   const handleReverseGradient = () => {
     const reversed = stops.map((stop) => {
       const posVal = parseStopPosition(stop.position);
@@ -256,46 +217,63 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     });
     reversed.sort((a, b) => parseStopPosition(a.position) - parseStopPosition(b.position));
 
+    const newStart = reversed[0]?.color ?? activeBackground.gradientEndColor ?? "#E20000";
+    const newEnd = reversed[reversed.length - 1]?.color ?? activeBackground.color ?? "#000000";
+
     updateActiveBackground({
-      color: reversed[0]?.color ?? activeBackground.gradientEndColor ?? "#E20000",
-      gradientEndColor: reversed[reversed.length - 1]?.color ?? activeBackground.color ?? "#000000",
+      color: newStart,
+      gradientEndColor: newEnd,
       gradientStops: reversed,
     });
+
+    if (activeBackgroundItem) {
+      updateBackgroundItemParameters(activeBackgroundItem.id, {
+        startColor: newStart,
+        endColor: newEnd,
+      });
+    }
   };
 
   const handleResetGradient = () => {
-    const defaultResetStops: GradientStop[] = [
+    const resetStops: GradientStop[] = [
       { color: "#000000", position: "0%", opacity: 100 },
       { color: "#E20000", position: "100%", opacity: 100 },
     ];
     updateActiveBackground({
-      type: "linear-gradient",
-      gradientType: "linear",
-      gradientAngle: 90,
       color: "#000000",
       gradientEndColor: "#E20000",
-      gradientStops: defaultResetStops,
+      gradientStops: resetStops,
+      gradientAngle: 90,
     });
+
+    if (activeBackgroundItem) {
+      updateBackgroundItemParameters(activeBackgroundItem.id, {
+        startColor: "#000000",
+        endColor: "#E20000",
+        angle: 90,
+      });
+    }
   };
 
-  const handleGradientTypeChange = (newGradType: GradientType) => {
-    const newBgType: BackgroundType = newGradType === "radial" ? "radial-gradient" : "linear-gradient";
+  const handleGradientTypeChange = (newType: GradientType) => {
     updateActiveBackground({
-      type: newBgType,
-      gradientType: newGradType,
+      gradientType: newType,
+      type: newType === "radial" ? "radial-gradient" : "linear-gradient",
     });
+
+    if (activeBackgroundItem) {
+      const bgType: BackgroundItemType = newType === "radial" ? "radial-gradient" : "linear-gradient";
+      updateBackgroundItem(activeBackgroundItem.id, { type: bgType });
+    }
   };
 
   const handleAddStop = () => {
     if (stops.length >= 8) return;
-    const sorted = [...stops].sort(
-      (a, b) => parseStopPosition(a.position) - parseStopPosition(b.position)
-    );
     let maxGap = 0;
     let insertPos = 50;
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const pos1 = Math.round(parseStopPosition(sorted[i].position) * 100);
-      const pos2 = Math.round(parseStopPosition(sorted[i + 1].position) * 100);
+    for (let i = 0; i < stops.length - 1; i++) {
+      const pos1 = Math.round(parseStopPosition(stops[i].position) * 100);
+      const pos2 = Math.round(parseStopPosition(stops[i + 1].position) * 100);
       const gap = pos2 - pos1;
       if (gap > maxGap) {
         maxGap = gap;
@@ -318,11 +296,19 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
   const handleRemoveStop = (index: number) => {
     if (stops.length <= 2) return;
     const nextStops = stops.filter((_, idx) => idx !== index);
+    const newStart = nextStops[0].color;
+    const newEnd = nextStops[nextStops.length - 1].color;
     updateActiveBackground({
-      color: nextStops[0].color,
-      gradientEndColor: nextStops[nextStops.length - 1].color,
+      color: newStart,
+      gradientEndColor: newEnd,
       gradientStops: nextStops,
     });
+    if (activeBackgroundItem) {
+      updateBackgroundItemParameters(activeBackgroundItem.id, {
+        startColor: newStart,
+        endColor: newEnd,
+      });
+    }
   };
 
   const handleUpdateStopColor = (index: number, newColor: string) => {
@@ -331,6 +317,14 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     if (index === 0) updates.color = newColor;
     if (index === stops.length - 1) updates.gradientEndColor = newColor;
     updateActiveBackground(updates);
+
+    if (activeBackgroundItem) {
+      if (index === 0) {
+        updateBackgroundItemParameters(activeBackgroundItem.id, { startColor: newColor });
+      } else if (index === stops.length - 1) {
+        updateBackgroundItemParameters(activeBackgroundItem.id, { endColor: newColor });
+      }
+    }
   };
 
   const handleUpdateStopPosition = (index: number, newPosition: string) => {
@@ -396,20 +390,22 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     handleUpdateStopPosition(nearestIdx, `${clickedPercent}%`);
   };
 
-  // Determine which of the 5 types is active
-  const isAlphaActive = activeBackground.type === "transparent";
-  const isSolidActive = activeBackground.type === "solid";
-  const isGradientActive =
-    activeBackground.type === "linear-gradient" || activeBackground.type === "radial-gradient";
-  const isDotsActive = activeBackground.type === "dots";
-  const isGridActive = activeBackground.type === "grid";
+  const effectiveType = activeBackgroundItem?.type;
+  const isSolidActive = effectiveType === "solid";
+  const isGradientActive = effectiveType === "linear-gradient" || effectiveType === "radial-gradient";
+  const isDotsActive = effectiveType === "dots";
+  const isGridActive = effectiveType === "grid";
+
+  const itemParams = activeBackgroundItem?.parameters ?? {};
+  const currentDef = activeBackgroundItem ? BACKGROUND_ITEM_REGISTRY[activeBackgroundItem.type] : undefined;
 
   return (
     <div
       ref={panelRef}
       role="dialog"
-      aria-label="Add Background"
+      aria-label="Background Parameters"
       data-floating-surface=""
+      data-testid="floating-background-panel"
       className="app-no-drag absolute z-30 flex flex-col w-[304px] rounded-[16px] border border-[color:var(--border)] bg-[color:var(--sidebar)]/95 backdrop-blur-2xl shadow-xl select-none overflow-hidden"
       style={{
         left: `${currentX}px`,
@@ -423,158 +419,85 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
         onPointerUp={handleHeaderPointerUp}
         className="flex items-center justify-between px-3.5 h-10 border-b border-[color:var(--border)] cursor-grab active:cursor-grabbing shrink-0"
       >
-        <span className="text-xs font-semibold text-[color:var(--foreground)] tracking-tight">
-          Add Background
-        </span>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={handleClose}
-          title="Close parameters"
-          aria-label="Close parameters"
-          className="size-6 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] cursor-pointer [&_svg]:!size-4"
-        >
-          <XIcon size={16} />
-        </Button>
-      </div>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs font-semibold text-[color:var(--foreground)] tracking-tight truncate">
+            {activeBackgroundItem?.name || currentDef?.name || "Background Parameters"}
+          </span>
+        </div>
 
-      {/* 5 Background Type Toolbar (Figma 113:4657) */}
-      <div className="flex items-center justify-between px-3.5 py-2 border-b border-[color:var(--border)] shrink-0">
-        {/* 1. Alpha */}
-        <Tooltip>
-          <TooltipTrigger
-            type="button"
-            aria-label="Alpha"
-            onClick={() => handleSelectType("transparent")}
-            className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
-              isAlphaActive
-                ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
-            }`}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={handleClose}
+            title="Close parameters"
+            aria-label="Close parameters"
+            className="size-6 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] cursor-pointer [&_svg]:!size-4"
           >
-            <CircleHalfIcon size={18} />
-          </TooltipTrigger>
-          <TooltipContent side="top">Alpha</TooltipContent>
-        </Tooltip>
-
-        {/* 2. Solid */}
-        <Tooltip>
-          <TooltipTrigger
-            type="button"
-            aria-label="Solid"
-            onClick={() => handleSelectType("solid")}
-            className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
-              isSolidActive
-                ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
-            }`}
-          >
-            <CircleIcon size={18} />
-          </TooltipTrigger>
-          <TooltipContent side="top">Solid</TooltipContent>
-        </Tooltip>
-
-        {/* 3. Gradient */}
-        <Tooltip>
-          <TooltipTrigger
-            type="button"
-            aria-label="Gradient"
-            onClick={() => handleSelectType("linear-gradient")}
-            className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
-              isGradientActive
-                ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
-            }`}
-          >
-            <GradientIcon size={18} />
-          </TooltipTrigger>
-          <TooltipContent side="top">Gradient</TooltipContent>
-        </Tooltip>
-
-        {/* 4. Dot Pattern */}
-        <Tooltip>
-          <TooltipTrigger
-            type="button"
-            aria-label="Dot Pattern"
-            onClick={() => handleSelectType("dots")}
-            className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
-              isDotsActive
-                ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
-            }`}
-          >
-            <DotsNineIcon size={18} />
-          </TooltipTrigger>
-          <TooltipContent side="top">Dot Pattern</TooltipContent>
-        </Tooltip>
-
-        {/* 5. Grid Pattern */}
-        <Tooltip>
-          <TooltipTrigger
-            type="button"
-            aria-label="Grid Pattern"
-            onClick={() => handleSelectType("grid")}
-            className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
-              isGridActive
-                ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
-            }`}
-          >
-            <GridFourIcon size={18} />
-          </TooltipTrigger>
-          <TooltipContent side="top">Grid Pattern</TooltipContent>
-        </Tooltip>
+            <XIcon size={16} />
+          </Button>
+        </div>
       </div>
 
       {/* Contextual Parameter Controls List */}
       <ScrollFade className="flex-1 overflow-y-auto px-3.5 py-3" containerClassName="flex-1 min-h-0">
         <div className="flex flex-col gap-3.5">
-          {/* Alpha Parameters */}
-          {isAlphaActive && (
-            <div className="flex flex-col gap-3">
-              <div className="py-1">
-                <span className="text-xs text-[color:var(--muted-foreground)] leading-relaxed">
-                  Transparent alpha background active. Canvas background is preserved.
-                </span>
-              </div>
-
-              {/* Full-width Border Divider spanning to the edges */}
-              <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
-
-              {/* Sliders Section: Padding & Shadow */}
-              <div className="flex flex-col gap-3">
-                <SliderControl
-                  name="Padding"
-                  value={activeBackground.padding ?? 0}
-                  min={0}
-                  max={120}
-                  step={1}
-                  unit="px"
-                  onValueChange={(val) => updateActiveBackground({ padding: val })}
-                />
-                <SliderControl
-                  name="Shadow"
-                  value={Math.round((activeBackground.shadowOpacity ?? 0.4) * 100)}
-                  min={0}
-                  max={100}
-                  step={1}
-                  unit="%"
-                  onValueChange={(val) => updateActiveBackground({ shadowOpacity: val / 100 })}
-                />
-              </div>
+          {!activeBackgroundItem ? (
+            <div className="py-8 px-4 text-center text-xs text-[color:var(--muted-foreground)]">
+              No background item selected.
             </div>
-          )}
+          ) : (
+            <>
+              {/* Background Blending & Opacity Section */}
+              <div className="flex flex-col gap-2.5 p-2 rounded-lg bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)] border border-[color:color-mix(in_oklab,var(--border)_50%,transparent)]">
+                <div className="flex items-center justify-between">
+                  <span className="text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
+                    Blending
+                  </span>
+                  <span className="text-3xs text-[color:var(--muted-foreground)] truncate max-w-[130px]">
+                    {activeBackgroundItem.name || currentDef?.name || activeBackgroundItem.type}
+                  </span>
+                </div>
+                <div data-testid="background-item-opacity-slider">
+                  <SliderControl
+                    name="Opacity"
+                    value={Math.round((activeBackgroundItem.opacity ?? 1) * 100)}
+                    min={0}
+                    max={100}
+                    step={1}
+                    unit="%"
+                    onValueChange={(val) =>
+                      updateBackgroundItem(activeBackgroundItem.id, { opacity: val / 100 })
+                    }
+                  />
+                </div>
+                <div className="flex flex-col gap-1" data-testid="background-item-blend-mode-select">
+                  <span className="text-2xs text-[color:var(--muted-foreground)]">Blend Mode</span>
+                  <StaticSelect
+                    size="sm"
+                    value={activeBackgroundItem.blendMode || "normal"}
+                    options={BLEND_MODE_OPTIONS}
+                    onValueChange={(val) =>
+                      updateBackgroundItem(activeBackgroundItem.id, { blendMode: val as BlendMode })
+                    }
+                  />
+                </div>
+              </div>
 
           {/* Solid Parameters */}
           {isSolidActive && (
             <div className="flex flex-col gap-3">
-              {/* Color & Opacity Row */}
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <ColorValueControl
-                    color={activeBackground.color || "#E20000"}
+                    color={(itemParams.color as string) || activeBackground.color || "#E20000"}
                     label="Color"
-                    onColorChange={(val) => updateActiveBackground({ color: val })}
+                    onColorChange={(val) => {
+                      if (activeBackgroundItem) {
+                        updateBackgroundItemParameters(activeBackgroundItem.id, { color: val });
+                      }
+                      updateActiveBackground({ color: val });
+                    }}
                   />
                 </div>
                 <ColorOpacityInput
@@ -585,10 +508,8 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 />
               </div>
 
-              {/* Full-width Border Divider spanning to the edges */}
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
 
-              {/* Sliders Section: Padding & Shadow */}
               <div className="flex flex-col gap-3">
                 <SliderControl
                   name="Padding"
@@ -615,7 +536,6 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
           {/* Gradient Parameters (Figma 113:4774) */}
           {isGradientActive && (
             <div className="flex flex-col gap-3">
-              {/* Type Select & Action Icons Row */}
               <div className="flex items-center justify-between gap-2">
                 <div className="w-32">
                   <Select
@@ -669,7 +589,23 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 </div>
               </div>
 
-              {/* Canonical Gradient Stops Track */}
+              {effectiveType === "linear-gradient" && (
+                <SliderControl
+                  name="Angle"
+                  value={typeof itemParams.angle === "number" ? itemParams.angle : (activeBackground.gradientAngle ?? 90)}
+                  min={0}
+                  max={360}
+                  step={1}
+                  unit="°"
+                  onValueChange={(val) => {
+                    if (activeBackgroundItem) {
+                      updateBackgroundItemParameters(activeBackgroundItem.id, { angle: val }, { skipHistory: true });
+                    }
+                    updateActiveBackground({ gradientAngle: val });
+                  }}
+                />
+              )}
+
               <GradientStopsTrack
                 gradient={gradientCssString}
                 stops={stops.map((s, idx) => ({ ...s, originalIndex: idx }))}
@@ -688,10 +624,8 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 onRemoveStopByKey={(idx) => handleRemoveStop(idx)}
               />
 
-              {/* Full-width Border Divider spanning to the edges */}
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
 
-              {/* Steps Section */}
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-[color:var(--foreground)]">Steps</span>
@@ -709,7 +643,6 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   </Tooltip>
                 </div>
 
-                {/* Steps List */}
                 <div className="flex flex-col gap-2">
                   {stops.map((stop, idx) => (
                     <div key={idx} className="flex items-center gap-2">
@@ -748,10 +681,8 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 </div>
               </div>
 
-              {/* Full-width Border Divider below Steps Section */}
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
 
-              {/* Sliders Section: Padding & Shadow */}
               <div className="flex flex-col gap-3">
                 <SliderControl
                   name="Padding"
@@ -778,15 +709,19 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
           {/* Dot Pattern Parameters */}
           {isDotsActive && (
             <div className="flex flex-col gap-3">
-              {/* Pattern Color & Opacity Row */}
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-medium text-[color:var(--muted-foreground)] leading-none">Pattern</span>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <ColorValueControl
-                      color={activeBackground.color || "#A1A1AA"}
+                      color={(itemParams.dotColor as string) || activeBackground.color || "#A1A1AA"}
                       label="Pattern Color"
-                      onColorChange={(val) => updateActiveBackground({ color: val })}
+                      onColorChange={(val) => {
+                        if (activeBackgroundItem) {
+                          updateBackgroundItemParameters(activeBackgroundItem.id, { dotColor: val });
+                        }
+                        updateActiveBackground({ color: val });
+                      }}
                     />
                   </div>
                   <ColorOpacityInput
@@ -798,15 +733,19 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 </div>
               </div>
 
-              {/* Background Color & Opacity Row */}
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-medium text-[color:var(--muted-foreground)] leading-none">Background</span>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <ColorValueControl
-                      color={activeBackground.patternBackgroundColor || "#000000"}
+                      color={(itemParams.backgroundColor as string) || activeBackground.patternBackgroundColor || "#000000"}
                       label="Background Color"
-                      onColorChange={(val) => updateActiveBackground({ patternBackgroundColor: val })}
+                      onColorChange={(val) => {
+                        if (activeBackgroundItem) {
+                          updateBackgroundItemParameters(activeBackgroundItem.id, { backgroundColor: val });
+                        }
+                        updateActiveBackground({ patternBackgroundColor: val });
+                      }}
                     />
                   </div>
                   <ColorOpacityInput
@@ -818,19 +757,36 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 </div>
               </div>
 
-              {/* Full-width Border Divider spanning to the edges */}
+              <SliderControl
+                name="Dot Size"
+                value={typeof itemParams.dotSize === "number" ? itemParams.dotSize : 2}
+                min={1}
+                max={16}
+                step={1}
+                unit="px"
+                onValueChange={(val) => {
+                  if (activeBackgroundItem) {
+                    updateBackgroundItemParameters(activeBackgroundItem.id, { dotSize: val }, { skipHistory: true });
+                  }
+                }}
+              />
+
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
 
-              {/* Sliders Section: Dot Spacing, Padding & Shadow */}
               <div className="flex flex-col gap-3">
                 <SliderControl
                   name="Dot Spacing"
-                  value={activeBackground.patternSpacing ?? 24}
+                  value={typeof itemParams.spacing === "number" ? itemParams.spacing : (activeBackground.patternSpacing ?? 24)}
                   min={8}
                   max={64}
                   step={2}
                   unit="px"
-                  onValueChange={(val) => updateActiveBackground({ patternSpacing: val })}
+                  onValueChange={(val) => {
+                    if (activeBackgroundItem) {
+                      updateBackgroundItemParameters(activeBackgroundItem.id, { spacing: val }, { skipHistory: true });
+                    }
+                    updateActiveBackground({ patternSpacing: val });
+                  }}
                 />
                 <SliderControl
                   name="Padding"
@@ -857,15 +813,19 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
           {/* Grid Pattern Parameters */}
           {isGridActive && (
             <div className="flex flex-col gap-3">
-              {/* Grid Color & Opacity Row */}
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-medium text-[color:var(--muted-foreground)] leading-none">Pattern</span>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <ColorValueControl
-                      color={activeBackground.color || "#A1A1AA"}
+                      color={(itemParams.lineColor as string) || activeBackground.color || "#A1A1AA"}
                       label="Grid Color"
-                      onColorChange={(val) => updateActiveBackground({ color: val })}
+                      onColorChange={(val) => {
+                        if (activeBackgroundItem) {
+                          updateBackgroundItemParameters(activeBackgroundItem.id, { lineColor: val });
+                        }
+                        updateActiveBackground({ color: val });
+                      }}
                     />
                   </div>
                   <ColorOpacityInput
@@ -877,15 +837,19 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 </div>
               </div>
 
-              {/* Background Color & Opacity Row */}
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-medium text-[color:var(--muted-foreground)] leading-none">Background</span>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <ColorValueControl
-                      color={activeBackground.patternBackgroundColor || "#000000"}
+                      color={(itemParams.backgroundColor as string) || activeBackground.patternBackgroundColor || "#000000"}
                       label="Background Color"
-                      onColorChange={(val) => updateActiveBackground({ patternBackgroundColor: val })}
+                      onColorChange={(val) => {
+                        if (activeBackgroundItem) {
+                          updateBackgroundItemParameters(activeBackgroundItem.id, { backgroundColor: val });
+                        }
+                        updateActiveBackground({ patternBackgroundColor: val });
+                      }}
                     />
                   </div>
                   <ColorOpacityInput
@@ -897,19 +861,36 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 </div>
               </div>
 
-              {/* Full-width Border Divider spanning to the edges */}
+              <SliderControl
+                name="Line Width"
+                value={typeof itemParams.lineWidth === "number" ? itemParams.lineWidth : 1}
+                min={1}
+                max={8}
+                step={1}
+                unit="px"
+                onValueChange={(val) => {
+                  if (activeBackgroundItem) {
+                    updateBackgroundItemParameters(activeBackgroundItem.id, { lineWidth: val }, { skipHistory: true });
+                  }
+                }}
+              />
+
               <div className="-mx-3.5 border-b border-[color:var(--border)] my-1" />
 
-              {/* Sliders Section: Grid Spacing, Padding & Shadow */}
               <div className="flex flex-col gap-3">
                 <SliderControl
                   name="Grid Spacing"
-                  value={activeBackground.patternSpacing ?? 32}
+                  value={typeof itemParams.spacing === "number" ? itemParams.spacing : (activeBackground.patternSpacing ?? 32)}
                   min={8}
                   max={64}
                   step={2}
                   unit="px"
-                  onValueChange={(val) => updateActiveBackground({ patternSpacing: val })}
+                  onValueChange={(val) => {
+                    if (activeBackgroundItem) {
+                      updateBackgroundItemParameters(activeBackgroundItem.id, { spacing: val }, { skipHistory: true });
+                    }
+                    updateActiveBackground({ patternSpacing: val });
+                  }}
                 />
                 <SliderControl
                   name="Padding"
@@ -931,6 +912,8 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 />
               </div>
             </div>
+          )}
+            </>
           )}
         </div>
       </ScrollFade>

@@ -53,23 +53,14 @@ import { LooksBrowser } from "../looks/looks-browser";
 import { ExportModal } from "../export/export-modal";
 import type { EffectInstance } from "../../types/asset";
 import type { BackgroundType } from "../../types/look";
-import type { BlendMode, ImageLayer, GenerativeLayer } from "../../types/frame";
-import { DEFAULT_LAYER_TRANSFORM } from "../../types/frame";
-
-const BLEND_MODE_OPTIONS = [
-  { value: "normal", label: "Normal" },
-  { value: "multiply", label: "Multiply" },
-  { value: "screen", label: "Screen" },
-  { value: "overlay", label: "Overlay" },
-  { value: "darken", label: "Darken" },
-  { value: "lighten", label: "Lighten" },
-  { value: "color-dodge", label: "Color Dodge" },
-  { value: "color-burn", label: "Color Burn" },
-  { value: "hard-light", label: "Hard Light" },
-  { value: "soft-light", label: "Soft Light" },
-  { value: "difference", label: "Difference" },
-  { value: "exclusion", label: "Exclusion" },
-] as const;
+import { SortableBackgroundRow } from "./sortable-background-row";
+import {
+  BLEND_MODE_OPTIONS,
+  DEFAULT_LAYER_TRANSFORM,
+  type BlendMode,
+  type ImageLayer,
+  type GenerativeLayer,
+} from "../../types/frame";
 
 const FIT_OPTIONS = [
   { value: "contain", label: "Contain" },
@@ -187,6 +178,13 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     activeEffectStack,
     activeBackground,
     hasActiveBackground,
+    activeBackgrounds,
+    selectedBackgroundId,
+    setSelectedBackgroundId,
+    addBackgroundItem,
+    removeBackgroundItem,
+    reorderBackgroundItems,
+    updateBackgroundItem,
     isBackgroundPanelOpen,
     setIsBackgroundPanelOpen,
     updateActiveBackground,
@@ -221,6 +219,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
   const [isAccountPopoverOpen, setIsAccountPopoverOpen] = React.useState(false);
   const [isLooksPopoverOpen, setIsLooksPopoverOpen] = React.useState(false);
   const [isLookVisible, setIsLookVisible] = React.useState(true);
+  const [isAddBackgroundPopoverOpen, setIsAddBackgroundPopoverOpen] = React.useState(false);
 
   React.useEffect(() => {
     setIsLookVisible(true);
@@ -249,16 +248,26 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     }
   };
 
-  const hasMultipleLayers = (activeFrame?.layers.length ?? 0) > 1;
+  const handleBackgroundDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = activeBackgrounds.findIndex((b) => b.id === active.id);
+    const newIndex = activeBackgrounds.findIndex((b) => b.id === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      reorderBackgroundItems(oldIndex, newIndex);
+    }
+  };
+
   const isImageLayerActive = activeLayer?.type === "image" || Boolean(activeAsset);
-  const isGenerativeLayerExplicitlyActive =
-    activeLayer?.type === "generative" &&
-    (hasActiveBackground || (hasMultipleLayers && activeLayerId === activeLayer.id));
+  const isGenerativeLayerExplicitlyActive = activeLayer?.type === "generative";
   const isPopulated = isImageLayerActive || isGenerativeLayerExplicitlyActive;
 
   return (
     <PanelSurface
       id="inspector-panel"
+      data-testid="inspector-panel"
       className="flex flex-col h-full w-full bg-[color:var(--sidebar)] border-l border-[color:var(--border)] overflow-hidden select-none"
     >
       {/* 1. Header (56px standard height matching Figma 10:920 & 61:1306) */}
@@ -435,7 +444,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
         <ScrollFade className="flex-1 overflow-y-auto" containerClassName="flex-1 min-h-0">
           <div className="flex flex-col">
             {/* Section 0: Layer Properties (Stage 1C - Opacity, Blend Mode, Fit) */}
-            {activeLayer?.type === "image" && (
+            {(activeLayer?.type === "image" || activeLayer?.type === "generative") && (
               <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
                 <span className="text-sm font-medium text-[color:var(--foreground)]">
                   Layer Properties
@@ -467,19 +476,21 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                   />
                 </div>
 
-                {/* Fit */}
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-2xs text-[color:var(--muted-foreground)]">Fit</span>
-                  <SegmentedControl
-                    name="Fit"
-                    showLabel={false}
-                    value={(activeLayer as ImageLayer).fit || "contain"}
-                    options={FIT_OPTIONS}
-                    onValueChange={(val) => {
-                      updateLayer(activeLayer.id, { fit: val as "contain" | "cover" });
-                    }}
-                  />
-                </div>
+                {/* Fit (Image layers only) */}
+                {activeLayer.type === "image" && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-2xs text-[color:var(--muted-foreground)]">Fit</span>
+                    <SegmentedControl
+                      name="Fit"
+                      showLabel={false}
+                      value={(activeLayer as ImageLayer).fit || "contain"}
+                      options={FIT_OPTIONS}
+                      onValueChange={(val) => {
+                        updateLayer(activeLayer.id, { fit: val as "contain" | "cover" });
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -754,128 +765,157 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
               </div>
             )}
 
-            {/* Section 3: Background */}
-            <div className="flex flex-col border-b border-[color:var(--border)]">
-              <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
-                <span className="text-sm font-medium text-[color:var(--foreground)]">Background</span>
-                {hasActiveBackground ? (
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={resetActiveBackground}
-                    aria-label="Remove background"
-                    title="Remove background"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors [&_svg]:!size-4 cursor-pointer"
-                  >
-                    <MinusIcon size={16} />
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => {
-                      updateActiveBackground({
-                        type: "solid",
-                        color: activeBackground.color && activeBackground.color !== "#000000" ? activeBackground.color : "#E20000",
-                        padding: 0,
-                        visible: true,
-                      });
-                      setIsBackgroundPanelOpen(true);
-                    }}
-                    aria-label="Add background"
-                    title="Add background"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
-                  >
-                    <PlusIcon size={16} />
-                  </Button>
-                )}
-              </div>
-
-              {/* Compact Active Background Row */}
-              {hasActiveBackground && (
-                <div className="px-4 pb-2.5 flex items-center gap-1.5">
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    data-slot="background-row"
-                    data-testid="background-row"
-                    onClick={() => setIsBackgroundPanelOpen(true)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setIsBackgroundPanelOpen(true);
-                      }
-                    }}
-                    className="group flex-1 min-w-0 flex items-center justify-between px-2.5 h-8 rounded-[6px] border border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--foreground)_20%,transparent)] cursor-pointer transition-colors select-none"
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      {activeBackground.type === "solid" ? (
-                        <div
-                          className="size-4 rounded-xs shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]"
-                          style={{ backgroundColor: activeBackground.color || "#E20000" }}
-                        />
-                      ) : activeBackground.type === "linear-gradient" || activeBackground.type === "radial-gradient" ? (
-                        <div
-                          className="size-4 rounded-xs shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]"
-                          style={{
-                            background: `linear-gradient(${activeBackground.gradientAngle ?? 90}deg, ${activeBackground.color || "#000000"}, ${activeBackground.gradientEndColor || "#E20000"})`,
-                          }}
-                        />
-                      ) : activeBackground.type === "transparent" ? (
-                        <div className="size-4 rounded-xs shrink-0 flex items-center justify-center text-[color:var(--muted-foreground)] [&_svg]:!size-4">
-                          <CircleHalfIcon size={16} />
-                        </div>
-                      ) : activeBackground.type === "dots" ? (
-                        <div className="size-4 rounded-xs shrink-0 flex items-center justify-center text-[color:var(--muted-foreground)] [&_svg]:!size-4">
-                          <DotsNineIcon size={16} />
-                        </div>
-                      ) : (
-                        <div className="size-4 rounded-xs shrink-0 flex items-center justify-center text-[color:var(--muted-foreground)] [&_svg]:!size-4">
-                          <GridFourIcon size={16} />
-                        </div>
-                      )}
-
-                      <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
-                        {activeBackground.type === "solid"
-                          ? (activeBackground.color || "#E20000").toUpperCase()
-                          : activeBackground.type === "linear-gradient" || activeBackground.type === "radial-gradient"
-                          ? activeBackground.gradientType
-                            ? activeBackground.gradientType.charAt(0).toUpperCase() + activeBackground.gradientType.slice(1)
-                            : activeBackground.type === "radial-gradient"
-                            ? "Radial"
-                            : "Linear"
-                          : activeBackground.type === "transparent"
-                          ? "Alpha"
-                          : activeBackground.type === "dots"
-                          ? "Dot Pattern"
-                          : "Grid Pattern"}
-                      </span>
-                    </div>
-
-                    {activeBackground.type !== "transparent" && (
-                      <span className="text-xs text-[color:var(--muted-foreground)] tabular-nums shrink-0 ml-2">
-                        {activeBackground.opacity !== undefined ? `${activeBackground.opacity}%` : "100%"}
+            {/* Section 3: Background Stack (shown exclusively when Background Layer is selected) */}
+            {isGenerativeLayerExplicitlyActive && (
+              <div className="flex flex-col border-b border-[color:var(--border)]">
+                <div
+                  className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0"
+                  data-slot="background-section-header"
+                  data-testid="background-section-header"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-[color:var(--foreground)]">Background</span>
+                    {activeBackgrounds.length > 0 && (
+                      <span className="text-xs text-[color:var(--muted-foreground)]">
+                        ({activeBackgrounds.length})
                       </span>
                     )}
                   </div>
-
-                  {/* Eye control sits OUTSIDE the bordered Background control */}
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => {
-                      updateActiveBackground({ visible: activeBackground.visible === false ? true : false });
-                    }}
-                    title={activeBackground.visible === false ? "Show background" : "Hide background"}
-                    aria-label={activeBackground.visible === false ? "Show background" : "Hide background"}
-                    data-testid="background-eye-button"
-                    className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer shrink-0"
-                  >
-                    {activeBackground.visible === false ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
-                  </Button>
+                  <Popover open={isAddBackgroundPopoverOpen} onOpenChange={setIsAddBackgroundPopoverOpen}>
+                    <PopoverTrigger
+                      render={(triggerProps) => (
+                        <button
+                          {...triggerProps}
+                          type="button"
+                          aria-label="Add background"
+                          title="Add background"
+                          data-testid="add-background-button"
+                          className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
+                        >
+                          <PlusIcon size={16} />
+                        </button>
+                      )}
+                    />
+                    <PopoverContent
+                      side="left"
+                      align="start"
+                      sideOffset={8}
+                      className="w-48 p-1.5 flex flex-col gap-0.5 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg"
+                    >
+                      <span className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
+                        Add Background
+                      </span>
+                      <button
+                        type="button"
+                        data-testid="add-bg-solid"
+                        onClick={() => {
+                          addBackgroundItem("solid");
+                          setIsBackgroundPanelOpen(true);
+                          setIsAddBackgroundPopoverOpen(false);
+                        }}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
+                      >
+                        <div className="size-4 rounded-xs bg-[#E20000] shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]" />
+                        Solid
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="add-bg-linear-gradient"
+                        onClick={() => {
+                          addBackgroundItem("linear-gradient");
+                          setIsBackgroundPanelOpen(true);
+                          setIsAddBackgroundPopoverOpen(false);
+                        }}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
+                      >
+                        <div className="size-4 rounded-xs bg-gradient-to-r from-black to-blue-500 shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]" />
+                        Linear Gradient
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="add-bg-radial-gradient"
+                        onClick={() => {
+                          addBackgroundItem("radial-gradient");
+                          setIsBackgroundPanelOpen(true);
+                          setIsAddBackgroundPopoverOpen(false);
+                        }}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
+                      >
+                        <div className="size-4 rounded-xs bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-black to-blue-500 shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]" />
+                        Radial Gradient
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="add-bg-dots"
+                        onClick={() => {
+                          addBackgroundItem("dots");
+                          setIsBackgroundPanelOpen(true);
+                          setIsAddBackgroundPopoverOpen(false);
+                        }}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
+                      >
+                        <DotsNineIcon size={16} className="text-[color:var(--muted-foreground)] shrink-0" />
+                        Dots
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="add-bg-grid"
+                        onClick={() => {
+                          addBackgroundItem("grid");
+                          setIsBackgroundPanelOpen(true);
+                          setIsAddBackgroundPopoverOpen(false);
+                        }}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
+                      >
+                        <GridFourIcon size={16} className="text-[color:var(--muted-foreground)] shrink-0" />
+                        Grid
+                      </button>
+                    </PopoverContent>
+                  </Popover>
                 </div>
-              )}
-            </div>
+
+                {activeBackgrounds.length === 0 ? (
+                  <div className="px-4 py-3 text-center text-xs text-[color:var(--muted-foreground)] select-none">
+                    No backgrounds
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1 px-2 pb-2.5">
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleBackgroundDragEnd}
+                    >
+                      <SortableContext
+                        items={activeBackgrounds.map((b) => b.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {activeBackgrounds.map((item, index) => {
+                          const isSelected = selectedBackgroundId === item.id;
+                          return (
+                            <SortableBackgroundRow
+                              key={item.id}
+                              item={item}
+                              index={index}
+                              isSelected={isSelected}
+                              onSelect={() => {
+                                setSelectedBackgroundId(item.id);
+                                setIsBackgroundPanelOpen(true);
+                              }}
+                              onToggleEnabled={() => {
+                                updateBackgroundItem(item.id, { enabled: !item.enabled });
+                              }}
+                              onRemove={() => {
+                                removeBackgroundItem(item.id);
+                              }}
+                            />
+                          );
+                        })}
+                      </SortableContext>
+                    </DndContext>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </ScrollFade>
       )}
