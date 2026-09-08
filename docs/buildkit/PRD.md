@@ -140,7 +140,7 @@ A frame is a first-class creative surface and does not require an uploaded image
 
 ### 4.9 Layered blending, not flattened stacking
 
-Blend mode exists at both layer level and within effect/generative stacks. Users should be able to reason about how one visual contribution interacts with the contribution below it.
+Blend mode exists at both the Layer level and within supported effect/source processing where applicable. Users should be able to reason about how one visual contribution interacts with the contribution below it.
 
 ### 4.10 Local-first, account-enabled
 
