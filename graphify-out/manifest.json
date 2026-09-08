@@ -1944,10 +1944,10 @@
     "semantic_hash": "72dc1e85f81db720af6ba5bec8405e27"
   },
   "src/types/frame.ts": {
-    "mtime": 1788895108.28,
-    "seen": 1788896244.317503,
-    "ast_hash": "294a12bef7b25f538f45bbe84425d964",
-    "semantic_hash": "294a12bef7b25f538f45bbe84425d964"
+    "mtime": 1788907859.23,
+    "seen": 1788908082.3865018,
+    "ast_hash": "44fff4e4377aa7e3f4ee8fd4e246b79d",
+    "semantic_hash": "44fff4e4377aa7e3f4ee8fd4e246b79d"
   },
   "src/rendering/webgl/shaders/layer-blend.ts": {
     "mtime": 1788579484.43,
@@ -2076,9 +2076,9 @@
     "semantic_hash": "88bada5136632aa5d591d0fb633d44a7"
   },
   "src/types/frame-migration.test.ts": {
-    "mtime": 1788895343.73,
-    "seen": 1788896244.3174999,
-    "ast_hash": "994da6e6f2b1e85242e32ed073097770",
-    "semantic_hash": "994da6e6f2b1e85242e32ed073097770"
+    "mtime": 1788907890.36,
+    "seen": 1788908082.386497,
+    "ast_hash": "d330ab1d6fd1db7de3dc58718e41786c",
+    "semantic_hash": "d330ab1d6fd1db7de3dc58718e41786c"
   }
 }

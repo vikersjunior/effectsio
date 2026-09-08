@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import type { Frame, Layer, ImageLayer, GenerativeLayer, Group } from "./frame";
 import {
@@ -564,6 +566,104 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
       expect(imgLayer.opacity).toBe(0.9);
       expect(imgLayer.type).toBe("image"); // compatibility field populated
       expect(imgLayer.assetId).toBe("asset-abc"); // compatibility field populated
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 8. Canonical Model Structural Integrity & Single BaseLayer Invariant
+  // -------------------------------------------------------------------------
+  describe("8. Canonical Model Structural Integrity & Single BaseLayer Invariant", () => {
+    const frameTsPath = path.resolve(__dirname, "frame.ts");
+    const frameTsContent = fs.readFileSync(frameTsPath, "utf-8");
+
+    it("ensures exactly one BaseLayer declaration exists in src/types/frame.ts", () => {
+      const matches = frameTsContent.match(/export\s+interface\s+BaseLayer\b/g);
+      expect(matches).not.toBeNull();
+      expect(matches).toHaveLength(1);
+    });
+
+    it("ensures BaseLayer does not declare source property", () => {
+      const baseLayerBlockMatch = frameTsContent.match(/export\s+interface\s+BaseLayer\s*\{([\s\S]*?)\}/);
+      expect(baseLayerBlockMatch).not.toBeNull();
+      const baseLayerBody = baseLayerBlockMatch![1];
+      expect(baseLayerBody).not.toMatch(/\bsource\b/);
+    });
+
+    it("ensures BaseLayer declares all canonical shared layer properties", () => {
+      const baseLayerBlockMatch = frameTsContent.match(/export\s+interface\s+BaseLayer\s*\{([\s\S]*?)\}/);
+      expect(baseLayerBlockMatch).not.toBeNull();
+      const baseLayerBody = baseLayerBlockMatch![1];
+
+      expect(baseLayerBody).toMatch(/\bid:\s*string/);
+      expect(baseLayerBody).toMatch(/\bname:\s*string/);
+      expect(baseLayerBody).toMatch(/\bvisible:\s*boolean/);
+      expect(baseLayerBody).toMatch(/\bopacity:\s*number/);
+      expect(baseLayerBody).toMatch(/\bblendMode:\s*BlendMode/);
+      expect(baseLayerBody).toMatch(/\beffectStack:\s*EffectStack/);
+      expect(baseLayerBody).toMatch(/\blocked\?:/);
+      expect(baseLayerBody).toMatch(/\bgroupId\?:/);
+      expect(baseLayerBody).toMatch(/\bcreatedAt:\s*number/);
+      expect(baseLayerBody).toMatch(/\bupdatedAt:\s*number/);
+    });
+
+    it("ensures Layer extends BaseLayer and requires source: LayerSource", () => {
+      const layerBlockMatch = frameTsContent.match(/export\s+interface\s+Layer\s+extends\s+BaseLayer\s*\{([\s\S]*?)\}/);
+      expect(layerBlockMatch).not.toBeNull();
+      const layerBody = layerBlockMatch![1];
+      expect(layerBody).toMatch(/\bsource:\s*LayerSource;/);
+      expect(layerBody).not.toMatch(/\bsource\?:/);
+    });
+
+    it("ensures canonical Layer cleanly represents both ImageSource and ProceduralSource", () => {
+      const imgLayer: Layer = {
+        id: "test-img",
+        name: "Test Image",
+        visible: true,
+        opacity: 1,
+        blendMode: "normal",
+        effectStack: [],
+        source: { type: "image", assetId: "asset-1" },
+        createdAt: 100,
+        updatedAt: 100,
+      };
+      expect(isImageSource(imgLayer.source)).toBe(true);
+
+      const procLayer: Layer = {
+        id: "test-proc",
+        name: "Test Procedural",
+        visible: true,
+        opacity: 1,
+        blendMode: "normal",
+        effectStack: [],
+        source: { type: "procedural", kind: "solid", parameters: { color: "#ffffff" } },
+        createdAt: 100,
+        updatedAt: 100,
+      };
+      expect(isProceduralSource(procLayer.source)).toBe(true);
+    });
+
+    it("normalizing createDefaultFrame is strictly idempotent and preserves backdrop ID and activeLayerId without new ID generation", () => {
+      const defaultFrame = createDefaultFrame("frame-default-idempotent", "Idempotent Frame");
+      const initialBackdrop = defaultFrame.layers[0];
+      expect(initialBackdrop).toBeDefined();
+      expect(defaultFrame.activeLayerId).toBe(initialBackdrop.id);
+      expect(defaultFrame.groups).toEqual([]);
+
+      // Pass 1
+      const norm1 = normalizeFrameToUniversalModel(defaultFrame);
+      expect(norm1.layers).toHaveLength(1);
+      expect(norm1.layers[0].id).toBe(initialBackdrop.id);
+      expect(norm1.activeLayerId).toBe(initialBackdrop.id);
+      expect(norm1.groups).toEqual([]);
+      expect(isProceduralSource(norm1.layers[0].source)).toBe(true);
+
+      // Pass 2
+      const norm2 = normalizeFrameToUniversalModel(norm1);
+      expect(norm2.layers).toHaveLength(1);
+      expect(norm2.layers[0].id).toBe(initialBackdrop.id);
+      expect(norm2.activeLayerId).toBe(initialBackdrop.id);
+      expect(norm2.groups).toEqual([]);
+      expect(norm2.layers[0].source).toEqual(norm1.layers[0].source);
     });
   });
 });

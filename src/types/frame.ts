@@ -51,18 +51,6 @@ export interface FrameSizePreset {
   aspectRatioLabel: string;
 }
 
-export interface BaseLayer {
-  id: string;
-  name: string;
-  visible: boolean;
-  opacity: number; // 0.0 to 1.0
-  blendMode: BlendMode; // Layer-level blend mode interacting with accumulated backdrop
-  effectStack: EffectStack;
-  locked?: boolean;
-  createdAt: number;
-  updatedAt: number;
-}
-
 export interface LayerTransform {
   x: number; // Frame-space pixels, 0 = centered horizontally
   y: number; // Frame-space pixels, 0 = centered vertically
@@ -174,7 +162,6 @@ export interface Layer extends BaseLayer {
   source: LayerSource;
   transform?: LayerTransform;
   fit?: "contain" | "cover";
-  groupId?: string | null;
 
   // Legacy compatibility fields (Phase 1 migration boundary only)
   /** @deprecated Legacy compatibility field for un-migrated Phase 2-4 consumers */
@@ -548,8 +535,94 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
   if (!layer || typeof layer !== "object") return [];
 
   const candidate = layer as Record<string, unknown>;
+  const now = Date.now();
 
-  // Case 1: Legacy GenerativeLayer (or any layer containing backgrounds stack)
+  // Case 1: Already canonical Layer with valid LayerSource
+  // If the layer already has a canonical LayerSource (and does not contain an unexpanded multi-item legacy background stack)
+  const hasMultipleLegacyBackgrounds =
+    Array.isArray(candidate.backgrounds) && candidate.backgrounds.length > 1;
+
+  if (candidate.source && !hasMultipleLegacyBackgrounds) {
+    if (isImageSource(candidate.source) || (candidate.source as Record<string, unknown>).type === "image") {
+      const rawSource = candidate.source as ImageSource;
+      const assetId = (rawSource?.assetId || candidate.assetId || "") as string;
+      const source: ImageSource = {
+        type: "image",
+        assetId,
+      };
+
+      const rawTransform = candidate.transform as Partial<LayerTransform> | undefined;
+      const transform: LayerTransform = {
+        x: rawTransform && Number.isFinite(rawTransform.x) ? rawTransform.x! : DEFAULT_LAYER_TRANSFORM.x,
+        y: rawTransform && Number.isFinite(rawTransform.y) ? rawTransform.y! : DEFAULT_LAYER_TRANSFORM.y,
+        scaleX: rawTransform && Number.isFinite(rawTransform.scaleX) ? Math.max(0.05, Math.min(20, rawTransform.scaleX!)) : DEFAULT_LAYER_TRANSFORM.scaleX,
+        scaleY: rawTransform && Number.isFinite(rawTransform.scaleY) ? Math.max(0.05, Math.min(20, rawTransform.scaleY!)) : DEFAULT_LAYER_TRANSFORM.scaleY,
+        rotation: rawTransform && Number.isFinite(rawTransform.rotation) ? rawTransform.rotation! : DEFAULT_LAYER_TRANSFORM.rotation,
+      };
+
+      const imageLayer: ImageLayer = {
+        id: (candidate.id as string) || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `img-${now}`),
+        name: (candidate.name as string) || "Image Layer",
+        visible: candidate.visible !== false,
+        opacity: typeof candidate.opacity === "number" ? Math.max(0, Math.min(1, candidate.opacity as number)) : 1.0,
+        blendMode: (candidate.blendMode as BlendMode) || "normal",
+        effectStack: Array.isArray(candidate.effectStack) ? ([...candidate.effectStack] as EffectStack) : [],
+        locked: Boolean(candidate.locked),
+        groupId: (candidate.groupId as string | null | undefined) ?? null,
+        type: "image",
+        assetId,
+        source,
+        fit: (candidate.fit as "contain" | "cover") || "contain",
+        transform,
+        createdAt: (candidate.createdAt as number) || now,
+        updatedAt: (candidate.updatedAt as number) || now,
+      };
+
+      return [imageLayer];
+    }
+
+    if (isProceduralSource(candidate.source) || (candidate.source as Record<string, unknown>).type === "procedural") {
+      const procSource = candidate.source as ProceduralSource;
+      const rawTransform = candidate.transform as Partial<LayerTransform> | undefined;
+      const transform: LayerTransform = {
+        x: rawTransform && Number.isFinite(rawTransform.x) ? rawTransform.x! : DEFAULT_LAYER_TRANSFORM.x,
+        y: rawTransform && Number.isFinite(rawTransform.y) ? rawTransform.y! : DEFAULT_LAYER_TRANSFORM.y,
+        scaleX: rawTransform && Number.isFinite(rawTransform.scaleX) ? Math.max(0.05, Math.min(20, rawTransform.scaleX!)) : DEFAULT_LAYER_TRANSFORM.scaleX,
+        scaleY: rawTransform && Number.isFinite(rawTransform.scaleY) ? Math.max(0.05, Math.min(20, rawTransform.scaleY!)) : DEFAULT_LAYER_TRANSFORM.scaleY,
+        rotation: rawTransform && Number.isFinite(rawTransform.rotation) ? rawTransform.rotation! : DEFAULT_LAYER_TRANSFORM.rotation,
+      };
+
+      const procLayer: Layer = {
+        id: (candidate.id as string) || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `proc-${now}`),
+        name: (candidate.name as string) || (candidate.name === "Background" ? "Background" : `${procSource.kind.charAt(0).toUpperCase() + procSource.kind.slice(1)} Layer`),
+        visible: candidate.visible !== false,
+        opacity: typeof candidate.opacity === "number" ? Math.max(0, Math.min(1, candidate.opacity as number)) : 1.0,
+        blendMode: (candidate.blendMode as BlendMode) || "normal",
+        effectStack: Array.isArray(candidate.effectStack) ? ([...candidate.effectStack] as EffectStack) : [],
+        locked: Boolean(candidate.locked),
+        groupId: (candidate.groupId as string | null | undefined) ?? null,
+        type: (candidate.type as "procedural" | "generative") || "procedural",
+        source: {
+          type: "procedural",
+          kind: procSource.kind,
+          parameters: { ...procSource.parameters },
+          seed: procSource.seed,
+        },
+        fit: (candidate.fit as "contain" | "cover") || "contain",
+        transform,
+        createdAt: (candidate.createdAt as number) || now,
+        updatedAt: (candidate.updatedAt as number) || now,
+      };
+
+      if (Array.isArray(candidate.backgrounds)) {
+        procLayer.backgrounds = candidate.backgrounds as BackgroundItem[];
+      }
+
+      return [procLayer];
+    }
+  }
+
+  // Case 2: Legacy GenerativeLayer (or any layer containing backgrounds stack)
   const isGenerative =
     candidate.type === "generative" ||
     Array.isArray(candidate.backgrounds) ||
@@ -565,11 +638,11 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
       bgItems = normalizeLegacyBackgroundToBackgrounds(candidate.backgroundConfig as BackgroundState);
     }
 
-    // If no background items were found, synthesize a default solid background
+    // If no background items were found, synthesize a default solid background preserving candidate.id
     if (bgItems.length === 0) {
       bgItems = [
         {
-          id: typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `bg-${Date.now()}`,
+          id: (candidate.id as string) || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `bg-${Date.now()}`),
           type: "solid",
           enabled: candidate.visible !== false,
           opacity: typeof candidate.opacity === "number" ? (candidate.opacity as number) : 1.0,
@@ -579,7 +652,6 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
       ];
     }
 
-    const now = Date.now();
     const effectStack = Array.isArray(candidate.effectStack) ? (candidate.effectStack as EffectStack) : [];
     const layerLocked = Boolean(candidate.locked);
     const groupId = (candidate.groupId as string | null | undefined) ?? null;
@@ -592,8 +664,10 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
         seed: item.seed,
       };
 
+      const layerId = item.id || (index === 0 && candidate.id ? (candidate.id as string) : (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `bg-${now}-${index}`));
+
       const procLayer: Layer = {
-        id: item.id || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `bg-${now}-${index}`),
+        id: layerId,
         name: item.name || `${item.type.charAt(0).toUpperCase() + item.type.slice(1)} Background`,
         visible: item.enabled ?? true,
         opacity: typeof item.opacity === "number" ? Math.max(0, Math.min(1, item.opacity)) : 1.0,
@@ -613,16 +687,13 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
     });
   }
 
-  // Case 2: Image Layer (legacy ImageLayer or universal ImageLayer)
+  // Case 3: Legacy Image Layer (without source)
   const isImage =
     candidate.type === "image" ||
-    typeof candidate.assetId === "string" ||
-    (Boolean(candidate.source) && (candidate.source as Record<string, unknown>).type === "image");
+    typeof candidate.assetId === "string";
 
   if (isImage) {
-    const rawSource = candidate.source as ImageSource | undefined;
-    const assetId = (rawSource?.assetId || candidate.assetId || "") as string;
-    const now = Date.now();
+    const assetId = (candidate.assetId || "") as string;
     const source: ImageSource = {
       type: "image",
       assetId,
@@ -656,43 +727,6 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
     };
 
     return [imageLayer];
-  }
-
-  // Case 3: Already-migrated Layer with ProceduralSource
-  if (candidate.source && (candidate.source as Record<string, unknown>).type === "procedural") {
-    const procSource = candidate.source as ProceduralSource;
-    const now = Date.now();
-    const rawTransform = candidate.transform as Partial<LayerTransform> | undefined;
-    const transform: LayerTransform = {
-      x: rawTransform && Number.isFinite(rawTransform.x) ? rawTransform.x! : DEFAULT_LAYER_TRANSFORM.x,
-      y: rawTransform && Number.isFinite(rawTransform.y) ? rawTransform.y! : DEFAULT_LAYER_TRANSFORM.y,
-      scaleX: rawTransform && Number.isFinite(rawTransform.scaleX) ? Math.max(0.05, Math.min(20, rawTransform.scaleX!)) : DEFAULT_LAYER_TRANSFORM.scaleX,
-      scaleY: rawTransform && Number.isFinite(rawTransform.scaleY) ? Math.max(0.05, Math.min(20, rawTransform.scaleY!)) : DEFAULT_LAYER_TRANSFORM.scaleY,
-      rotation: rawTransform && Number.isFinite(rawTransform.rotation) ? rawTransform.rotation! : DEFAULT_LAYER_TRANSFORM.rotation,
-    };
-
-    const procLayer: Layer = {
-      id: (candidate.id as string) || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `proc-${now}`),
-      name: (candidate.name as string) || `${procSource.kind.charAt(0).toUpperCase() + procSource.kind.slice(1)} Layer`,
-      visible: candidate.visible !== false,
-      opacity: typeof candidate.opacity === "number" ? Math.max(0, Math.min(1, candidate.opacity as number)) : 1.0,
-      blendMode: (candidate.blendMode as BlendMode) || "normal",
-      effectStack: Array.isArray(candidate.effectStack) ? ([...candidate.effectStack] as EffectStack) : [],
-      locked: Boolean(candidate.locked),
-      groupId: (candidate.groupId as string | null | undefined) ?? null,
-      type: "procedural",
-      source: {
-        type: "procedural",
-        kind: procSource.kind,
-        parameters: { ...procSource.parameters },
-        seed: procSource.seed,
-      },
-      fit: (candidate.fit as "contain" | "cover") || "contain",
-      transform,
-      createdAt: (candidate.createdAt as number) || now,
-      updatedAt: (candidate.updatedAt as number) || now,
-    };
-    return [procLayer];
   }
 
   // Fallback: return candidate as-is if unrecognized

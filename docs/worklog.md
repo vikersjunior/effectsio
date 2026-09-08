@@ -3211,4 +3211,89 @@ Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed 
 2. **Headroom Actual Use**:
    - Pre-flight diagnostic: Verified Headroom proxy inactive on port 8787 (`pnpm agent:stats`). Zero token savings or compression claimed per Rule 11.
 
+---
+
+## Unified Composition Model — Phase 1 Final Correction: Canonical Layer Cleanup
+
+- **Date**: 2026-09-08
+- **Task**: Final Phase 1 Data Model cleanup for the Unified Composition Model:
+  1. Eliminate duplicate `BaseLayer` declaration in `src/types/frame.ts`, consolidating into a single canonical declaration containing exactly the 10 canonical properties (`id`, `name`, `visible`, `opacity`, `blendMode`, `effectStack`, `locked`, `groupId`, `createdAt`, `updatedAt`).
+  2. Ensure `source: LayerSource` is strictly required on `Layer` and absent on `BaseLayer`.
+  3. Ensure `Layer extends BaseLayer` without reintroducing `UniversalLayer`, `ProceduralLayer`, `BackgroundLayer`, or `GenerativeLayer` as primary abstractions.
+  4. Fix `normalizeLayerToUniversal` and `normalizeFrameToUniversalModel` to guarantee complete idempotency, preserving existing layer IDs, transforms, and `activeLayerId` without synthesizing new IDs unnecessarily.
+  5. Expand unit tests in `src/types/frame-migration.test.ts` (Suite 8) asserting single interface declaration, absence of `source` on `BaseLayer`, required `source` on `Layer`, and frame idempotency.
+
+### 1. Architectural Correction Accomplishments
+
+1. **Consolidation of `BaseLayer` (`src/types/frame.ts`)**:
+   - Removed the duplicate `BaseLayer` declaration that was previously defined at line 54 and line 147 (which relied on TypeScript interface merging).
+   - Consolidated into exactly one authoritative interface:
+     ```ts
+     export interface BaseLayer {
+       id: string;
+       name: string;
+       visible: boolean;
+       opacity: number; // 0 to 100
+       blendMode: BlendMode;
+       effectStack: EffectStackItem[];
+       locked?: boolean;
+       groupId?: string | null;
+       createdAt?: number;
+       updatedAt?: number;
+     }
+     ```
+   - Verified that `source` is NOT defined on `BaseLayer`.
+
+2. **Canonical `Layer` Integrity (`src/types/frame.ts`)**:
+   - Confirmed `Layer` directly extends `BaseLayer`:
+     ```ts
+     export interface Layer extends BaseLayer {
+       source: LayerSource;
+       transform?: LayerTransform;
+       fit?: "contain" | "cover";
+     }
+     ```
+   - `source: LayerSource` is strictly required.
+   - Removed redundant `groupId?: string | null;` duplicate from `Layer`.
+   - Confirmed no `UniversalLayer`, `ProceduralLayer`, `BackgroundLayer`, or `GenerativeLayer` are used as canonical layer interfaces.
+
+3. **Strict Idempotency in Normalization (`src/types/frame.ts`)**:
+   - Refactored `normalizeLayerToUniversal` to inspect `candidate.source` first.
+   - When a layer already possesses a valid canonical `LayerSource`, it preserves the layer and its existing `id`, `name`, `visible`, `opacity`, `blendMode`, `effectStack`, `transform`, and `fit` without re-synthesizing UUIDs or reconstructing procedural items.
+   - Preserves `activeLayerId` across repeated normalization passes.
+
+4. **Unit Test Suite Expansion (`src/types/frame-migration.test.ts`)**:
+   - Added Suite 8: `Canonical Model Structural Integrity & Single BaseLayer Invariant` with 6 dedicated tests:
+     - Verified single `BaseLayer` interface declaration and properties via AST/source inspection.
+     - Verified absence of `source` on `BaseLayer`.
+     - Verified required `source: LayerSource` on `Layer`.
+     - Verified multi-source representation via `Layer` (`image`, `procedural`, etc.).
+     - Verified `createDefaultFrame()` idempotency preserving `activeLayerId` and backdrop ID.
+     - Verified factory functions produce clean canonical structures.
+
+### 2. Empirical Verification Evidence (Rule 1)
+
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm test`: **PASS (exit code 0, 29/29 test files passed, 362/362 tests passed)**.
+  - `src/types/frame-migration.test.ts`: **20 passed (20)**.
+  - `src/components/layout/background-stack.test.tsx`: **13 passed (13)**.
+  - `src/components/layout/background-workflow.test.tsx`: **7 passed (7)**.
+  - `src/components/layout/inspector-panel.test.tsx`: **29 passed (29)**.
+  - `src/storage/db.test.ts`: **9 passed (9)**.
+  - `src/rendering/webgl/webgl-frame-compositor.test.ts`: **29 passed (29)**.
+- `pnpm build`: **PASS (exit code 0, built in 4.24s, dist output verified)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, all mechanical approval gates verified)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 621 tracked files scanned, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance references found in tracked files)**.
+- `pnpm graphify:update`: **PASS (exit code 0, 4,244 nodes, 11,298 edges, 155 communities)**.
+
+### 3. Graphify & Headroom Actual-Use Governance
+
+1. **Graphify Actual Use**:
+   - Pre-implementation queries: Inspected `BaseLayer`, `Layer`, `LayerSource`, and normalization references across `src/types/frame.ts`.
+   - Post-implementation update: Ran `pnpm graphify:update` (`4,244 nodes, 11,298 edges, 155 communities`).
+2. **Headroom Actual Use**:
+   - Pre-flight diagnostic: Checked `pnpm agent:stats` / `http://127.0.0.1:8787`. Proxy inactive / unhealthy. Zero tokens or compression claimed per Rule 11.
+
+
 
