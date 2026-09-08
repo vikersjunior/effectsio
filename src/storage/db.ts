@@ -16,6 +16,17 @@ import {
 
 export { normalizeFrameToUniversalModel, normalizeLayerToUniversal };
 
+// ---------------------------------------------------------------------------
+// IndexedDB Persistence Foundation & Migration Boundary
+//
+// IndexedDB currently contains legacy persistence structures because
+// downstream migration has not yet occurred.
+//
+// This is migration compatibility, not the target Unified Composition Model.
+// Legacy stores ("effect_stacks", "backgrounds") and legacy layer fields in
+// "frames" records remain intentionally during Phase 1 to support unmigrated
+// downstream consumers without data loss.
+// ---------------------------------------------------------------------------
 const DB_NAME = "effectsio_db";
 const DB_VERSION = 2;
 

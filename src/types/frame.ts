@@ -156,31 +156,52 @@ export interface BaseLayer {
  * If it defines composition bounds -> Frame.
  *
  * Layer is the universal independently composited visual object.
- * Every Layer has exactly one Source.
+ * Every Layer has exactly one Source (`Layer.source`), which is the canonical source of truth.
+ *
+ * CANONICAL ARCHITECTURE:
+ * - Layer.source (Authoritative pixel generator: ImageSource | ProceduralSource)
+ * - Layer metadata (id, name, visible, opacity, blendMode, effectStack, locked, groupId, createdAt, updatedAt)
+ * - Layer.transform
+ * - Layer.fit
+ *
+ * COMPATIBILITY ONLY (Phase 1 migration boundary):
+ * The following fields exist strictly to support un-migrated downstream consumers (Phase 2 compositor,
+ * Phase 3 studio state, Phase 4 UI). They are NOT part of the Unified Composition Model itself,
+ * must NOT be treated as secondary sources of truth, and are scheduled for removal during downstream migrations:
+ * - type
+ * - assetId
+ * - backgrounds
+ * - sublayers
+ * - backgroundMode
+ * - backgroundConfig
  */
 export interface Layer extends BaseLayer {
+  /** Canonical source of truth: generates visual pixels for this Layer */
   source: LayerSource;
   transform?: LayerTransform;
   fit?: "contain" | "cover";
 
-  // Legacy compatibility fields (Phase 1 migration boundary only)
-  /** @deprecated Legacy compatibility field for un-migrated Phase 2-4 consumers */
+  // Legacy compatibility fields (Phase 1 migration boundary only — scheduled for removal during downstream migration)
+  /** @deprecated Compatibility-only field for un-migrated Phase 2-4 consumers. Not canonical architecture; canonical source of truth is source.type. */
   type?: "image" | "generative" | "procedural";
-  /** @deprecated Legacy compatibility field for un-migrated Phase 2-4 consumers; use source.assetId */
+  /** @deprecated Compatibility-only field for un-migrated Phase 2-4 consumers. Not canonical architecture; canonical source of truth is (source as ImageSource).assetId. */
   assetId?: string;
-  /** @deprecated Legacy compatibility field for un-migrated Phase 2-4 consumers */
+  /** @deprecated Compatibility-only field for un-migrated Phase 2-4 consumers. Not canonical architecture; procedural backgrounds are canonically modeled via ProceduralSource on Layer. */
   backgrounds?: BackgroundItem[];
-  /** @deprecated Kept for backward compatibility and hydration migration only */
+  /** @deprecated Kept for backward compatibility and hydration migration only. Scheduled for removal during downstream migration. */
   sublayers?: BackgroundItem[];
-  /** @deprecated Kept for backward compatibility and hydration migration only */
+  /** @deprecated Kept for backward compatibility and hydration migration only. Scheduled for removal during downstream migration. */
   backgroundMode?: BackgroundType;
-  /** @deprecated Kept for backward compatibility and hydration migration only */
+  /** @deprecated Kept for backward compatibility and hydration migration only. Scheduled for removal during downstream migration. */
   backgroundConfig?: BackgroundState;
 }
 
 /**
+ * @deprecated Legacy migration adapter for un-migrated Phase 2-4 consumers.
  * BackgroundItem represents an independent stackable background element
  * in the legacy background stack owned by GenerativeLayer.
+ * Not canonical architecture; procedural visual elements are canonically represented by ProceduralSource on Layer.
+ * Scheduled for removal when downstream systems migrate.
  */
 export interface BackgroundItem {
   id: string;
@@ -193,14 +214,17 @@ export interface BackgroundItem {
   seed?: number;
 }
 
-/** @deprecated Use BackgroundItem instead */
+/** @deprecated Legacy migration adapter. Use BackgroundItem instead */
 export type GenerativeSublayer = BackgroundItem;
-/** @deprecated Use BackgroundItemType instead */
+/** @deprecated Legacy migration adapter. Use BackgroundItemType instead */
 export type GenerativeSublayerType = BackgroundItemType;
 
 /**
+ * @deprecated Legacy migration adapter for un-migrated Phase 2-4 consumers.
  * ImageLayer represents an imported visual asset placed within a Frame.
- * Legacy compatibility interface extending canonical Layer for un-migrated Phase 2-4 consumers.
+ * Legacy compatibility interface extending canonical Layer.
+ * Canonical architecture: Layer with source: ImageSource.
+ * Scheduled for removal when downstream systems migrate.
  */
 export interface ImageLayer extends Layer {
   type: "image";
@@ -210,8 +234,11 @@ export interface ImageLayer extends Layer {
 }
 
 /**
+ * @deprecated Legacy migration adapter for un-migrated Phase 2-4 consumers.
  * GenerativeLayer represents procedural canvas background content.
- * Legacy compatibility interface extending canonical Layer for un-migrated Phase 2-4 consumers.
+ * Legacy compatibility interface extending canonical Layer.
+ * Canonical architecture: Layer with source: ProceduralSource.
+ * Scheduled for removal when downstream systems migrate.
  */
 export interface GenerativeLayer extends Layer {
   type: "generative";
@@ -286,10 +313,20 @@ export function isGenerativeLayer(layer: Layer): layer is GenerativeLayer {
 // ---------------------------------------------------------------------------
 
 /**
- * Creates a default canonical backdrop Layer permanently anchored at index 0.
- * In the Unified Composition Model, the background is an ordinary Layer with ProceduralSource(solid),
- * fulfilling the background role. Populates legacy compatibility fields (type: "generative", backgrounds)
- * for un-migrated Phase 2-4 consumers.
+ * Synthesizes a canonical backdrop Layer for a Frame.
+ *
+ * In the Unified Composition Model:
+ * The backdrop is an ordinary canonical Layer whose pixels originate from a ProceduralSource,
+ * fulfilling the background visual role based on its position and creative intent (no special
+ * background type is required).
+ *
+ * Architectural flow:
+ * Background role -> ordinary Layer -> ProceduralSource
+ * (NOT: GenerativeLayer -> BackgroundStack)
+ *
+ * Legacy background/generative fields (type: "generative", backgrounds, sublayers, backgroundMode,
+ * backgroundConfig) are populated strictly as temporary compatibility data for un-migrated Phase 2-4 consumers.
+ * They are not the canonical representation of the backdrop and are scheduled for removal during downstream migration.
  */
 export function createDefaultBackdropLayer(backgroundConfig?: BackgroundState): Layer {
   const now = Date.now();
@@ -332,14 +369,16 @@ export function createDefaultBackdropLayer(backgroundConfig?: BackgroundState): 
   };
 }
 
-/** @deprecated Use createDefaultBackdropLayer instead */
+/** @deprecated Legacy migration adapter for un-migrated Phase 2-4 consumers. Use createDefaultBackdropLayer instead. */
 export function createDefaultGenerativeLayer(backgroundConfig?: BackgroundState): GenerativeLayer {
   return createDefaultBackdropLayer(backgroundConfig) as GenerativeLayer;
 }
 
 /**
- * Creates an ImageLayer placed in a Frame referencing an immutable source asset.
- * Populates ImageSource for the Unified Composition Model.
+ * @deprecated Legacy migration adapter for un-migrated Phase 2-4 consumers.
+ * Use createLayer({ name, source: { type: "image", assetId }, ... }) instead.
+ * Creates a Layer referencing an immutable source asset and populates ImageSource alongside
+ * legacy compatibility fields (type: "image", assetId).
  */
 export function createImageLayer(
   assetId: string,
@@ -383,7 +422,13 @@ export function createImageLayer(
 /**
  * Creates a canonical Layer in the Unified Composition Model.
  *
- * Every Layer has exactly one Source.
+ * Every Layer requires exactly one canonical LayerSource (`source`), which is the authoritative
+ * pixel generator.
+ *
+ * Migration boundary note: This factory intentionally populates explicitly deprecated compatibility
+ * fields (type, assetId) because un-migrated downstream consumers (Phase 2 compositor, Phase 3 studio state,
+ * Phase 4 UI) still require them during Phase 1. These fields are migration adapters only, not canonical architecture,
+ * and `layer.source` remains the sole canonical source of truth.
  */
 export function createLayer(params: {
   id?: string;
@@ -440,10 +485,10 @@ export function createLayer(params: {
   return layer;
 }
 
-/** @deprecated Use createLayer instead */
+/** @deprecated Legacy migration adapter. Use createLayer instead. */
 export const createUniversalLayer = createLayer;
 
-/** @deprecated Use createLayer with ProceduralSource instead */
+/** @deprecated Legacy migration adapter for un-migrated Phase 2-4 consumers. Use createLayer with ProceduralSource instead. */
 export function createProceduralLayer(
   source: ProceduralSource,
   name?: string,
@@ -528,7 +573,7 @@ export function createDefaultFrame(id?: string, name?: string): Frame {
  * 2. A legacy GenerativeLayer (with stackable backgrounds) expands into individual
  *    Layers with ProceduralSource, preserving visual order, parameters, blend modes,
  *    opacity, and visibility.
- * 3. An already-migrated Universal Layer (ImageLayer with ImageSource or ProceduralLayer)
+ * 3. An already-canonical Layer (with ImageSource or ProceduralSource)
  *    is returned cleanly without mutation or re-migration (idempotent).
  */
 export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>): Layer[] {

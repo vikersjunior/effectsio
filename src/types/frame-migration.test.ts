@@ -528,6 +528,7 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
 
       // Active layer matches backdrop
       expect(frame.activeLayerId).toBe(backdrop.id);
+      expect(frame.groups).toEqual([]);
     });
 
     it("createDefaultBackdropLayer() creates a canonical Layer with ProceduralSource and legacy fields for compatibility", () => {
@@ -553,7 +554,7 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
       expect(isGenerativeLayer(backdrop)).toBe(true);
     });
 
-    it("createLayer() factory produces a canonical Layer requiring source", () => {
+    it("createLayer() factory produces a canonical Layer with required source while populating explicitly deprecated compatibility fields for unmigrated consumers", () => {
       const imgLayer = createLayer({
         name: "Photo",
         source: { type: "image", assetId: "asset-abc" },
@@ -614,6 +615,38 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
       expect(layerBody).not.toMatch(/\bsource\?:/);
     });
 
+    it("ensures compatibility fields on Layer are annotated with @deprecated", () => {
+      const layerBlockMatch = frameTsContent.match(/export\s+interface\s+Layer\s+extends\s+BaseLayer\s*\{([\s\S]*?)\}/);
+      expect(layerBlockMatch).not.toBeNull();
+      const layerBody = layerBlockMatch![1];
+
+      expect(layerBody).toMatch(/@deprecated[\s\S]*?\btype\?:/);
+      expect(layerBody).toMatch(/@deprecated[\s\S]*?\bassetId\?:/);
+      expect(layerBody).toMatch(/@deprecated[\s\S]*?\bbackgrounds\?:/);
+      expect(layerBody).toMatch(/@deprecated[\s\S]*?\bsublayers\?:/);
+      expect(layerBody).toMatch(/@deprecated[\s\S]*?\bbackgroundMode\?:/);
+      expect(layerBody).toMatch(/@deprecated[\s\S]*?\bbackgroundConfig\?:/);
+    });
+
+    it("verifies createLayer() does not require legacy fields as input and treats source as authoritative", () => {
+      const procLayer = createLayer({
+        name: "Grid Pattern",
+        source: {
+          type: "procedural",
+          kind: "grid",
+          parameters: { gridSize: 32, gridColor: "#ffffff" },
+        },
+      });
+
+      expect(isProceduralSource(procLayer.source)).toBe(true);
+      if (isProceduralSource(procLayer.source)) {
+        expect(procLayer.source.kind).toBe("grid");
+        expect(procLayer.source.parameters).toEqual({ gridSize: 32, gridColor: "#ffffff" });
+      }
+      expect(procLayer.source).toBeDefined();
+      expect(procLayer.type).toBe("procedural"); // temporary compatibility only
+    });
+
     it("ensures canonical Layer cleanly represents both ImageSource and ProceduralSource", () => {
       const imgLayer: Layer = {
         id: "test-img",
@@ -664,6 +697,48 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
       expect(norm2.activeLayerId).toBe(initialBackdrop.id);
       expect(norm2.groups).toEqual([]);
       expect(norm2.layers[0].source).toEqual(norm1.layers[0].source);
+    });
+
+    it("verifies repeated normalization across a multi-layer frame does not alter structure or synthesize new IDs", () => {
+      const initialFrame: Frame = {
+        id: "frame-multi-test",
+        name: "Multi-Layer Composition",
+        dimensions: { width: 1080, height: 1080, presetId: "1:1" },
+        layers: [
+          createDefaultBackdropLayer({ type: "solid", color: "#111111", visible: true, opacity: 100 }),
+          createLayer({
+            id: "layer-img-fixed",
+            name: "Hero Photo",
+            source: { type: "image", assetId: "asset-hero" },
+            visible: true,
+            opacity: 0.95,
+            blendMode: "screen",
+            transform: { x: 10, y: 20, scaleX: 1.1, scaleY: 1.1, rotation: 5 },
+          }),
+        ],
+        groups: [{ id: "grp-1", name: "Main Group", layerIds: ["layer-img-fixed"], visible: true, locked: false, collapsed: false, createdAt: 100, updatedAt: 100 }],
+        activeLayerId: "layer-img-fixed",
+        createdAt: 100,
+        updatedAt: 100,
+      };
+
+      const pass1 = normalizeFrameToUniversalModel(initialFrame);
+      expect(pass1.layers).toHaveLength(2);
+      expect(pass1.layers[0].id).toBe(initialFrame.layers[0].id);
+      expect(pass1.layers[1].id).toBe("layer-img-fixed");
+      expect(pass1.activeLayerId).toBe("layer-img-fixed");
+      expect(pass1.groups).toHaveLength(1);
+      expect(pass1.groups![0].id).toBe("grp-1");
+
+      const pass2 = normalizeFrameToUniversalModel(pass1);
+      expect(pass2.layers).toHaveLength(2);
+      expect(pass2.layers[0].id).toBe(initialFrame.layers[0].id);
+      expect(pass2.layers[1].id).toBe("layer-img-fixed");
+      expect(pass2.activeLayerId).toBe("layer-img-fixed");
+      expect(pass2.groups).toHaveLength(1);
+      expect(pass2.groups![0].id).toBe("grp-1");
+      expect(pass2.layers[1].source).toEqual({ type: "image", assetId: "asset-hero" });
+      expect(pass2.layers[1].transform).toEqual(initialFrame.layers[1].transform);
     });
   });
 });
