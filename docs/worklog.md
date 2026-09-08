@@ -3008,6 +3008,45 @@ Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed 
    - Pre-flight diagnostic: Verified Headroom proxy active on port 8787.
    - Reported statistics: 0 requests proxied directly through Headroom as Antigravity IDE communicates directly with Google Deepmind model APIs; zero token savings or compression claimed per Rule 11.
 
+---
 
+## PRD Addition: Material & Physical Simulation (Section 11.1 & Stage 3.5)
 
+- **Date**: 2026-09-08
+- **Task**: Document Material & Physical Simulation as the eighth effect category and insert Stage 3.5 in the canonical PRD.
 
+### 1. Key Accomplishments
+
+1. **Section 11.1 Material & Physical Simulation (`docs/buildkit/PRD.md`)**:
+   - Added `### 11.1 Material & Physical Simulation` immediately after the existing 7-category taxonomy target.
+   - Defined the category as simulating real physical, optical, or chemical phenomena rather than conventional direct per-pixel adjustments.
+   - Preserved research candidates (glass refraction, Voronoi stained glass, architectural glass blocks, toner melt/water damage, cracked-display bleed, birefringence, ink chromatography, mineral substrates, thin-film iridescence, thermal false-color, plasma discharge) explicitly as research candidates rather than locked implementation commitments (`Category → research candidates → future prioritization → individual implementation`).
+   - Framed product differentiation strictly in EffectsIO's own product terms with zero competitor or reference comparisons (complying with Rule 14).
+   - Documented deferral relative to the core effect taxonomy due to the mathematical and physical complexity of underlying simulation models.
+
+2. **Stage 3.5 — Material & Physical Simulation (`docs/buildkit/PRD.md`)**:
+   - Inserted `### Stage 3.5 — Material & Physical Simulation` in Section 34 between Stage 3 and Stage 4.
+   - Clarified that Stage 3 prioritizes shipping core, high-value adjustment/color/detail effects before introducing the eighth category.
+   - Established implementation prioritization guidelines (engineering complexity, product value, simpler physically grounded effects first, code comments documenting physical/mathematical basis).
+
+3. **Architecture & Scope Preservation**:
+   - Zero modifications to the approved Unified Composition Model (`Project → Frame → (Group) → Layer → Source`).
+   - Zero new layer primitives (`MaterialLayer`, `PhysicalLayer`, etc.) introduced.
+   - Preserved existing 7 core categories intact.
+   - Zero application code, component, shader, or test modifications.
+
+### 2. Empirical Verification Evidence (Rule 1)
+
+- `pnpm verify:approvals`: **PASS (exit code 0, 0 unapproved gates)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 620 tracked files scanned against 16 deny-list terms, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance references)**.
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm build`: **PASS (exit code 0, Vite production bundle built in 2.19s)**.
+
+### 3. Graphify & Headroom Actual-Use Governance
+
+1. **Graphify Actual Use**:
+   - Pre-implementation query: Ran `graphify query "effects taxonomy categories"` to inspect effects architecture and symbol graph.
+   - Post-implementation update: Ran `pnpm graphify:update`.
+2. **Headroom Actual Use**:
+   - Pre-flight diagnostic: Checked `pnpm agent:stats`; Headroom proxy was not active on port 8787. Proceeded without proxy; zero Headroom token savings or compression claimed per Rule 11.

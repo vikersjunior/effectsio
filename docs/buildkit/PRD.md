@@ -501,6 +501,31 @@ The effect browser should converge on these seven categories:
 
 This taxonomy is a content and organization target, not a requirement to build all 53 reference effects at once.
 
+### 11.1 Material & Physical Simulation
+
+A category of effects simulating real physical, optical, or chemical phenomena rather than conventional direct per-pixel adjustments. Examples include glass refraction, print/display degradation, thin-film interference, plasma discharge, and similar physically inspired effects.
+
+This category is intended as a deliberate product differentiator, extending EffectsIO beyond conventional per-pixel adjustment effects into physically inspired material, optical, and simulation-based visual effects.
+
+Representative candidates identified through reference research include pressed/cast glass refraction, broken/stained glass using Voronoi partitioning, architectural glass block lattices, print/display degradation such as toner melt and water damage, cracked-display bleed, polarized-light microscopy and birefringence/interference color, ink chromatography separation, marble/mineral procedural substrates, thin-film interference and oil-slick iridescence, thermal/infrared false-color mapping, and plasma arc discharge.
+
+These are research candidates, not a commitment that every listed effect will be implemented. The distinction remains:
+
+Category → research candidates → future prioritization → individual implementation
+
+The presence of an effect in the research list does not imply:
+
+- guaranteed implementation
+- guaranteed Stage 3.5 scope
+- a fixed number of effects
+- a particular implementation technique
+
+Those decisions can be made during the relevant implementation stage.
+
+This category is deliberately deferred relative to the core effect taxonomy. Many of these effects require substantially more involved physical or optical mathematics than conventional adjustment effects, including areas such as Fresnel/refraction calculations, Voronoi partitioning, thin-film optical path differences, material/light interaction, and other simulation techniques.
+
+The category should therefore be developed separately from the cheaper, high-value per-pixel effects in the core taxonomy.
+
 ### Current 12-effect foundation
 
 - Original
@@ -1273,6 +1298,18 @@ Prioritize:
 7. Transform
 
 Do not treat the reference count as a requirement to build every effect immediately.
+
+### Stage 3.5 — Material & Physical Simulation
+
+Introduce Material & Physical Simulation as the eighth effect category once the core effect taxonomy in Stage 3 is sufficiently established.
+
+Stage 3 focuses on expanding and shipping the core effect taxonomy, particularly the cheaper, high-value Adjustments, Color, and Detail effects. Stage 3.5 is explicitly deferred relative to this core taxonomy.
+
+Implementation should proceed according to engineering complexity and product value rather than attempting to build every research candidate at once:
+
+- Simpler physically grounded effects should be considered before more involved simulations.
+- Implementation decisions must prioritize tractable, high-impact shaders over open-ended mathematical experimentation.
+- Where appropriate, implementation should document the relevant physical or mathematical basis in code comments so future contributors understand the underlying simulation model.
 
 ### Stage 4 — Motion
 
