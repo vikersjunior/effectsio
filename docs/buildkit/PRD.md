@@ -21,13 +21,13 @@ This revision keeps the successful v1 rendering, effects, WebGL, export, persist
 
 1. EffectsIO is **frame-first and layer-first** for the next architecture stage.
 2. A frame can exist without an uploaded image.
-3. A layer can be an image layer or a generative layer; AI-generated layers remain parked.
-4. A generative layer is a **stack of independently enabled generative sub-layers**, not a single background type.
-5. Blend mode exists at two levels: **layer-level** and **per-effect/per-generative-sub-layer level**.
+3. A layer is a universal independently composited visual object with an associated Source (e.g. imported image/media, procedural/generative content); AI generation remains parked.
+4. Generative and procedural content is represented through standard Layers whose Source generates procedural visuals (e.g. gradients, patterns, noise, procedural algorithms), not through a specialized layer type or background floor.
+5. Blend mode exists at two levels: **layer-level** (how each Layer blends into the underlying composition) and **per-effect level** within a Layer's effect stack (with internal procedural blending where supported by a Source).
 6. A Look snapshots the **entire composition**, not only an effect stack.
 7. Animation means changing visual properties over time. Users animate gradients, light, noise, waves, particles, glitch and other supported visual properties rather than treating “effect animation” as a separate concept.
 8. Animation has two implementation tiers: a cheap tier for simple gradient motion and a GPU/WebGL tier for procedural motion.
-9. Keyframe curves remain deferred until the generative-layer system has enough real animatable properties to justify them.
+9. Keyframe curves remain deferred until the composition and source properties have enough real animatable depth to justify them.
 10. AI generation remains parked. Stock-image sourcing is the nearer-term way to help users start from existing content.
 11. A global effect mask ships before per-effect masks.
 12. **shadcn** is the approved general-purpose UI foundation for genuine gaps, using its source-owned Base UI approach. It supplements EffectsIO's native component primitives rather than replacing them wholesale.
@@ -92,7 +92,7 @@ EffectsIO sits between:
 
 Key technical paradigms and interaction patterns synthesized into EffectsIO:
 
-- **Generative Sub-layer Stacking**: Generative layers operate as composable stacks of simultaneous sub-layers (gradients, noise fields, optical distortions, patterns, ASCII) rather than mutually exclusive choices, paired with lossless human-readable URL state serialization for instant sharing.
+- **Procedural Visual Generation & Stacking**: Procedural visuals operate as composable Sources and Layers (gradients, noise fields, optical distortions, patterns, ASCII) rather than mutually exclusive background choices, combined through standard Layer composition and paired with lossless human-readable URL state serialization for instant sharing.
 - **Master Composition Masking**: Framing presets (`Free, 16:9, 4:3, 1:1, 9:16, 21:9`) paired with a global master brush mask applied across the composite stack.
 - **Procedural Shader Engines & Client-Side Media Export**: Multi-algorithm procedural shader generators, interactive pointer physics, and zero-server client-side 30fps MediaRecorder / WebCodecs video and image encoding.
 - **Stackable Effect Taxonomy & Preset Looks**: 50+ modular creative effects across 7 categories (Adjustments, Color, Stylize, Texture, Distortion, Detail, Transform), snapshot Look recipe sharing, and multi-format export.
@@ -124,7 +124,7 @@ Original assets remain intact. Creative operations modify composition state, not
 
 ### 4.5 Composable
 
-Effects, generative sub-layers, images, and other visual ingredients combine predictably.
+Effects, procedural sources, images, and other visual ingredients combine predictably.
 
 ### 4.6 Reusable
 
@@ -263,21 +263,21 @@ Users who want to experiment with procedural and stylistic effects for their own
 ```text
 Open EffectsIO
       ↓
-Start a frame
+Create / open a Frame
       ↓
 Choose a frame size or custom dimensions
       ↓
-Add a generative layer
+Add a Layer
       ↓
-Build a generative sub-layer stack
+Choose or create its Source
       ↓
-Optionally add an image or stock-image layer
+Adjust Layer properties (transform, opacity, blend mode)
       ↓
-Adjust layer opacity and blend mode
+Apply Effects
       ↓
-Adjust per-effect / per-sub-layer blend modes
+Add additional Layers / Groups
       ↓
-Refine visual treatment
+Blend / refine
       ↓
 Optionally animate supported properties
       ↓
@@ -291,13 +291,13 @@ Open EffectsIO
       ↓
 Import an image
       ↓
-Place it in a frame
+Place it in a Frame as a Layer (Image Source)
       ↓
 Add effects
       ↓
 Adjust parameters
       ↓
-Add background/generative content
+Add additional Layers (e.g. procedural backdrop or overlays)
       ↓
 Blend and refine
       ↓
@@ -348,9 +348,15 @@ The existing functional foundation carries forward:
 - undo/redo
 - non-destructive asset handling
 
-`activeImageId` remains authoritative for the **active asset** until the frame/layer architecture migrates the editor toward active-frame/active-layer selection.
+The active composition editing model is established by **`activeFrameId`** and **`activeLayerId`**:
+- **`activeFrameId`** designates the current canvas composition.
+- **`activeLayerId`** designates the target Layer being inspected, styled, or transformed within that Frame.
 
-`selectedAssetIds` is a separate batch-target selection state and must not replace `activeImageId`.
+The distinction between composition editing and asset cataloging is explicit:
+- **Assets** remain reusable, immutable source media and content records stored in the asset registry.
+- **Layer selection (`activeLayerId`)** determines what the user is editing within the canvas composition.
+- **`selectedAssetIds`** is a separate batch-target selection state for multi-asset management in the asset library and must not be confused with active composition editing.
+- **Multi-selection in the composition (`selectedItemIds`)** is transient UI interaction state (e.g. for collective movement or alignment) and does not alter document hierarchy.
 
 The history system records meaningful creative mutations and excludes transient presentation state.
 
@@ -360,9 +366,14 @@ The history system records meaningful creative mutations and excludes transient 
 
 ### 10.1 Frame
 
-A frame is the primary composition surface.
+A frame is the primary composition surface and canvas boundary.
 
 A frame can exist without an uploaded image.
+
+A frame owns:
+- composition dimensions (`width`, `height`, optional preset)
+- optional background / fill color fallback
+- root composition items (`(Layer | Group)[]`) in explicit bottom-to-top z-order
 
 #### Frame presets
 
@@ -390,58 +401,79 @@ A frame can exist without an uploaded image.
 
 Hero-friendly presets may be presented as convenient starting points, but they are not privileged over other formats.
 
-### 10.2 Layers
+### 10.2 Composition Structure
 
-Each frame contains ordered layers.
+EffectsIO uses a unified composition model:
 
-Initial layer types:
+```text
+Project
+└── Frame
+    ├── Group
+    │   ├── Layer → Source
+    │   └── Layer → Source
+    ├── Layer → Source
+    └── Layer → Source
+```
 
-- **Image layer**
-- **Generative layer**
-- **AI-generated layer** — parked / future
+Core principles:
+- **If it creates pixels → Source.**
+- **If it independently composites → Layer.**
+- **If it changes pixels → Effect.**
+- **If it organizes visual objects → Group.**
+- **If it defines composition bounds → Frame.**
 
-Each layer can have:
+### 10.3 Layer
 
-- visibility
-- opacity
-- layer blend mode
-- its own effect stack
+A **Layer** is the universal independently composited visual object.
 
-### 10.3 Image layer
+A Layer owns compositional properties:
+- **visibility** (enabled/disabled toggle)
+- **lock** status
+- **opacity** (0.0 to 1.0)
+- **blend mode** (layer-level blending against underlying composite)
+- **transform** (spatial position, scale, rotation)
+- **z-order** (explicit array position in composition stack)
+- **effect stack** (modular GPU effect shaders)
+- **animation state** where supported
+- **Source** (exactly one content generator)
 
-An image layer references an imported or sourced asset.
+There are no separate, specialized layer taxonomies (such as "ImageLayer" vs "GenerativeLayer"). A single universal Layer representation handles photographic assets, generative backgrounds, procedural overlays, and future media types identically.
 
-The source bitmap remains immutable.
+### 10.4 Source
 
-The layer owns presentation and creative treatment state.
+A **Source** is the content-generation mechanism for a Layer.
 
-### 10.4 Generative layer
+A Source generates raw visual pixels or procedural patterns. It has no awareness of canvas coordinates, z-ordering, blend modes, or effect stacks.
 
-A generative layer is a **stack of independently toggleable generative sub-layers**.
+Source types supported by the roadmap include:
+- **Imported image / media source**: References an immutable imported or sourced asset (`assetId`), with framing/fit options (`contain` / `cover`). The source bitmap remains immutable.
+- **Procedural / generative source**: Generates procedural visuals via mathematical formulations and fragment shaders (gradients, patterns, noise, procedural algorithms).
+- **Future sources**: Additional visual generators (e.g. vector shapes, glyph rasterization) attach to the universal Layer model as new Source types rather than requiring new Layer classes.
 
-Initial target sub-layer categories:
+### 10.5 Group
 
-- Gradient
-- Pattern
-- Light
-- Glass
-- Optics
-- Waves
-- Blobs
-- Pixelate
-- Dither
-- Halftone
-- Plaid
-- ASCII
-- Grain
+A **Group** is an organizational container used to group and manipulate multiple Layers as a unit.
 
-Each sub-layer has:
+For v1:
+```text
+Group → Layer[]
+```
 
-- enabled state
-- parameters
-- blend mode
+- **Single-tier nesting**: Groups contain Layers. Phase 1 Groups do not contain nested Groups (`Group → Group` is not supported).
+- **Capabilities**: A Group provides organizational containment, a name, a collective spatial transform (translation, scale, rotation), collective visibility toggling, collective locking, and an ordered list of child Layers.
+- **Organizational focus**: A Group is an organizational and spatial convenience, not a separate rendering or compositing primitive in v1.
 
-### 10.5 What does not change
+### 10.6 Background as a Visual Role
+
+**Background is a visual role, not a Layer type.**
+
+A standard Layer may fulfill the background role based on its position in the stack (typically lower in the order) and creative intent.
+- There is no user-facing `BackgroundLayer`, `BackgroundItem`, `BackgroundStack`, or special background object type in the document model.
+- Any standard Layer serving as a background can be repositioned, transformed, duplicated, hidden, styled with effects, or removed like any other Layer.
+- The product may still provide background-focused tools, templates, and UI workflows, but these are creative affordances, not separate document-model primitives.
+- The Frame itself may provide a simple background/fill color value where appropriate.
+
+### 10.7 What does not change
 
 The canvas remains a rendering surface.
 
@@ -541,21 +573,17 @@ Rendering architecture must explicitly account for blend-mode composition rather
 
 ## 14. Looks — Unified Composition Presets
 
-A Look is a reusable snapshot of an entire composition.
+A Look is a reusable snapshot of composition structure.
 
-It can include:
+It can serialize supported:
 
-- image-layer effect stacks
-- per-effect blend modes
-- generative sub-layers
-- sub-layer enabled states
-- sub-layer parameters
-- sub-layer blend modes
-- layer opacity
-- layer blend modes
+- Layers and Groups
+- Sources and Source configurations (procedural parameters, asset references)
+- Layer properties (opacity, blend mode, transform, visibility)
+- Effect stacks and per-effect blend modes
 - supported animation settings
 
-A Look is a composition snapshot, not a separate rendering mechanism.
+A Look is a composition snapshot, not a separate rendering mechanism or document primitive. It enables saving, sharing, and instantiating composition structures without requiring new primitives such as `CompoundAsset`, `ReusableVisual`, or `Symbol`.
 
 ### 14.1 Built-in Looks
 
@@ -600,22 +628,29 @@ Do not create parallel color-picker/palette systems.
 
 ## 16. Generative Visual System
 
-Generative visuals are first-class content, not merely background decoration.
+Generative and procedural visuals are first-class content represented as procedural Sources on universal Layers, not merely background decoration or a specialized layer type.
 
-The initial system should cover the 13 sub-layer categories defined in Section 10.4 progressively.
+Where procedural visuals internally combine generative algorithms or shader passes, that is an implementation capability of the procedural Source, or expressed by compositing multiple Layers within a Group.
+
+The system progressively expands across key procedural categories:
+- Gradients (linear, radial, conic, warped mesh)
+- Patterns (dots, grid, tartan plaid, procedural geometry)
+- Light & optics (spot, flares, glass, ripples, chromatic aberration)
+- Noise & fields (Perlin, simplex, cellular, flow fields)
+- Particle systems & waves
+- Stylized generators (halftone, dither, ASCII density ramps, pixelate)
 
 ### Floor
 
-Begin with the existing static modes:
+Begin with the existing procedural modes:
 
-- transparent
-- solid
+- solid fill
 - linear gradient
 - radial gradient
 - dots
 - grid
 
-Reorganize these as generative sub-layers rather than a single mutually exclusive background choice.
+Reorganize these into procedural Sources on standard Layers rather than a single mutually exclusive background choice.
 
 ### Ceiling
 
@@ -629,7 +664,7 @@ Later expand toward:
 - glass / optical distortion (ripples, refraction, chromatic aberration)
 - richer procedural geometry (12 pattern modes, tartan plaid grids, ASCII density ramps)
 
-Technical foundations and mathematical formulations are drawn from verified procedural shader pipelines, Bicubic Hermite lattices, and composable generative sub-layer architectures.
+Technical foundations and mathematical formulations are drawn from verified procedural shader pipelines, Bicubic Hermite lattices, and composable shader architectures.
 
 ---
 
@@ -672,7 +707,7 @@ Provider specifics remain subject to implementation-time API and licensing decis
 
 AI generation is parked, not permanently banned.
 
-Revisit only after the generative-layer system and stock sourcing are mature enough to justify the added provider, cost, and operational complexity.
+Revisit only after the composition system and stock sourcing are mature enough to justify the added provider, cost, and operational complexity.
 
 ---
 
@@ -686,7 +721,7 @@ The user should think in terms of motion applied to visual ingredients, not “a
 
 Potential supported properties include:
 
-**Generative**
+**Procedural / Source properties**
 - gradient position
 - gradient angle
 - color drift
@@ -747,7 +782,7 @@ All shader passes in a frame must receive one deterministic frame timestamp.
 
 ### 19.5 Keyframes
 
-Full keyframe curves remain deferred until the generative-layer model has enough real properties to justify them.
+Full keyframe curves remain deferred until the composition and source properties have enough real animatable depth to justify them.
 
 When implemented, keyframes must operate on real compositional properties rather than forcing a generic timeline onto every control.
 
@@ -773,15 +808,31 @@ Use for:
 
 ### Explicit composition stage
 
-Once multiple frame layers are implemented, composition must explicitly combine N layers, each potentially carrying:
+Multi-layer composition explicitly renders and combines ordered Layers (and Groups), conceptually following:
 
-- its own opacity
+```text
+Frame
+  ↓
+ordered Layers / Groups
+  ↓
+Layer Source
+  ↓
+Layer Effects
+  ↓
+Layer compositing properties (opacity, blend mode, transform)
+  ↓
+Frame composite
+```
+
+Each Layer carries:
+- its own Source (content generator)
+- its own local transform (position, scale, rotation)
+- its own opacity (0.0 to 1.0)
 - layer blend mode
-- effect stack
-- per-effect blend modes
-- global mask behavior
+- effect stack (with per-effect blend modes)
+- mask behavior where supported
 
-Do not assume the existing single-image effect pipeline is sufficient for multi-layer composition without an explicit compositing design pass.
+Groups unroll or composite their child Layers in sequence according to the Group's z-order slot and collective transform. Do not assume the earlier single-image effect pipeline is sufficient without an explicit multi-layer compositing stage.
 
 ---
 
@@ -831,12 +882,11 @@ Account
 │       ├── Assets[]
 │       ├── Frames[]
 │       │   └── Frame
+│       │       ├── Groups[]
+│       │       │   └── Layers[]
+│       │       │       └── Source
 │       │       ├── Layers[]
-│       │       │   ├── Image Layer
-│       │       │   ├── Generative Layer
-│       │       │   │   └── Generative Sub-Layers[]
-│       │       │   └── AI Layer [parked]
-│       │       ├── Effect / Blend State
+│       │       │   └── Source
 │       │       ├── Global Mask
 │       │       ├── Animation State
 │       │       └── Export Settings
@@ -1178,24 +1228,24 @@ Build:
 - first-class Frame state
 - frame creation
 - frame-size presets
-- active frame / active layer context
-- Image Layer
-- Generative Layer
-- layer ordering
+- active frame / active layer context (`activeFrameId` + `activeLayerId`)
+- universal Layer model
+- Source abstraction (imported image source referencing immutable asset, procedural sources)
+- single-tier Groups (`Group → Layer[]`)
+- layer ordering (z-order)
 - layer visibility
 - layer opacity
 - layer-level blend mode
+- layer transforms where in scope
 - explicit multi-layer compositing stage
 
 This is the architectural foundation for the rest of v1.1.
 
-### Stage 2 — Generative Layer Depth
+### Stage 2 — Procedural Source Depth
 
-Build the generative sub-layer stack.
+Build out procedural and generative Source capabilities based on the Source model rather than introducing a specialized layer type.
 
-Start with the existing six modes and reorganize them as independently toggleable sub-layers.
-
-Then expand progressively toward:
+Reorganize the existing static modes into procedural Sources and expand progressively toward:
 
 - Light
 - Noise
@@ -1204,7 +1254,7 @@ Then expand progressively toward:
 - Glass
 - Optics
 - Patterns
-- other approved categories
+- other approved procedural categories
 
 Add global effect masking during this stage.
 
@@ -1252,10 +1302,11 @@ Upgrade Looks from effect-stack snapshots to full composition snapshots.
 
 Support:
 
-- all layers
-- generative sub-layers
+- all Layers and Groups
+- Source configurations (procedural parameters, asset references)
 - blend modes
 - opacity
+- transforms
 - supported animation configuration
 
 ### Stage 7 — Sharing & Remix
@@ -1321,7 +1372,7 @@ EffectsIO should allow a user to:
 3. Start a frame without requiring an image.
 4. Choose a useful frame size or custom dimensions.
 5. Add multiple layers.
-6. Add multiple generative sub-layers without flattening them into one background choice.
+6. Add multiple procedural and image layers without flattening them into a single background choice.
 7. Browse real visual effect previews.
 8. Apply and tune effects immediately.
 9. Blend effects and layers independently.
