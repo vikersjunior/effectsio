@@ -2941,5 +2941,73 @@ Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed 
    - Pre-flight check: Checked Headroom proxy daemon on port 8787 (`pnpm agent:stats` exit code 0).
    - Usage: 0 requests proxied directly through Headroom as Antigravity IDE communicates directly with Google Deepmind model APIs; zero token savings or compression claimed.
 
+---
+
+## Background Stack Final Correction: Locked UI Preservation & Editable Opacity
+
+- **Date**: 2026-09-08
+- **Task**: Background Stack final targeted correction preserving locked UI per Figma node 135:5478, converting passive opacity badge into an inline editable numeric input, ensuring bidirectional synchronization with FloatingBackgroundPanel, and enforcing the Background Layer lifecycle invariant.
+
+### 1. Key Accomplishments
+
+1. **Zero Visual Redesign & Locked Component Preservation (Figma node 135:5478)**:
+   - Kept the exact layout, geometry, spacing (`gap-1.5`), padding, row height (`h-8`), typography (`font-sans text-xs`), icon dimensions (`16px` Phosphor icons), border treatment, corner radius, swatches, drag handle, eye icon, minus icon, and Background header permanent `+`.
+   - Removed the passive badge background and `font-mono` styling from the opacity display.
+
+2. **Inline Editable Opacity Input (`src/components/layout/sortable-background-row.tsx`)**:
+   - Replaced passive badge span with an inline editable `<input>` element:
+     - Attributes: `type="text"`, `inputMode="numeric"`, `data-slot="background-opacity-input"`, `data-testid="background-opacity-input-${item.id}"`, `aria-label="Opacity for ${name}"`.
+     - Styling: `font-sans text-xs tabular-nums text-right bg-transparent border-0 outline-none w-9 shrink-0 cursor-text select-text p-0 m-0` with `text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] focus:text-[color:var(--foreground)]`.
+     - Displays formatted percentage (e.g. `100%`, `65%`, `50%`) when idle.
+     - On focus: selects all text for quick entry.
+     - On blur / Enter: parses and clamps value to `0`–`100%` and commits to `BackgroundItem.opacity`.
+     - On Escape: reverts draft without committing.
+     - On ArrowUp / ArrowDown: steps value by `1%` (or `10%` with Shift key).
+     - Pointer and click event propagation stopped to prevent triggering row selection or drag-and-drop.
+
+3. **Row ↔ FloatingBackgroundPanel Bidirectional Synchronization**:
+   - Both UI surfaces read and update the single source of truth: `BackgroundItem.opacity`.
+   - Passed `onOpacityChange={(opacity) => updateBackgroundItem(item.id, { opacity })}` from `InspectorPanel` into `SortableBackgroundRow`.
+   - Editing row opacity immediately updates `FloatingBackgroundPanel`'s opacity slider.
+   - Editing opacity slider in `FloatingBackgroundPanel` immediately updates the row's percentage display.
+
+4. **Lifecycle Invariant Enforcement (`src/context/studio-context.tsx`)**:
+   - Removed fallback layer synthesis in `addBackgroundItem()`.
+   - If no Background Layer exists in the active frame, `addBackgroundItem()` safely NO-OPs without recreating any layer.
+   - The only valid path to create or recreate the Background Layer is explicit `addBackgroundLayer()` via Layers panel `+ → Background`.
+   - Recreated Background Layer initializes with zero items (`backgrounds: []`), displaying the valid empty state `"No backgrounds"`.
+
+### 2. Empirical Verification Evidence (Rule 1)
+
+- `pnpm test`: **PASS (exit code 0, 28/28 test files passed, 342/342 tests passed)**.
+  - `src/components/layout/background-workflow.test.tsx`: **7 passed (7)** (including lifecycle invariant test).
+  - `src/components/layout/background-stack.test.tsx`: **13 passed (13)** (including editable opacity input, clamping, arrow stepping, undo/redo, and bidirectional sync tests).
+  - `src/components/layout/inspector-panel.test.tsx`: **29 passed (29)**.
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm build`: **PASS (exit code 0, Vite production bundle built in 2.22s)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, all mechanical approval gates verified)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 618 files scanned against 16 deny-list terms, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance references found in tracked files)**.
+- `pnpm graphify:update`: **PASS (exit code 0, 4,228 nodes, 11,248 edges, 143 communities)**.
+- Real Chrome CDP Verification (`scripts/verify-background-workflow-cdp.mjs`): **PASS (exit code 0, 37/37 criteria passed)**.
+  - Step 14: Grid opacity set to 0.45 via editable row input showing 45% (PASS).
+  - Step 15: Other item opacities unchanged at 100% (PASS).
+  - Step 28: Delete Background Layer (PASS).
+  - Step 29: Background Layer disappears from Layers panel (PASS).
+  - Step 30: Docked Inspector shows NO Background section and `addBackgroundItem()` safely NO-OPs without recreating layer (PASS).
+  - Step 31: Recreate Background Layer via `addBackgroundLayer()` (PASS).
+  - Step 32: Empty Background state valid displaying "No backgrounds" (PASS).
+  - Step 33: Add BackgroundItem to recreated layer (PASS).
+
+### 3. Graphify & Headroom Actual-Use Governance
+
+1. **Graphify Actual Use**:
+   - Pre-implementation queries: Investigated `SortableBackgroundRow` and `addBackgroundItem` dependencies.
+   - Post-implementation update: Ran `pnpm graphify:update` (`graphify . --update --code-only`), re-extracting AST and updating graph to 4,228 nodes, 11,248 edges across 143 communities.
+2. **Headroom Actual Use**:
+   - Pre-flight diagnostic: Verified Headroom proxy active on port 8787.
+   - Reported statistics: 0 requests proxied directly through Headroom as Antigravity IDE communicates directly with Google Deepmind model APIs; zero token savings or compression claimed per Rule 11.
+
+
 
 

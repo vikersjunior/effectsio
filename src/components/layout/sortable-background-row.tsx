@@ -22,6 +22,7 @@ export interface SortableBackgroundRowProps {
   onSelect: () => void;
   onToggleEnabled: () => void;
   onRemove: () => void;
+  onOpacityChange?: (opacity: number) => void;
   className?: string;
   showDragHandle?: boolean;
 }
@@ -32,6 +33,7 @@ export function SortableBackgroundRow({
   onSelect,
   onToggleEnabled,
   onRemove,
+  onOpacityChange,
   className,
   showDragHandle = true,
 }: SortableBackgroundRowProps): React.JSX.Element {
@@ -73,6 +75,36 @@ export function SortableBackgroundRow({
 
   const name = getLabel();
   const opacityPercent = Math.round((typeof item.opacity === "number" ? item.opacity : 1) * 100);
+  const [draft, setDraft] = React.useState(`${opacityPercent}%`);
+  const [isFocused, setIsFocused] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isFocused) {
+      setDraft(`${opacityPercent}%`);
+    }
+  }, [opacityPercent, isFocused]);
+
+  const commit = (valueToCommit?: string) => {
+    const val = typeof valueToCommit === "string" ? valueToCommit : draft;
+    const rawDigits = val.replace(/[^0-9.-]/g, "").trim();
+    const parsed = parseFloat(rawDigits);
+    if (Number.isFinite(parsed)) {
+      const clamped = Math.max(0, Math.min(100, Math.round(parsed)));
+      const nextOpacity = clamped / 100;
+      if (nextOpacity !== item.opacity) {
+        onOpacityChange?.(nextOpacity);
+      }
+      setDraft(`${clamped}%`);
+    } else {
+      setDraft(`${opacityPercent}%`);
+    }
+    setIsFocused(false);
+  };
+
+  const revert = () => {
+    setDraft(`${opacityPercent}%`);
+    setIsFocused(false);
+  };
 
   return (
     <div
@@ -145,13 +177,55 @@ export function SortableBackgroundRow({
         className="flex items-center gap-1.5 shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Compact Opacity Indicator */}
-        <span
-          className="text-2xs font-mono text-[color:var(--muted-foreground)] tabular-nums px-1 py-0.5 rounded bg-[color:color-mix(in_oklab,var(--foreground)_4%,transparent)] select-none"
+        {/* Editable Opacity Input */}
+        <input
+          type="text"
+          inputMode="numeric"
+          value={draft}
+          data-slot="background-opacity-input"
+          data-testid={`background-opacity-input-${item.id}`}
+          aria-label={`Opacity for ${name}`}
           title={`Opacity: ${opacityPercent}%`}
-        >
-          {opacityPercent}%
-        </span>
+          onFocus={(e) => {
+            setIsFocused(true);
+            setDraft(String(opacityPercent));
+            e.currentTarget.select();
+          }}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={(e) => commit(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit(e.currentTarget.value);
+              e.currentTarget.blur();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              revert();
+              e.currentTarget.blur();
+            } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              e.preventDefault();
+              const step = e.shiftKey ? 10 : 1;
+              const direction = e.key === "ArrowUp" ? 1 : -1;
+              const rawDigits = draft.replace(/[^0-9.-]/g, "").trim();
+              const currentVal = Number.isFinite(parseFloat(rawDigits)) ? parseFloat(rawDigits) : opacityPercent;
+              const nextVal = Math.max(0, Math.min(100, Math.round(currentVal + direction * step)));
+              const nextOpacity = nextVal / 100;
+              setDraft(`${nextVal}%`);
+              if (nextOpacity !== item.opacity) {
+                onOpacityChange?.(nextOpacity);
+              }
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={cn(
+            "h-5 w-9 shrink-0 text-right font-sans text-xs tabular-nums leading-none bg-transparent border-0 outline-none cursor-text select-text p-0 m-0 transition-colors",
+            isFocused
+              ? "text-[color:var(--foreground)]"
+              : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+          )}
+        />
 
         {/* Visibility Toggle Button */}
         <Button

@@ -365,6 +365,155 @@ describe("EffectsIO — Stackable Background System Suite", () => {
         expect(storeRef.activeBackgrounds[0].blendMode).toBe("normal");
       });
     });
+
+    it("renders editable opacity input in background row, updating item opacity with clamping and undo/redo", async () => {
+      let storeRef!: ReturnType<typeof useStudioStore>;
+      render(
+        <StudioProvider>
+          <TestHost onStore={(s) => { storeRef = s; }} />
+        </StudioProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
+
+      // Select Background Layer
+      fireEvent.click(screen.getByTestId("locked-background-row"));
+
+      // Add Radial Gradient
+      fireEvent.click(screen.getByTestId("add-background-button"));
+      fireEvent.click(screen.getByTestId("add-bg-radial-gradient"));
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds.length).toBe(1);
+      });
+
+      const radial = storeRef.activeBackgrounds[0];
+      const opacityInput = screen.getByTestId(`background-opacity-input-${radial.id}`) as HTMLInputElement;
+      expect(opacityInput).toBeDefined();
+      expect(opacityInput.tagName).toBe("INPUT");
+      expect(opacityInput.value).toBe("100%");
+
+      // Focus and change opacity to 65%
+      fireEvent.focus(opacityInput);
+      fireEvent.change(opacityInput, { target: { value: "65%" } });
+      fireEvent.blur(opacityInput);
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.65);
+        expect(opacityInput.value).toBe("65%");
+      });
+
+      // Clamp high values: 150 -> 100%
+      fireEvent.focus(opacityInput);
+      fireEvent.change(opacityInput, { target: { value: "150" } });
+      fireEvent.keyDown(opacityInput, { key: "Enter" });
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(1.0);
+        expect(opacityInput.value).toBe("100%");
+      });
+
+      // Clamp negative values: -10 -> 0%
+      fireEvent.focus(opacityInput);
+      fireEvent.change(opacityInput, { target: { value: "-10" } });
+      fireEvent.keyDown(opacityInput, { key: "Enter" });
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.0);
+        expect(opacityInput.value).toBe("0%");
+      });
+
+      // Revert on Escape
+      fireEvent.focus(opacityInput);
+      fireEvent.change(opacityInput, { target: { value: "50" } });
+      fireEvent.keyDown(opacityInput, { key: "Escape" });
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.0);
+        expect(opacityInput.value).toBe("0%");
+      });
+
+      // Arrow stepping: ArrowUp -> 1%
+      fireEvent.keyDown(opacityInput, { key: "ArrowUp" });
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.01);
+        expect(opacityInput.value).toBe("1%");
+      });
+
+      // Arrow stepping with Shift: Shift+ArrowUp -> +10% -> 11%
+      fireEvent.keyDown(opacityInput, { key: "ArrowUp", shiftKey: true });
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.11);
+        expect(opacityInput.value).toBe("11%");
+      });
+
+      // Undo reverts to previous discrete state
+      fireEvent.focus(opacityInput);
+      fireEvent.change(opacityInput, { target: { value: "75%" } });
+      fireEvent.blur(opacityInput);
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.75);
+      });
+
+      fireEvent.click(screen.getByTestId("undo-btn"));
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.11);
+        expect(opacityInput.value).toBe("11%");
+      });
+
+      // Redo restores 75%
+      fireEvent.click(screen.getByTestId("redo-btn"));
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.75);
+        expect(opacityInput.value).toBe("75%");
+      });
+    });
+
+    it("synchronizes opacity bidirectionally between row input and FloatingBackgroundPanel", async () => {
+      let storeRef!: ReturnType<typeof useStudioStore>;
+      render(
+        <StudioProvider>
+          <TestHost onStore={(s) => { storeRef = s; }} />
+        </StudioProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
+
+      // Select Background Layer
+      fireEvent.click(screen.getByTestId("locked-background-row"));
+
+      // Add Dots
+      fireEvent.click(screen.getByTestId("add-background-button"));
+      fireEvent.click(screen.getByTestId("add-bg-dots"));
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds.length).toBe(1);
+      });
+
+      const dots = storeRef.activeBackgrounds[0];
+      const opacityInput = screen.getByTestId(`background-opacity-input-${dots.id}`) as HTMLInputElement;
+
+      // 1. Change opacity via row input -> verify FloatingBackgroundPanel updates
+      fireEvent.focus(opacityInput);
+      fireEvent.change(opacityInput, { target: { value: "50%" } });
+      fireEvent.blur(opacityInput);
+
+      await waitFor(() => {
+        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.5);
+      });
+
+      // 2. Change opacity via store/FloatingBackgroundPanel update -> verify row input updates
+      storeRef.updateBackgroundItem(dots.id, { opacity: 0.82 });
+
+      await waitFor(() => {
+        expect(opacityInput.value).toBe("82%");
+      });
+    });
   });
 
   describe("4. Floor Primitive Parameter Editing", () => {

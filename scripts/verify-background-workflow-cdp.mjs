@@ -376,12 +376,34 @@ async function run() {
     console.log("\n--- SEQUENCE D: ITEM CONTROLS ---");
 
     // 14. Change opacity of one item
-    console.log("\n[Step 14] Changing opacity of Grid item...");
+    console.log("\n[Step 14] Changing opacity of Grid item via row input...");
+    const rowInputFound = await cdp.evaluate(`(() => {
+      const store = window.__studioStore;
+      const grid = store.activeBackgrounds.find(b => b.type === "grid");
+      if (!grid) return false;
+      const input = document.querySelector(\`[data-testid="background-opacity-input-\${grid.id}"]\`);
+      return input !== null && input.tagName === "INPUT";
+    })()`);
+
     await cdp.evaluate(`(() => {
       const store = window.__studioStore;
       const grid = store.activeBackgrounds.find(b => b.type === "grid");
       if (grid) {
-        store.updateBackgroundItem(grid.id, { opacity: 0.45 });
+        const input = document.querySelector(\`[data-testid="background-opacity-input-\${grid.id}"]\`);
+        if (input) {
+          input.focus();
+          const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+          if (nativeSetter) {
+            nativeSetter.call(input, "45%");
+          } else {
+            input.value = "45%";
+          }
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+          input.blur();
+        } else {
+          store.updateBackgroundItem(grid.id, { opacity: 0.45 });
+        }
       }
     })()`);
     await sleep(400);
@@ -389,7 +411,14 @@ async function run() {
       const store = window.__studioStore;
       return store.activeBackgrounds.find(b => b.type === "grid")?.opacity;
     })()`);
-    recordStep(14, "Change item opacity", gridOpacity === 0.45, `Grid opacity set to ${gridOpacity}`);
+    const gridInputDisplay = await cdp.evaluate(`(() => {
+      const store = window.__studioStore;
+      const grid = store.activeBackgrounds.find(b => b.type === "grid");
+      const input = document.querySelector(\`[data-testid="background-opacity-input-\${grid.id}"]\`);
+      return input?.value;
+    })()`);
+    recordStep(14, "Change item opacity via row input", gridOpacity === 0.45 && rowInputFound && gridInputDisplay === "45%",
+      `Grid opacity set to ${gridOpacity} via editable row input showing ${gridInputDisplay}`);
 
     // 15. Confirm other items are unchanged
     console.log("\n[Step 15] Confirming other items' opacity is unchanged...");
@@ -597,14 +626,20 @@ async function run() {
     await cdp.captureScreenshot("G-29-background-layer-deleted.png");
     recordStep(29, "Disappears from Layers", !bgRowInLayers, "locked-background-row absent from Layers panel");
 
-    // 30. Confirm no Background section appears when an Image is selected
-    console.log("\n[Step 30] Confirming no Background section appears when Image is selected without Background layer...");
+    // 30. Confirm no Background section appears when an Image is selected, and addBackgroundItem does NOT recreate layer
+    console.log("\n[Step 30] Confirming no Background section appears and addBackgroundItem does not recreate deleted layer...");
+    const invariantVerified = await cdp.evaluate(`(() => {
+      const store = window.__studioStore;
+      store.addBackgroundItem("solid");
+      const hasBgLayer = store.frames.find(f => f.id === store.activeFrameId)?.layers.some(l => l.type === "generative");
+      return !hasBgLayer;
+    })()`);
     const bgSectionWhenNoBgLayer = await cdp.evaluate(`(() => {
       const inspector = document.querySelector('[data-testid="inspector-panel"]');
       return Boolean(inspector?.querySelector('[data-testid="background-section-header"]'));
     })()`);
-    recordStep(30, "No Background section in Image context without BG layer", !bgSectionWhenNoBgLayer,
-      "Docked Inspector shows NO Background section");
+    recordStep(30, "No Background section & addBackgroundItem does not recreate layer", !bgSectionWhenNoBgLayer && invariantVerified,
+      "Docked Inspector shows NO Background section and addBackgroundItem() safely NO-OPs without recreating layer");
 
     // 31. Recreate Background through the normal Layer creation flow
     console.log("\n[Step 31] Recreating Background Layer through Layer creation flow...");

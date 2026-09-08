@@ -62,14 +62,18 @@ function hexToRgba(hex: string, alpha = 1): string {
 export function FloatingBackgroundPanel(): React.JSX.Element | null {
   const {
     activeFrame,
+    activeLayer,
     isBackgroundPanelOpen,
     setIsBackgroundPanelOpen,
+    backgroundPanelMode,
     activeBackground,
     updateActiveBackground,
     activeBackgrounds,
     selectedBackgroundId,
     setSelectedBackgroundId,
     activeBackgroundItem,
+    addBackgroundItem,
+    removeBackgroundItem,
     updateBackgroundItem,
     updateBackgroundItemParameters,
   } = useStudioStore();
@@ -148,7 +152,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     return `linear-gradient(90deg, ${stopStrs.join(", ")})`;
   }, [stops]);
 
-  if (!activeFrame || !isBackgroundPanelOpen) {
+  if (!activeFrame || !isBackgroundPanelOpen || activeLayer?.type !== "generative") {
     return null;
   }
 
@@ -390,11 +394,29 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     handleUpdateStopPosition(nearestIdx, `${clickedPercent}%`);
   };
 
+  const isAddMode = backgroundPanelMode === "add";
   const effectiveType = activeBackgroundItem?.type;
+  const isAlphaActive = (effectiveType as string) === "transparent" || (!effectiveType && activeBackgrounds.length === 0);
   const isSolidActive = effectiveType === "solid";
   const isGradientActive = effectiveType === "linear-gradient" || effectiveType === "radial-gradient";
   const isDotsActive = effectiveType === "dots";
   const isGridActive = effectiveType === "grid";
+
+  const handleSelectPrimitive = (newType: BackgroundItemType | "transparent") => {
+    if (newType === "transparent") {
+      if (activeBackgroundItem) {
+        removeBackgroundItem(activeBackgroundItem.id);
+      }
+      return;
+    }
+    if (!activeBackgroundItem) {
+      addBackgroundItem(newType);
+    } else {
+      updateBackgroundItem(activeBackgroundItem.id, {
+        type: newType,
+      });
+    }
+  };
 
   const itemParams = activeBackgroundItem?.parameters ?? {};
   const currentDef = activeBackgroundItem ? BACKGROUND_ITEM_REGISTRY[activeBackgroundItem.type] : undefined;
@@ -403,7 +425,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     <div
       ref={panelRef}
       role="dialog"
-      aria-label="Background Parameters"
+      aria-label={isAddMode ? "Add Background" : "Background Parameters"}
       data-floating-surface=""
       data-testid="floating-background-panel"
       className="app-no-drag absolute z-30 flex flex-col w-[304px] rounded-[16px] border border-[color:var(--border)] bg-[color:var(--sidebar)]/95 backdrop-blur-2xl shadow-xl select-none overflow-hidden"
@@ -421,7 +443,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
       >
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-xs font-semibold text-[color:var(--foreground)] tracking-tight truncate">
-            {activeBackgroundItem?.name || currentDef?.name || "Background Parameters"}
+            {isAddMode ? "Add Background" : (activeBackgroundItem?.name || currentDef?.name || "Background Parameters")}
           </span>
         </div>
 
@@ -432,6 +454,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
             onClick={handleClose}
             title="Close parameters"
             aria-label="Close parameters"
+            data-testid="close-background-panel"
             className="size-6 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] cursor-pointer [&_svg]:!size-4"
           >
             <XIcon size={16} />
@@ -439,50 +462,161 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
         </div>
       </div>
 
+      {/* 5 Background Type Toolbar (Figma 131:4984 / 113:4657) */}
+      {isAddMode && (
+        <div
+          className="flex items-center justify-between px-3.5 py-2 border-b border-[color:var(--border)] bg-[color:color-mix(in_oklab,var(--background)_40%,transparent)] shrink-0"
+          data-testid="add-background-primitives-toolbar"
+        >
+          {/* 1. Alpha */}
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              aria-label="Alpha"
+              data-testid="primitive-transparent"
+              onClick={() => handleSelectPrimitive("transparent")}
+              className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
+                isAlphaActive
+                  ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
+              }`}
+            >
+              <CircleHalfIcon size={18} />
+            </TooltipTrigger>
+            <TooltipContent side="top">Alpha</TooltipContent>
+          </Tooltip>
+
+          {/* 2. Solid */}
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              aria-label="Solid"
+              data-testid="primitive-solid"
+              onClick={() => handleSelectPrimitive("solid")}
+              className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
+                isSolidActive
+                  ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
+              }`}
+            >
+              <CircleIcon size={18} />
+            </TooltipTrigger>
+            <TooltipContent side="top">Solid</TooltipContent>
+          </Tooltip>
+
+          {/* 3. Gradient */}
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              aria-label="Gradient"
+              data-testid="primitive-gradient"
+              onClick={() => handleSelectPrimitive("linear-gradient")}
+              className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
+                isGradientActive
+                  ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
+              }`}
+            >
+              <GradientIcon size={18} />
+            </TooltipTrigger>
+            <TooltipContent side="top">Gradient</TooltipContent>
+          </Tooltip>
+
+          {/* 4. Dot Pattern */}
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              aria-label="Dot Pattern"
+              data-testid="primitive-dots"
+              onClick={() => handleSelectPrimitive("dots")}
+              className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
+                isDotsActive
+                  ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
+              }`}
+            >
+              <DotsNineIcon size={18} />
+            </TooltipTrigger>
+            <TooltipContent side="top">Dot Pattern</TooltipContent>
+          </Tooltip>
+
+          {/* 5. Grid Pattern */}
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              aria-label="Grid Pattern"
+              data-testid="primitive-grid"
+              onClick={() => handleSelectPrimitive("grid")}
+              className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
+                isGridActive
+                  ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
+              }`}
+            >
+              <GridFourIcon size={18} />
+            </TooltipTrigger>
+            <TooltipContent side="top">Grid Pattern</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+
       {/* Contextual Parameter Controls List */}
       <ScrollFade className="flex-1 overflow-y-auto px-3.5 py-3" containerClassName="flex-1 min-h-0">
         <div className="flex flex-col gap-3.5">
           {!activeBackgroundItem ? (
-            <div className="py-8 px-4 text-center text-xs text-[color:var(--muted-foreground)]">
-              No background item selected.
+            <div className="py-8 px-4 text-center text-xs text-[color:var(--muted-foreground)] select-none">
+              Choose a background type above to begin.
             </div>
           ) : (
             <>
-              {/* Background Blending & Opacity Section */}
-              <div className="flex flex-col gap-2.5 p-2 rounded-lg bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)] border border-[color:color-mix(in_oklab,var(--border)_50%,transparent)]">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
-                    Blending
-                  </span>
-                  <span className="text-3xs text-[color:var(--muted-foreground)] truncate max-w-[130px]">
-                    {activeBackgroundItem.name || currentDef?.name || activeBackgroundItem.type}
-                  </span>
+              {/* Background Blending & Opacity Section (Edit mode only) */}
+              {!isAddMode && (
+                <div className="flex flex-col gap-2.5 p-2 rounded-lg bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)] border border-[color:color-mix(in_oklab,var(--border)_50%,transparent)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
+                      Blending
+                    </span>
+                    <span className="text-3xs text-[color:var(--muted-foreground)] truncate max-w-[130px]">
+                      {activeBackgroundItem.name || currentDef?.name || activeBackgroundItem.type}
+                    </span>
+                  </div>
+                  <div data-testid="background-item-opacity-slider">
+                    <SliderControl
+                      name="Opacity"
+                      value={Math.round((activeBackgroundItem.opacity ?? 1) * 100)}
+                      min={0}
+                      max={100}
+                      step={1}
+                      unit="%"
+                      onValueChange={(val) =>
+                        updateBackgroundItem(activeBackgroundItem.id, { opacity: val / 100 })
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1" data-testid="background-item-blend-mode-select">
+                    <span className="text-2xs text-[color:var(--muted-foreground)]">Blend Mode</span>
+                    <StaticSelect
+                      size="sm"
+                      value={activeBackgroundItem.blendMode || "normal"}
+                      options={BLEND_MODE_OPTIONS}
+                      onValueChange={(val) =>
+                        updateBackgroundItem(activeBackgroundItem.id, { blendMode: val as BlendMode })
+                      }
+                    />
+                  </div>
                 </div>
-                <div data-testid="background-item-opacity-slider">
-                  <SliderControl
-                    name="Opacity"
-                    value={Math.round((activeBackgroundItem.opacity ?? 1) * 100)}
-                    min={0}
-                    max={100}
-                    step={1}
-                    unit="%"
-                    onValueChange={(val) =>
-                      updateBackgroundItem(activeBackgroundItem.id, { opacity: val / 100 })
-                    }
-                  />
+              )}
+
+              {/* Alpha Parameters */}
+              {isAlphaActive && (
+                <div className="flex flex-col gap-3">
+                  <div className="py-1">
+                    <span className="text-xs text-[color:var(--muted-foreground)] leading-relaxed">
+                      Transparent alpha background active. Canvas background is preserved.
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1" data-testid="background-item-blend-mode-select">
-                  <span className="text-2xs text-[color:var(--muted-foreground)]">Blend Mode</span>
-                  <StaticSelect
-                    size="sm"
-                    value={activeBackgroundItem.blendMode || "normal"}
-                    options={BLEND_MODE_OPTIONS}
-                    onValueChange={(val) =>
-                      updateBackgroundItem(activeBackgroundItem.id, { blendMode: val as BlendMode })
-                    }
-                  />
-                </div>
-              </div>
+              )}
 
           {/* Solid Parameters */}
           {isSolidActive && (

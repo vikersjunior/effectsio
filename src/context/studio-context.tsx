@@ -200,6 +200,10 @@ export interface StudioContextType {
   activeBackgrounds: BackgroundItem[];
   selectedBackgroundId: string | null;
   setSelectedBackgroundId: (id: string | null) => void;
+  backgroundPanelMode: "add" | "edit";
+  setBackgroundPanelMode: (mode: "add" | "edit") => void;
+  openAddBackgroundPanel: () => void;
+  openEditBackgroundPanel: (id: string) => void;
   activeBackgroundItem: BackgroundItem | null;
   addBackgroundLayer: () => void;
   addBackgroundItem: (
@@ -302,9 +306,22 @@ export function StudioProvider({
   const [editorMode, setEditorMode] = React.useState<"design" | "animate">("design");
   const [isEffectBrowserOpen, setIsEffectBrowserOpen] = React.useState(false);
   const [isBackgroundPanelOpen, setIsBackgroundPanelOpen] = React.useState(false);
+  const [backgroundPanelMode, setBackgroundPanelMode] = React.useState<"add" | "edit">("edit");
   const [selectedBackgroundId, setSelectedBackgroundId] = React.useState<string | null>(null);
   const selectedSublayerId = selectedBackgroundId;
   const setSelectedSublayerId = setSelectedBackgroundId;
+
+  const openAddBackgroundPanel = React.useCallback(() => {
+    setBackgroundPanelMode("add");
+    setSelectedBackgroundId(null);
+    setIsBackgroundPanelOpen(true);
+  }, []);
+
+  const openEditBackgroundPanel = React.useCallback((id: string) => {
+    setBackgroundPanelMode("edit");
+    setSelectedBackgroundId(id);
+    setIsBackgroundPanelOpen(true);
+  }, []);
   const [appliedLook, setAppliedLook] = React.useState<Look | null>(null);
 
   const clearAppliedLook = React.useCallback(() => {
@@ -1923,6 +1940,11 @@ export function StudioProvider({
       atIndex?: number
     ) => {
       if (!activeFrame) return;
+      const hasGenLayer = activeFrame.layers.some((l) => l.type === "generative");
+      if (!hasGenLayer) {
+        // Non-negotiable invariant: addBackgroundItem() MUST NEVER CREATE A BACKGROUND LAYER
+        return;
+      }
       recordDiscreteSnapshot();
 
       setFrames((prev) => {
@@ -1930,28 +1952,11 @@ export function StudioProvider({
         if (frameIndex === -1) return prev;
         const targetFrame = prev[frameIndex];
         const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
-        let genLayer: GenerativeLayer;
-        let genLayerIdx = genLayerIndex;
-        let baseLayers = [...targetFrame.layers];
+        if (genLayerIndex === -1) return prev;
 
-        if (genLayerIdx === -1) {
-          genLayer = {
-            id: `layer-bg-${Date.now()}`,
-            type: "generative",
-            name: "Background",
-            visible: true,
-            opacity: 1.0,
-            blendMode: "normal",
-            effectStack: [],
-            backgrounds: [],
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          };
-          baseLayers = [genLayer, ...targetFrame.layers];
-          genLayerIdx = 0;
-        } else {
-          genLayer = targetFrame.layers[genLayerIdx] as GenerativeLayer;
-        }
+        const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
+        const genLayerIdx = genLayerIndex;
+        const baseLayers = [...targetFrame.layers];
 
         const currentBackgrounds = genLayer.backgrounds || genLayer.sublayers || [];
         const newBackground = createBackgroundItem(type, {
@@ -2737,6 +2742,10 @@ export function StudioProvider({
     hasActiveBackground,
     isBackgroundPanelOpen,
     setIsBackgroundPanelOpen,
+    backgroundPanelMode,
+    setBackgroundPanelMode,
+    openAddBackgroundPanel,
+    openEditBackgroundPanel,
     updateActiveBackground,
     resetActiveBackground,
     activeBackgrounds,

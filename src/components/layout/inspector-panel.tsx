@@ -213,13 +213,14 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     activeLayerId,
     activeLayer,
     updateLayer,
+    openAddBackgroundPanel,
+    openEditBackgroundPanel,
   } = useStudioStore();
 
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
   const [isAccountPopoverOpen, setIsAccountPopoverOpen] = React.useState(false);
   const [isLooksPopoverOpen, setIsLooksPopoverOpen] = React.useState(false);
   const [isLookVisible, setIsLookVisible] = React.useState(true);
-  const [isAddBackgroundPopoverOpen, setIsAddBackgroundPopoverOpen] = React.useState(false);
 
   React.useEffect(() => {
     setIsLookVisible(true);
@@ -781,97 +782,18 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                       </span>
                     )}
                   </div>
-                  <Popover open={isAddBackgroundPopoverOpen} onOpenChange={setIsAddBackgroundPopoverOpen}>
-                    <PopoverTrigger
-                      render={(triggerProps) => (
-                        <button
-                          {...triggerProps}
-                          type="button"
-                          aria-label="Add background"
-                          title="Add background"
-                          data-testid="add-background-button"
-                          className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
-                        >
-                          <PlusIcon size={16} />
-                        </button>
-                      )}
-                    />
-                    <PopoverContent
-                      side="left"
-                      align="start"
-                      sideOffset={8}
-                      className="w-48 p-1.5 flex flex-col gap-0.5 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg"
-                    >
-                      <span className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
-                        Add Background
-                      </span>
-                      <button
-                        type="button"
-                        data-testid="add-bg-solid"
-                        onClick={() => {
-                          addBackgroundItem("solid");
-                          setIsBackgroundPanelOpen(true);
-                          setIsAddBackgroundPopoverOpen(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
-                      >
-                        <div className="size-4 rounded-xs bg-[#E20000] shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]" />
-                        Solid
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="add-bg-linear-gradient"
-                        onClick={() => {
-                          addBackgroundItem("linear-gradient");
-                          setIsBackgroundPanelOpen(true);
-                          setIsAddBackgroundPopoverOpen(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
-                      >
-                        <div className="size-4 rounded-xs bg-gradient-to-r from-black to-blue-500 shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]" />
-                        Linear Gradient
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="add-bg-radial-gradient"
-                        onClick={() => {
-                          addBackgroundItem("radial-gradient");
-                          setIsBackgroundPanelOpen(true);
-                          setIsAddBackgroundPopoverOpen(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
-                      >
-                        <div className="size-4 rounded-xs bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-black to-blue-500 shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]" />
-                        Radial Gradient
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="add-bg-dots"
-                        onClick={() => {
-                          addBackgroundItem("dots");
-                          setIsBackgroundPanelOpen(true);
-                          setIsAddBackgroundPopoverOpen(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
-                      >
-                        <DotsNineIcon size={16} className="text-[color:var(--muted-foreground)] shrink-0" />
-                        Dots
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="add-bg-grid"
-                        onClick={() => {
-                          addBackgroundItem("grid");
-                          setIsBackgroundPanelOpen(true);
-                          setIsAddBackgroundPopoverOpen(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
-                      >
-                        <GridFourIcon size={16} className="text-[color:var(--muted-foreground)] shrink-0" />
-                        Grid
-                      </button>
-                    </PopoverContent>
-                  </Popover>
+                  <button
+                    type="button"
+                    aria-label="Add background"
+                    title="Add background"
+                    data-testid="add-background-button"
+                    onClick={() => {
+                      openAddBackgroundPanel();
+                    }}
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
+                  >
+                    <PlusIcon size={16} />
+                  </button>
                 </div>
 
                 {activeBackgrounds.length === 0 ? (
@@ -898,14 +820,16 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                               index={index}
                               isSelected={isSelected}
                               onSelect={() => {
-                                setSelectedBackgroundId(item.id);
-                                setIsBackgroundPanelOpen(true);
+                                openEditBackgroundPanel(item.id);
                               }}
                               onToggleEnabled={() => {
                                 updateBackgroundItem(item.id, { enabled: !item.enabled });
                               }}
                               onRemove={() => {
                                 removeBackgroundItem(item.id);
+                              }}
+                              onOpacityChange={(opacity) => {
+                                updateBackgroundItem(item.id, { opacity });
                               }}
                             />
                           );

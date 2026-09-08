@@ -334,6 +334,11 @@ describe("EffectsIO — Authoritative Background Workflow Suite", () => {
         expect(storeRef.activeFrame?.layers.some((l) => l.type === "generative")).toBe(false);
       });
 
+      // Mandatory Invariant: addBackgroundItem() MUST NEVER recreate a missing Background Layer
+      storeRef.addBackgroundItem("solid");
+      expect(storeRef.activeFrame?.layers.some((l) => l.type === "generative")).toBe(false);
+      expect(screen.queryByTestId("locked-background-row")).toBeNull();
+
       // Recreate Background Layer via Add Layer popover
       const addLayerBtn = screen.getByRole("button", { name: "Add layer" });
       fireEvent.click(addLayerBtn);
