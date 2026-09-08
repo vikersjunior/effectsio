@@ -1,16 +1,20 @@
 import type { Asset, EffectStack } from "../types/asset";
 import type { Look, BackgroundState } from "../types/look";
-import type { Frame, ImageLayer } from "../types/frame";
+import type { Frame, ImageLayer, GenerativeLayer } from "../types/frame";
 import {
   createDefaultFrame,
   createDefaultGenerativeLayer,
   createImageLayer,
+  normalizeFrameToUniversalModel,
+  normalizeLayerToUniversal,
 } from "../types/frame";
 import { sanitizeTransform } from "../utils/transform-math";
 import {
   deriveLegacyBackgroundFromBackgrounds,
   normalizeGenerativeLayer,
 } from "../generative/normalization";
+
+export { normalizeFrameToUniversalModel, normalizeLayerToUniversal };
 
 const DB_NAME = "effectsio_db";
 const DB_VERSION = 2;
@@ -176,9 +180,44 @@ export async function dbGetAllFrames(): Promise<Frame[]> {
   if (!Array.isArray(records)) return [];
   return records.map((frame) => ({
     ...frame,
+    groups: frame.groups || [],
     layers: frame.layers.map((layer) => {
       if (layer.type === "generative") {
-        return normalizeGenerativeLayer(layer);
+        const normGen = normalizeGenerativeLayer(layer as GenerativeLayer);
+        const primaryBg = normGen.backgrounds?.[0];
+        return {
+          ...normGen,
+          source:
+            normGen.source ||
+            (primaryBg
+              ? {
+                  type: "procedural" as const,
+                  kind: primaryBg.type,
+                  parameters: { ...primaryBg.parameters },
+                  seed: primaryBg.seed,
+                }
+              : {
+                  type: "procedural" as const,
+                  kind: "solid" as const,
+                  parameters: { color: "#000000" },
+                }),
+        };
+      }
+      if (layer.type === "image") {
+        return {
+          ...layer,
+          source: layer.source || {
+            type: "image" as const,
+            assetId: layer.assetId,
+          },
+          transform: sanitizeTransform(layer.transform),
+        };
+      }
+      if (layer.source && layer.source.type === "procedural") {
+        return {
+          ...layer,
+          transform: sanitizeTransform(layer.transform),
+        };
       }
       return layer;
     }),
@@ -476,7 +515,7 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
     const currentActiveLayer = currentActiveFrame?.layers.find((l) => l.id === activeLayerId);
     let resolvedActiveImageId: string | null = null;
     if (currentActiveLayer?.type === "image") {
-      resolvedActiveImageId = currentActiveLayer.assetId;
+      resolvedActiveImageId = (currentActiveLayer as ImageLayer).assetId;
     } else {
       const firstImg = currentActiveFrame?.layers.find((l): l is ImageLayer => l.type === "image");
       resolvedActiveImageId = firstImg ? firstImg.assetId : (validAssets[0]?.id || null);
@@ -489,16 +528,17 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
       const baseGen = frame.layers[0];
       for (const layer of frame.layers) {
         if (layer.type === "image") {
-          if (!mergedEffectStacks[layer.assetId]) {
-            mergedEffectStacks[layer.assetId] = layer.effectStack;
+          const img = layer as ImageLayer;
+          if (!mergedEffectStacks[img.assetId]) {
+            mergedEffectStacks[img.assetId] = img.effectStack;
           }
-          if (baseGen && baseGen.type === "generative" && !mergedBackgrounds[layer.assetId]) {
+          if (baseGen && baseGen.type === "generative" && !mergedBackgrounds[img.assetId]) {
             const bgItems = baseGen.backgrounds || baseGen.sublayers;
             const derivedBg =
               baseGen.backgroundConfig ??
               (bgItems ? deriveLegacyBackgroundFromBackgrounds(bgItems) : undefined);
             if (derivedBg) {
-              mergedBackgrounds[layer.assetId] = derivedBg;
+              mergedBackgrounds[img.assetId] = derivedBg;
             }
           }
         }
@@ -506,18 +546,49 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
     }
 
     // Ensure all ImageLayers across all frames have sanitized, valid LayerTransform
-    // and all GenerativeLayers have normalized, valid sublayers
+    // and all GenerativeLayers have normalized, valid sublayers and sources,
+    // and all frames have groups initialized
     const sanitizedFrames = frames.map((frame) => ({
       ...frame,
+      groups: frame.groups || [],
       layers: frame.layers.map((layer) => {
         if (layer.type === "image") {
+          const img = layer as ImageLayer;
           return {
             ...layer,
+            source: layer.source || {
+              type: "image" as const,
+              assetId: img.assetId,
+            },
             transform: sanitizeTransform(layer.transform),
           };
         }
         if (layer.type === "generative") {
-          return normalizeGenerativeLayer(layer);
+          const normGen = normalizeGenerativeLayer(layer as GenerativeLayer);
+          const primaryBg = normGen.backgrounds?.[0];
+          return {
+            ...normGen,
+            source:
+              normGen.source ||
+              (primaryBg
+                ? {
+                    type: "procedural" as const,
+                    kind: primaryBg.type,
+                    parameters: { ...primaryBg.parameters },
+                    seed: primaryBg.seed,
+                  }
+                : {
+                    type: "procedural" as const,
+                    kind: "solid" as const,
+                    parameters: { color: "#000000" },
+                  }),
+          };
+        }
+        if (layer.source && layer.source.type === "procedural") {
+          return {
+            ...layer,
+            transform: sanitizeTransform(layer.transform),
+          };
         }
         return layer;
       }),

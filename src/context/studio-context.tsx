@@ -403,7 +403,7 @@ export function StudioProvider({
   // Transitional Compatibility Getters (Stage 1A)
   const activeImageId = React.useMemo((): string | null => {
     if (!activeLayer) return null;
-    if (activeLayer.type === "image") return activeLayer.assetId;
+    if (activeLayer.type === "image") return (activeLayer as ImageLayer).assetId;
     const firstImage = activeFrame?.layers.find((l): l is ImageLayer => l.type === "image");
     return firstImage ? firstImage.assetId : null;
   }, [activeLayer, activeFrame]);
@@ -778,7 +778,7 @@ export function StudioProvider({
     if (activeFrameRef.current && typeof dbSaveSessionState === "function") {
       const frame = activeFrameRef.current;
       const targetLayer = frame.layers.find((l) => l.id === id);
-      const assetId = targetLayer?.type === "image" ? targetLayer.assetId : null;
+      const assetId = targetLayer?.type === "image" ? (targetLayer as ImageLayer).assetId : null;
       dbSaveSessionState(
         frame.id,
         id,
@@ -1059,6 +1059,11 @@ export function StudioProvider({
           opacity: 1.0,
           blendMode: "normal",
           effectStack: [],
+          source: {
+            type: "procedural" as const,
+            kind: "solid" as const,
+            parameters: { color: "#000000" },
+          },
           backgrounds: [],
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -1499,7 +1504,7 @@ export function StudioProvider({
         const nextFrames = [...prevFrames];
         nextFrames[frameIndex] = updatedFrame;
 
-        const assetId = targetLayer.type === "image" ? targetLayer.assetId : targetId;
+        const assetId = targetLayer.type === "image" ? (targetLayer as ImageLayer).assetId : targetId;
 
         if (options.debounce) {
           const timerKey = "stack_" + assetId;
@@ -1746,12 +1751,15 @@ export function StudioProvider({
         const updatedFrames = prevFrames.map((frame) => {
           let hasChange = false;
           const nextLayers = frame.layers.map((layer) => {
-            if (layer.type === "image" && assetIds.includes(layer.assetId)) {
-              hasChange = true;
-              return {
-                ...layer,
-                effectStack: newStacksMap[layer.assetId] || [],
-              };
+            if (layer.type === "image") {
+              const img = layer as ImageLayer;
+              if (assetIds.includes(img.assetId)) {
+                hasChange = true;
+                return {
+                  ...layer,
+                  effectStack: newStacksMap[img.assetId] || [],
+                };
+              }
             }
             return layer;
           });

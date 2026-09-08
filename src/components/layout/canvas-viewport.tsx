@@ -1083,7 +1083,7 @@ export function CanvasViewport({
           asset.height,
           activeFrame.dimensions.width,
           activeFrame.dimensions.height,
-          layer.fit
+          (layer as ImageLayer).fit
         );
         const transform = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
         const scaledW = fitted.width * transform.scaleX;
@@ -1237,7 +1237,7 @@ export function CanvasViewport({
           (containerSize.width > 0 || (containerRef.current?.clientWidth ?? 0) > 0) && (
             <LayerSelectionOverlay
               frame={activeFrame}
-              activeLayer={activeLayer}
+              activeLayer={activeLayer as ImageLayer}
               asset={activeImageLayerAsset}
               viewport={viewport}
               viewportWidth={containerSize.width || containerRef.current?.clientWidth || 800}

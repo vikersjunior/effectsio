@@ -237,7 +237,7 @@ export class WebGL2FrameCompositor {
       );
 
       if (layer.type === "generative") {
-        const normalized = normalizeGenerativeLayer(layer);
+        const normalized = normalizeGenerativeLayer(layer as GenerativeLayer);
         const backgrounds = normalized.backgrounds ?? normalized.sublayers ?? [];
         parts.push(`gen:${backgrounds.length}`);
         for (let s = 0; s < backgrounds.length; s++) {
@@ -307,10 +307,10 @@ export class WebGL2FrameCompositor {
 
       if (layer.type === "generative") {
         // --- GenerativeLayer (index 0 backdrop) ---
-        layerOutputTexture = this.renderGenerativeLayer(layer, width, height, time);
+        layerOutputTexture = this.renderGenerativeLayer(layer as GenerativeLayer, width, height, time);
       } else if (layer.type === "image") {
         // --- ImageLayer ---
-        layerOutputTexture = this.renderImageLayer(layer, width, height, assetSources, time);
+        layerOutputTexture = this.renderImageLayer(layer as ImageLayer, width, height, assetSources, time);
       }
 
       if (!layerOutputTexture) {

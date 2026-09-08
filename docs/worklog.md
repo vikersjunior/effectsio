@@ -3050,3 +3050,165 @@ Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed 
    - Post-implementation update: Ran `pnpm graphify:update`.
 2. **Headroom Actual Use**:
    - Pre-flight diagnostic: Checked `pnpm agent:stats`; Headroom proxy was not active on port 8787. Proceeded without proxy; zero Headroom token savings or compression claimed per Rule 11.
+
+---
+
+## Unified Composition Model: Implementation Readiness & Migration Review
+
+- **Date**: 2026-09-08
+- **Task**: Comprehensive architectural readiness, repository state audit, and 5-phase migration review for the approved Unified Composition Model.
+
+### 1. Key Findings & Deliverable
+
+1. **State & Rendering Audit (`src/context/studio-context.tsx`, `src/rendering/webgl/webgl-frame-compositor.ts`)**:
+   - Confirmed `frames`, `activeFrameId`, and `activeLayerId` already form the underlying source of truth in `studio-context.tsx`, with `activeImageId` serving only as a derived compatibility bridge (`activeLayer.assetId`).
+   - Confirmed `WebGL2FrameCompositor` already evaluates `frame.layers` bottom-to-top with intra-layer effect ping-pong loops and cross-layer W3C blend modes.
+   - Identified the primary refactor scope: replacing the bifurcated `ImageLayer | GenerativeLayer` with universal `Layer { source, transform, effectStack }`, adding `Group`, and migrating procedural backgrounds into standard layers.
+2. **Review Deliverable (`docs/research/unified-composition-model-readiness.md`)**:
+   - Delivered a comprehensive 20-section readiness review covering data model, state, rendering, backgrounds, procedural sources, effects, inspector UI, IndexedDB v3 migration, undo/redo, animation, 5-phase migration sequence, and definition of done.
+   - Final readiness verdict: **READY FOR IMPLEMENTATION**.
+
+### 2. Empirical Verification Evidence (Rule 1)
+
+- `pnpm verify:approvals`: **PASS (exit code 0, 0 unapproved gates)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 620 tracked files scanned against 16 deny-list terms, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance references)**.
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm build`: **PASS (exit code 0, Vite production bundle built in 2.97s)**.
+
+### 3. Graphify & Headroom Actual-Use Governance
+
+1. **Graphify Actual Use**:
+   - Pre-implementation query: Ran `graphify query "activeImageId activeFrameId activeLayerId studio-context"` to trace state ownership and derived getters across the studio context.
+   - Graph state verified current; no runtime code modified.
+2. **Headroom Actual Use**:
+   - Pre-flight diagnostic: Checked `pnpm agent:stats`; Headroom proxy inactive on port 8787. Zero token savings or compression claimed per Rule 11.
+
+---
+
+## Unified Composition Model — Phase 1: Data Model Foundation & Persistence Migration
+
+- **Date**: 2026-09-08
+- **Task**: Implement Phase 1 of the approved Unified Composition Model (`Project → Frame → (Group) → Layer → Source`).
+
+### 1. Implementation Scope & Architecture Deliverables
+
+1. **Universal Layer & Source Abstraction (`src/types/frame.ts`)**:
+   - Introduced `ImageSource { type: "image", assetId: string }` referencing immutable asset bitmaps.
+   - Introduced `ProceduralSource { type: "procedural", kind: BackgroundItemType, parameters, seed? }` for algorithmic shaders (`solid`, `linear-gradient`, `radial-gradient`, `dots`, `grid`).
+   - Defined universal `LayerSource = ImageSource | ProceduralSource`.
+   - Defined `UniversalLayer extends BaseLayer { source: LayerSource, transform?: LayerTransform, fit?: "contain" | "cover", groupId?: string | null }`.
+   - Updated `BaseLayer` with `groupId?: string | null` and `source?: LayerSource`.
+   - Preserved type-level backward compatibility for Phase 1 consumers (`webgl-frame-compositor.ts`, `studio-context.tsx`, UI panels) via `Layer = ImageLayer | GenerativeLayer | ProceduralLayer` where `ImageLayer` and `GenerativeLayer` carry their required fields alongside `source?: LayerSource`.
+   - Added `createUniversalLayer` and `createProceduralLayer` factory functions.
+   - Added type guards: `isImageSource`, `isProceduralSource`, `isUniversalLayer`, `isImageLayer`, `isGenerativeLayer`, `isProceduralLayer`.
+
+2. **Single-Tier Group Model (`src/types/frame.ts`)**:
+   - Defined `Group { id, name, layerIds: string[], visible, locked, collapsed?, createdAt, updatedAt }`.
+   - Added `groups?: Group[]` to `Frame` interface and initialized default `groups: []` in `createDefaultFrame`.
+   - Added `createGroup(name, layerIds, options)` factory function.
+
+3. **Persistence & Migration Normalization (`src/types/frame.ts`, `src/storage/db.ts`)**:
+   - Implemented `normalizeLayerToUniversal(layer)` and `normalizeFrameToUniversalModel(frame)`:
+     - Normalizes legacy `ImageLayer` records into `Layer + ImageSource(assetId)` while preserving transform, fit, effect stack, and metadata.
+     - Normalizes legacy `GenerativeLayer` records (with stackable backgrounds) into individual `Layer + ProceduralSource` records, preserving order, parameters, visibility, opacity, and blend modes.
+     - 100% idempotent: normalizing an already-migrated universal frame or layer produces an identical structure without re-migration or duplication.
+   - Integrated safe runtime normalization into `loadHydratedProject()` and `dbGetAllFrames()` in `src/storage/db.ts`, ensuring all frames hydrate with valid `groups` arrays and all layers carry their canonical `source` records without breaking legacy UI/compositor dependencies.
+   - Preserved `DB_VERSION = 2` without unnecessary schema churn, adhering strictly to repository evidence and Phase 1 scope.
+
+4. **Automated Unit Test Suite (`src/types/frame-migration.test.ts`)**:
+   - Added 11 focused unit tests verifying:
+     - Image migration: `ImageLayer + assetId` -> `Layer + ImageSource(assetId)`.
+     - Procedural migration: `GenerativeLayer` background stacks and config -> individual `Layer + ProceduralSource`.
+     - Factory functions: `createImageLayer`, `createProceduralLayer`, `createUniversalLayer`.
+     - Idempotency: repeated frame and layer normalization.
+     - Existing project preservation: metadata, dimensions, and group hierarchy survival.
+     - Already migrated data safety: no duplication or re-migration of universal layers.
+     - Single-tier group creation and layer membership.
+
+### 2. Empirical Verification Evidence (Rule 1)
+
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm vitest run src/types/frame-migration.test.ts`: **PASS (11/11 tests passed)**.
+- `pnpm vitest run src/storage/db.test.ts`: **PASS (9/9 tests passed)**.
+- `pnpm vitest run src/rendering/webgl/webgl-frame-compositor.test.ts`: **PASS (29/29 tests passed)**.
+- `pnpm vitest run src/export/gpu-frame-export.test.ts`: **PASS (2/2 tests passed)**.
+- `pnpm vitest run src/utils/transform-math.test.ts`: **PASS (24/24 tests passed)**.
+- `pnpm vitest run src/components/layout/layers-panel.test.tsx`: **PASS (11/11 tests passed)**.
+- `pnpm build`: **PASS (exit code 0, production bundle built in 4.87s)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, 0 unapproved gates)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 620 tracked files scanned, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance references)**.
+
+### 3. Graphify & Headroom Actual-Use Governance
+
+1. **Graphify Actual Use**:
+   - Pre-implementation query: Ran `graphify query "How are Frame, Layer, ImageLayer, and GenerativeLayer structured and used?"` to map symbols and community dependencies (communities 30, 31, 33, 36).
+   - Post-implementation update: Ran `pnpm graphify:update` (`4246 nodes, 11300 edges, 148 communities`).
+2. **Headroom Actual Use**:
+   - Pre-flight diagnostic: Checked `pnpm agent:stats`; Headroom proxy inactive on port 8787. Zero token savings or compression claimed per Rule 11.
+
+---
+
+## Unified Composition Model — Phase 1 Correction: Canonical Layer & Source Architecture
+
+- **Date**: 2026-09-08
+- **Task**: Correct Phase 1 Unified Composition Model migration: establish canonical `Layer` interface with mandatory `source: LayerSource`, eliminate intermediate `UniversalLayer` and `ProceduralLayer` types, relegate `ImageLayer` and `GenerativeLayer` to temporary compatibility interfaces for un-migrated Phase 2–4 consumers, update default frame construction to anchor index 0 with canonical `Layer + ProceduralSource(solid)`, and ensure complete test pass across the repository.
+
+### 1. Architectural Correction Accomplishments
+
+1. **Canonical `Layer` Interface (`src/types/frame.ts`)**:
+   - Established canonical `Layer` as an interface:
+     ```ts
+     export interface Layer extends BaseLayer {
+       source: LayerSource;
+       transform?: LayerTransform;
+       fit?: "contain" | "cover";
+     }
+     ```
+   - Enforced that every `Layer` has exactly one `source: LayerSource`. Removed optional `source?: LayerSource` from `BaseLayer`.
+   - Eliminated `UniversalLayer` and `ProceduralLayer` abstractions entirely. Algorithmic/procedural visual content is canonically represented as a `Layer` whose `source` is `ProceduralSource`.
+
+2. **Legacy Compatibility Layer (`src/types/frame.ts`)**:
+   - Relegated `ImageLayer` and `GenerativeLayer` to strictly temporary backward compatibility interfaces extending canonical `Layer`:
+     - `ImageLayer extends Layer`: retains legacy `type: "image"` and `assetId: string`.
+     - `GenerativeLayer extends Layer`: retains legacy `type: "generative"` and `backgrounds: BackgroundItem[]`.
+   - Deprecated `createUniversalLayer` and `createProceduralLayer` compatibility wrappers in favor of canonical `createLayer(options)`.
+   - Preserved type guards: `isImageSource`, `isProceduralSource`, `isImageLayer`, `isGenerativeLayer`.
+
+3. **Canonical Default Frame & Backdrop Layer (`src/types/frame.ts`)**:
+   - Updated `createDefaultBackdropLayer(backgroundConfig)` to return a canonical `Layer` with `source: ProceduralSource` (kind `"solid"`, `#000000`) and legacy fields populated for Phase 2–4 consumers.
+   - Updated `createDefaultFrame()` to initialize with canonical backdrop layer at index 0 and `activeLayerId: baseBackdrop.id`.
+   - Normalization functions (`normalizeLayerToUniversal`, `normalizeFrameToUniversalModel`) now return canonical `Layer[]`.
+
+4. **InspectorPanel Background Popover & Verification Alignment (`src/components/layout/inspector-panel.tsx`)**:
+   - Restored Add Background Popover on `add-background-button` containing floor primitives (`add-bg-solid`, `add-bg-linear-gradient`, `add-bg-radial-gradient`, `add-bg-dots`, `add-bg-grid`), maintaining bidirectional synchronization with `FloatingBackgroundPanel` and full compatibility across the UI and test suites.
+
+5. **Unit Test Suite & Verification (`src/types/frame-migration.test.ts`)**:
+   - Rewrote migration test suite to validate canonical `Layer` with `source: LayerSource`, `createLayer` factory, `createDefaultFrame()` structure, legacy layer normalization, and idempotency.
+
+### 2. Empirical Verification Evidence (Rule 1)
+
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm test`: **PASS (exit code 0, 29/29 test files passed, 356/356 tests passed)**.
+  - `src/types/frame-migration.test.ts`: **14 passed (14)**.
+  - `src/components/layout/background-stack.test.tsx`: **13 passed (13)**.
+  - `src/components/layout/background-workflow.test.tsx`: **7 passed (7)**.
+  - `src/components/layout/inspector-panel.test.tsx`: **29 passed (29)**.
+  - `src/storage/db.test.ts`: **9 passed (9)**.
+  - `src/rendering/webgl/webgl-frame-compositor.test.ts`: **29 passed (29)**.
+- `pnpm build`: **PASS (exit code 0, Vite production bundle built in 3.21s)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, all mechanical approval gates verified)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 620 tracked files scanned, 0 violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance references found in tracked files)**.
+- `pnpm graphify:update`: **PASS (exit code 0, 4,244 nodes, 11,296 edges, 151 communities)**.
+
+### 3. Graphify & Headroom Actual-Use Governance
+
+1. **Graphify Actual Use**:
+   - Pre-implementation queries: Investigated `Layer`, `LayerSource`, `BaseLayer`, and `GenerativeLayer` symbols and cross-file dependencies.
+   - Post-implementation update: Ran `pnpm graphify:update` (`4244 nodes, 11296 edges, 151 communities`).
+2. **Headroom Actual Use**:
+   - Pre-flight diagnostic: Verified Headroom proxy inactive on port 8787 (`pnpm agent:stats`). Zero token savings or compression claimed per Rule 11.
+
+

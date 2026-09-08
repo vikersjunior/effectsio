@@ -223,6 +223,20 @@ export function normalizeGenerativeLayer(
       return sanitized;
     });
 
+    const primaryBg = sanitizedBackgrounds[0];
+    const defaultSource = primaryBg
+      ? {
+          type: "procedural" as const,
+          kind: primaryBg.type,
+          parameters: { ...primaryBg.parameters },
+          seed: primaryBg.seed,
+        }
+      : {
+          type: "procedural" as const,
+          kind: "solid",
+          parameters: { color: "#000000" },
+        };
+
     return {
       id: layer.id || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `gen-${Date.now()}`),
       name: layer.name || "Background",
@@ -233,6 +247,7 @@ export function normalizeGenerativeLayer(
       createdAt: layer.createdAt || Date.now(),
       updatedAt: layer.updatedAt || Date.now(),
       ...layer,
+      source: (layer as any).source ?? defaultSource,
       type: "generative",
       backgrounds: sanitizedBackgrounds,
       sublayers: sanitizedBackgrounds,
@@ -242,6 +257,19 @@ export function normalizeGenerativeLayer(
   // Legacy GenerativeLayer without backgrounds or sublayers
   const legacyConfig = layer.backgroundConfig || DEFAULT_BACKGROUND_STATE;
   const backgrounds = normalizeLegacyBackgroundToBackgrounds(legacyConfig);
+  const primaryBg = backgrounds[0];
+  const defaultSource = primaryBg
+    ? {
+        type: "procedural" as const,
+        kind: primaryBg.type,
+        parameters: { ...primaryBg.parameters },
+        seed: primaryBg.seed,
+      }
+    : {
+        type: "procedural" as const,
+        kind: "solid",
+        parameters: { color: "#000000" },
+      };
 
   return {
     id: layer.id || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `gen-${Date.now()}`),
@@ -253,6 +281,7 @@ export function normalizeGenerativeLayer(
     createdAt: layer.createdAt || Date.now(),
     updatedAt: layer.updatedAt || Date.now(),
     ...layer,
+    source: (layer as any).source ?? defaultSource,
     type: "generative",
     backgrounds,
     sublayers: backgrounds,
