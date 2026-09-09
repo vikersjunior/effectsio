@@ -256,25 +256,6 @@ export class WebGL2FrameCompositor {
       };
     }
 
-    if (layer.type === "generative") {
-      const normalized = normalizeGenerativeLayer(layer as GenerativeLayer);
-      const backgrounds = normalized.backgrounds ?? normalized.sublayers ?? [];
-      if (backgrounds.length > 0) {
-        const bg = backgrounds[0]!;
-        return {
-          type: "procedural",
-          kind: bg.type,
-          parameters: bg.parameters ?? {},
-          seed: bg.seed,
-        };
-      }
-      return {
-        type: "procedural",
-        kind: "solid",
-        parameters: { color: "#000000" },
-      };
-    }
-
     return null;
   }
 
@@ -299,23 +280,7 @@ export class WebGL2FrameCompositor {
         `l[${i}]:${layer.id}:${layer.type}:${isVisible}:${layer.opacity}:${layer.blendMode}`,
       );
 
-      // Support legacy sublayers invalidation (Stage 3B tests)
-      if (layer.type === "generative" || layer.backgrounds || layer.sublayers) {
-        if (layer.sublayers && layer.sublayers !== layer.backgrounds) {
-          (layer as any).backgrounds = layer.sublayers;
-        }
-        const normalized = normalizeGenerativeLayer(layer as GenerativeLayer);
-        const backgrounds = normalized.backgrounds ?? normalized.sublayers ?? [];
-        parts.push(`gen:${backgrounds.length}`);
-        for (let s = 0; s < backgrounds.length; s++) {
-          const bg = backgrounds[s]!;
-          parts.push(
-            `bg[${s}]:${bg.id}:${bg.type}:${bg.enabled}:${bg.opacity}:${bg.blendMode}:${bg.seed ?? ""}:${JSON.stringify(bg.parameters ?? {})}`,
-          );
-        }
-      }
-
-      // Canonical source-based key invalidation
+      // Canonical source-based key invalidation (authoritative when valid canonical source exists)
       const source = this.resolveLayerSource(layer);
       if (source?.type === "image") {
         const t = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
@@ -336,6 +301,20 @@ export class WebGL2FrameCompositor {
           if (eff.enabled !== false) {
             parts.push(`eff:${eff.effectId}:${JSON.stringify(eff.parameters ?? {})}`);
           }
+        }
+      } else if (layer.type === "generative" || layer.backgrounds || layer.sublayers) {
+        // Support legacy sublayers invalidation ONLY when canonical source is absent
+        if (layer.sublayers && layer.sublayers !== layer.backgrounds) {
+          (layer as any).backgrounds = layer.sublayers;
+        }
+        const normalized = normalizeGenerativeLayer(layer as GenerativeLayer);
+        const backgrounds = normalized.backgrounds ?? normalized.sublayers ?? [];
+        parts.push(`gen:${backgrounds.length}`);
+        for (let s = 0; s < backgrounds.length; s++) {
+          const bg = backgrounds[s]!;
+          parts.push(
+            `bg[${s}]:${bg.id}:${bg.type}:${bg.enabled}:${bg.opacity}:${bg.blendMode}:${bg.seed ?? ""}:${JSON.stringify(bg.parameters ?? {})}`,
+          );
         }
       }
     }
@@ -387,19 +366,15 @@ export class WebGL2FrameCompositor {
 
       let layerOutputTexture: WebGLTexture | null = null;
 
-      // Stage 3B backward-compatibility: legacy GenerativeLayer
-      if (layer.type === "generative") {
-        if (layer.sublayers && layer.sublayers !== layer.backgrounds) {
-          (layer as any).backgrounds = layer.sublayers;
-        }
-        layerOutputTexture = this.renderGenerativeLayer(layer as GenerativeLayer, width, height, time);
+      // Universal Composition Model: Canonical source dispatch is authoritative
+      const source = this.resolveLayerSource(layer);
+      if (source?.type === "image") {
+        layerOutputTexture = this.renderImageSourceLayer(layer, source, width, height, assetSources, time);
+      } else if (source?.type === "procedural") {
+        layerOutputTexture = this.renderProceduralSourceLayer(layer, source, width, height, time);
       } else {
-        const source = this.resolveLayerSource(layer);
-        if (source?.type === "image") {
-          layerOutputTexture = this.renderImageSourceLayer(layer, source, width, height, assetSources, time);
-        } else if (source?.type === "procedural") {
-          layerOutputTexture = this.renderProceduralSourceLayer(layer, source, width, height, time);
-        }
+        // Fallback to legacy compatibility renderer only when no valid canonical source exists
+        layerOutputTexture = this.renderLegacyCompatibilityLayer(layer, width, height, time);
       }
 
       if (!layerOutputTexture) {
@@ -449,6 +424,25 @@ export class WebGL2FrameCompositor {
     this.isComposited = true;
 
     return accum.read;
+  }
+
+  /**
+   * Universal Composition Model: Legacy compatibility rendering path for un-migrated layers lacking canonical source.
+   * Dispatches legacy GenerativeLayer / BackgroundItem rendering when no valid canonical Layer.source is present.
+   */
+  private renderLegacyCompatibilityLayer(
+    layer: Layer,
+    width: number,
+    height: number,
+    time = 0,
+  ): WebGLTexture | null {
+    if (layer.type === "generative" || layer.backgrounds || layer.sublayers) {
+      if (layer.sublayers && layer.sublayers !== layer.backgrounds) {
+        (layer as any).backgrounds = layer.sublayers;
+      }
+      return this.renderGenerativeLayer(layer as GenerativeLayer, width, height, time);
+    }
+    return null;
   }
 
   /**

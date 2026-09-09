@@ -371,7 +371,9 @@ export function createDefaultBackdropLayer(backgroundConfig?: BackgroundState): 
 
 /** @deprecated Legacy migration adapter for un-migrated Phase 2-4 consumers. Use createDefaultBackdropLayer instead. */
 export function createDefaultGenerativeLayer(backgroundConfig?: BackgroundState): GenerativeLayer {
-  return createDefaultBackdropLayer(backgroundConfig) as GenerativeLayer;
+  const backdrop = createDefaultBackdropLayer(backgroundConfig);
+  delete (backdrop as any).source;
+  return backdrop as GenerativeLayer;
 }
 
 /**

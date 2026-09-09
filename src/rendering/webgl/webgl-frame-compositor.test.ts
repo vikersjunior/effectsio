@@ -1547,5 +1547,137 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
 
       compositor.dispose();
     });
+
+    it("ensures canonical Layer.source is authoritative and overrides contradictory legacy layer.type = 'generative' and layer.backgrounds", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const renderProceduralSpy = vi.spyOn(compositor as any, "renderProceduralSourceLayer");
+      const renderGenerativeSpy = vi.spyOn(compositor as any, "renderGenerativeLayer");
+
+      // Canonical procedural layer with contradictory legacy fields
+      const layer = createLayer({
+        name: "Contradictory Procedural Layer",
+        source: {
+          type: "procedural",
+          kind: "dots",
+          parameters: { dotColor: "#ffffff", backgroundColor: "#000000", spacing: 20 },
+        },
+      });
+      // Attach contradictory legacy compatibility fields
+      (layer as any).type = "generative";
+      (layer as any).backgrounds = [
+        createGenerativeSublayer("solid", { parameters: { color: "#ff0000" } }),
+      ];
+
+      const frame: Frame = {
+        id: "frame-contradictory-proc",
+        name: "Contradictory Frame",
+        dimensions: { width: 800, height: 800, presetId: null },
+        layers: [layer],
+        activeLayerId: layer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const result = compositor.composeFrame(frame);
+      expect(result).toBeDefined();
+
+      // Canonical ProceduralSource must be authoritative:
+      // renderProceduralSourceLayer must be called with canonical source
+      expect(renderProceduralSpy).toHaveBeenCalledTimes(1);
+      expect(renderProceduralSpy).toHaveBeenCalledWith(
+        layer,
+        expect.objectContaining({ type: "procedural", kind: "dots" }),
+        800,
+        800,
+        0,
+      );
+
+      // Legacy renderGenerativeLayer must NOT be called
+      expect(renderGenerativeSpy).not.toHaveBeenCalled();
+
+      compositor.dispose();
+    });
+
+    it("ensures canonical ImageSource.assetId is authoritative and overrides contradictory legacy layer.assetId", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const renderImageSpy = vi.spyOn(compositor as any, "renderImageSourceLayer");
+
+      const layer = createLayer({
+        name: "Contradictory Image Layer",
+        source: {
+          type: "image",
+          assetId: "canonical-asset-123",
+        },
+      });
+      // Attach contradictory legacy compatibility field
+      (layer as any).type = "image";
+      (layer as any).assetId = "legacy-asset-wrong";
+
+      compositor.uploadAsset("canonical-asset-123", { width: 400, height: 400 } as any);
+
+      const frame: Frame = {
+        id: "frame-contradictory-img",
+        name: "Contradictory Image Frame",
+        dimensions: { width: 600, height: 600, presetId: null },
+        layers: [layer],
+        activeLayerId: layer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const result = compositor.composeFrame(frame);
+      expect(result).toBeDefined();
+
+      // Canonical ImageSource must be authoritative:
+      expect(renderImageSpy).toHaveBeenCalledTimes(1);
+      expect(renderImageSpy).toHaveBeenCalledWith(
+        layer,
+        expect.objectContaining({ type: "image", assetId: "canonical-asset-123" }),
+        600,
+        600,
+        undefined,
+        0,
+      );
+
+      compositor.dispose();
+    });
+
+    it("falls back to legacy compatibility renderer when canonical Layer.source is absent", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const renderGenerativeSpy = vi.spyOn(compositor as any, "renderGenerativeLayer");
+      const renderLegacySpy = vi.spyOn(compositor as any, "renderLegacyCompatibilityLayer");
+
+      const legacyLayer = createDefaultGenerativeLayer();
+      legacyLayer.visible = true;
+      expect((legacyLayer as any).source).toBeUndefined();
+      legacyLayer.sublayers = [
+        createGenerativeSublayer("solid", { parameters: { color: "#333333" } }),
+      ];
+
+      const frame: Frame = {
+        id: "frame-legacy-fallback",
+        name: "Legacy Fallback Frame",
+        dimensions: { width: 500, height: 500, presetId: null },
+        layers: [legacyLayer],
+        activeLayerId: legacyLayer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const result = compositor.composeFrame(frame);
+      expect(result).toBeDefined();
+
+      // When canonical source is absent, renderLegacyCompatibilityLayer and renderGenerativeLayer must be called
+      expect(renderLegacySpy).toHaveBeenCalledTimes(1);
+      expect(renderGenerativeSpy).toHaveBeenCalledTimes(1);
+
+      compositor.dispose();
+    });
   });
 });

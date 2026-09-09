@@ -3388,6 +3388,70 @@ Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed 
 - **Phase 4 Pending**: Inspector panel and UI layer/source controls.
 - **Zero Phase 3/4 Changes**: `src/context/studio-context.tsx`, UI components, and compatibility adapters in `src/types/frame.ts` were strictly untouched.
 
+---
+
+## Phase 2 Correction: Canonical Source Dispatch Precedence
+
+- **Date**: 2026-09-09
+- **Task**: Correct `composeFrame()` dispatch precedence so canonical `Layer.source` is authoritative over legacy compatibility fields (`layer.type === "generative"`), and ensure explicit legacy fallback routing.
+
+### 1. Architectural Changes Implemented
+
+1. **Authoritative Canonical Source Dispatch in `composeFrame()` (`src/rendering/webgl/webgl-frame-compositor.ts`)**:
+   - Resolved `source = this.resolveLayerSource(layer)` FIRST before checking any legacy compatibility fields.
+   - If `source?.type === "image"`, dispatches directly to `renderImageSourceLayer()`.
+   - If `source?.type === "procedural"`, dispatches directly to `renderProceduralSourceLayer()`.
+   - If no valid canonical source is present (`source == null`), falls back to `renderLegacyCompatibilityLayer()`.
+
+2. **Explicit Legacy Fallback Adapter (`renderLegacyCompatibilityLayer`)**:
+   - Encapsulated legacy GenerativeLayer / BackgroundItem rendering in `renderLegacyCompatibilityLayer()`.
+   - Called ONLY when `layer.source` is absent and `layer.type === "generative"` (or has `backgrounds`/`sublayers`).
+   - Cleanly separates canonical rendering paths from legacy backward-compatibility paths.
+
+3. **Removed Generative Synthesis from `resolveLayerSource`**:
+   - `resolveLayerSource(layer)` now returns `null` for legacy generative layers lacking `source`.
+   - Prevents un-migrated multi-sublayer generative layers from being prematurely converted to single-procedural sources.
+
+4. **Composition Cache Key Invalidation Precedence (`generateCompositionKey`)**:
+   - Canonical `source` key invalidation is now evaluated first.
+   - Legacy sublayer key invalidation is retained in the `else if` fallback branch when canonical source is absent.
+
+5. **Separated Legacy `createDefaultGenerativeLayer` Factory (`src/types/frame.ts`)**:
+   - Deleted `source` on objects returned by `createDefaultGenerativeLayer()` so that legacy Stage 3B test layers are genuinely legacy (`source === undefined`) and route cleanly through `renderLegacyCompatibilityLayer()`.
+   - Preserved `createDefaultBackdropLayer()` and `createLayer()` as canonical factories with `source: LayerSource`.
+
+6. **Regression Tests Added (`src/rendering/webgl/webgl-frame-compositor.test.ts`)**:
+   - `ensures canonical Layer.source is authoritative and overrides contradictory legacy layer.type = 'generative' and layer.backgrounds`: verified that a layer with both canonical `ProceduralSource` and legacy `type: "generative"` calls `renderProceduralSourceLayer` (1 call) and does NOT call `renderGenerativeLayer` (0 calls).
+   - `ensures canonical ImageSource.assetId is authoritative and overrides contradictory legacy layer.assetId`: verified that canonical `source.assetId` is uploaded and used.
+   - `falls back to legacy compatibility renderer when canonical Layer.source is absent`: verified that a legacy generative layer without `source` calls `renderLegacyCompatibilityLayer` and `renderGenerativeLayer`.
+
+### 2. Empirical Verification Evidence (Rule 1)
+
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm test`: **PASS (exit code 0, 29/29 test files passed, 374/374 tests passed)**:
+  - `src/rendering/webgl/webgl-frame-compositor.test.ts`: **38 passed (38)** (all 35 previous + 3 new regression tests).
+- `pnpm build`: **PASS (exit code 0, Vite production build completed in 3.37s)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, all mechanical approval gates verified)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 621 tracked files scanned, 0 deny-list violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external runtime/provenance references found in tracked files)**.
+- `pnpm graphify:update`: **PASS (exit code 0, AST knowledge graph updated: 4250 nodes, 11333 edges)**.
+
+### 3. Graphify & Headroom Actual-Use Governance
+
+1. **Graphify Actual Use**:
+   - Pre-implementation query: `graphify query "webgl frame compositor canonical source dispatch"`. Verified symbols `WebGL2FrameCompositor`, `composeFrame`, `resolveLayerSource`, `createDefaultGenerativeLayer`.
+   - Post-implementation update: Synchronized AST knowledge graph via `pnpm graphify:update`.
+2. **Headroom Actual Use**:
+   - Pre-flight diagnostic: Checked `curl http://127.0.0.1:8787` (HTTP 400 Bad Request to unformatted raw request, daemon responding). Attempted `pnpm dev:agent`. Ran without proxy compression overhead for test/build commands. No token savings claimed.
+
+### 4. Hard Scope Boundary Enforcement
+
+- **Phase 2 Correction Complete**: Canonical source dispatch is 100% authoritative in `composeFrame()`.
+- **Phase 3 Pending**: StudioContext state architecture.
+- **Phase 4 Pending**: Inspector panel and UI layer controls.
+- **Zero Phase 3/4 Changes**: Studio context and UI surfaces remain completely untouched.
+
+
 
 
 
