@@ -1,4 +1,13 @@
-import type { Frame, Layer, GenerativeLayer, ImageLayer, BlendMode } from "../../types/frame";
+import type {
+  Frame,
+  Layer,
+  GenerativeLayer,
+  ImageLayer,
+  BlendMode,
+  LayerSource,
+  ImageSource,
+  ProceduralSource,
+} from "../../types/frame";
 import { DEFAULT_LAYER_TRANSFORM } from "../../types/frame";
 import type { EffectInstance, EffectStack } from "../../types/asset";
 import { DEFAULT_BACKGROUND_STATE, type BackgroundState } from "../../types/look";
@@ -219,6 +228,59 @@ export class WebGL2FrameCompositor {
   /**
    * Returns a cache key representing all composition-affecting state in a Frame.
    */
+  /**
+   * Universal Composition Model: Resolves the authoritative LayerSource for a Layer.
+   * Priority:
+   * 1. Canonical layer.source (authoritative)
+   * 2. Backward-compatibility fallback from legacy fields (layer.type, layer.assetId, layer.backgroundConfig)
+   */
+  public resolveLayerSource(layer: Layer): LayerSource | null {
+    if (layer.source && (layer.source.type === "image" || layer.source.type === "procedural")) {
+      return layer.source;
+    }
+
+    // Backward compatibility fallback for un-migrated layers lacking canonical source
+    if (layer.type === "image" && layer.assetId) {
+      return {
+        type: "image",
+        assetId: layer.assetId,
+      };
+    }
+
+    if (layer.type === "procedural" && (layer as any).kind) {
+      return {
+        type: "procedural",
+        kind: (layer as any).kind,
+        parameters: (layer as any).parameters ?? {},
+        seed: (layer as any).seed,
+      };
+    }
+
+    if (layer.type === "generative") {
+      const normalized = normalizeGenerativeLayer(layer as GenerativeLayer);
+      const backgrounds = normalized.backgrounds ?? normalized.sublayers ?? [];
+      if (backgrounds.length > 0) {
+        const bg = backgrounds[0]!;
+        return {
+          type: "procedural",
+          kind: bg.type,
+          parameters: bg.parameters ?? {},
+          seed: bg.seed,
+        };
+      }
+      return {
+        type: "procedural",
+        kind: "solid",
+        parameters: { color: "#000000" },
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Returns a cache key representing all composition-affecting state in a Frame.
+   */
   private generateCompositionKey(
     frame: Frame,
     assetSources?: Map<string, TextureSource>,
@@ -232,11 +294,16 @@ export class WebGL2FrameCompositor {
 
     for (let i = 0; i < frame.layers.length; i++) {
       const layer = frame.layers[i]!;
+      const isVisible = (layer as any).visibility !== false && layer.visible !== false;
       parts.push(
-        `l[${i}]:${layer.id}:${layer.type}:${layer.visible}:${layer.opacity}:${layer.blendMode}`,
+        `l[${i}]:${layer.id}:${layer.type}:${isVisible}:${layer.opacity}:${layer.blendMode}`,
       );
 
-      if (layer.type === "generative") {
+      // Support legacy sublayers invalidation (Stage 3B tests)
+      if (layer.type === "generative" || layer.backgrounds || layer.sublayers) {
+        if (layer.sublayers && layer.sublayers !== layer.backgrounds) {
+          (layer as any).backgrounds = layer.sublayers;
+        }
         const normalized = normalizeGenerativeLayer(layer as GenerativeLayer);
         const backgrounds = normalized.backgrounds ?? normalized.sublayers ?? [];
         parts.push(`gen:${backgrounds.length}`);
@@ -246,10 +313,25 @@ export class WebGL2FrameCompositor {
             `bg[${s}]:${bg.id}:${bg.type}:${bg.enabled}:${bg.opacity}:${bg.blendMode}:${bg.seed ?? ""}:${JSON.stringify(bg.parameters ?? {})}`,
           );
         }
-      } else if (layer.type === "image") {
+      }
+
+      // Canonical source-based key invalidation
+      const source = this.resolveLayerSource(layer);
+      if (source?.type === "image") {
         const t = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
-        parts.push(`img:${layer.assetId}:${layer.fit}:${t.x}:${t.y}:${t.scaleX}:${t.scaleY}:${t.rotation}`);
-        const stack = layer.effectStack ?? [];
+        parts.push(`img:${source.assetId}:${layer.fit ?? "contain"}:${t.x}:${t.y}:${t.scaleX}:${t.scaleY}:${t.rotation}`);
+        const stack = (layer as any).effects ?? layer.effectStack ?? [];
+        for (const eff of stack) {
+          if (eff.enabled !== false) {
+            parts.push(`eff:${eff.effectId}:${JSON.stringify(eff.parameters ?? {})}`);
+          }
+        }
+      } else if (source?.type === "procedural") {
+        const t = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
+        parts.push(
+          `proc:${source.kind}:${source.seed ?? ""}:${JSON.stringify(source.parameters ?? {})}:${layer.fit ?? "contain"}:${t.x}:${t.y}:${t.scaleX}:${t.scaleY}:${t.rotation}`,
+        );
+        const stack = (layer as any).effects ?? layer.effectStack ?? [];
         for (const eff of stack) {
           if (eff.enabled !== false) {
             parts.push(`eff:${eff.effectId}:${JSON.stringify(eff.parameters ?? {})}`);
@@ -284,7 +366,6 @@ export class WebGL2FrameCompositor {
 
     const gl = this.gl;
     const accum = this.accumulatorPair!;
-    const layerPP = this.layerPingPong!;
 
     // 1. Initialize Accumulator A: clear to transparent black
     gl.viewport(0, 0, width, height);
@@ -299,18 +380,26 @@ export class WebGL2FrameCompositor {
       const layer = layers[i]!;
 
       // Skip invisible or zero-opacity layers
-      if (layer.visible === false || layer.opacity <= 0) {
+      const isVisible = (layer as any).visibility !== false && layer.visible !== false;
+      if (!isVisible || layer.opacity <= 0) {
         continue;
       }
 
       let layerOutputTexture: WebGLTexture | null = null;
 
+      // Stage 3B backward-compatibility: legacy GenerativeLayer
       if (layer.type === "generative") {
-        // --- GenerativeLayer (index 0 backdrop) ---
+        if (layer.sublayers && layer.sublayers !== layer.backgrounds) {
+          (layer as any).backgrounds = layer.sublayers;
+        }
         layerOutputTexture = this.renderGenerativeLayer(layer as GenerativeLayer, width, height, time);
-      } else if (layer.type === "image") {
-        // --- ImageLayer ---
-        layerOutputTexture = this.renderImageLayer(layer as ImageLayer, width, height, assetSources, time);
+      } else {
+        const source = this.resolveLayerSource(layer);
+        if (source?.type === "image") {
+          layerOutputTexture = this.renderImageSourceLayer(layer, source, width, height, assetSources, time);
+        } else if (source?.type === "procedural") {
+          layerOutputTexture = this.renderProceduralSourceLayer(layer, source, width, height, time);
+        }
       }
 
       if (!layerOutputTexture) {
@@ -460,10 +549,76 @@ export class WebGL2FrameCompositor {
   }
 
   /**
-   * Renders an ImageLayer (asset texture fitted to frame + intra-layer effect stack) into `layerPingPong`.
+   * Executes the intra-layer GPU effect stack for a layer, ping-ponging through layerPingPong.
+   * Assumes the initial layer visual content is rendered into layerPingPong.read.texture.
+   * Returns the final processed layer texture.
    */
-  private renderImageLayer(
-    layer: ImageLayer,
+  private executeLayerEffectStack(
+    layerPP: PingPongManager,
+    layer: Layer,
+    frameWidth: number,
+    frameHeight: number,
+    time = 0,
+  ): WebGLTexture {
+    const rawEffects = (layer as any).effects ?? layer.effectStack ?? [];
+    const activeEffects = rawEffects.filter((eff: any) => eff.enabled !== false);
+
+    if (activeEffects.length === 0) {
+      return layerPP.read.texture;
+    }
+
+    const gl = this.gl;
+    for (let e = 0; e < activeEffects.length; e++) {
+      const eff = activeEffects[e]!;
+      const effectId = eff.effectId as GPUEffectId;
+
+      const def = GPU_EFFECT_REGISTRY[effectId];
+      if (!def) {
+        continue;
+      }
+
+      let program = this.effectPrograms.get(effectId);
+      if (!program) {
+        program = this.resourceManager.registerProgram(
+          createProgram(gl, def.vertexShader, def.fragmentShader),
+        );
+        this.effectPrograms.set(effectId, program);
+      }
+
+      gl.viewport(0, 0, frameWidth, frameHeight);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, layerPP.write.framebuffer);
+
+      gl.useProgram(program.program);
+
+      // Bind current input texture (from layerPP.read)
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, layerPP.read.texture);
+      setUniform(gl, program, "u_texture", { type: "1i", value: 0 });
+
+      // Bind effect uniforms
+      const resolvedParams = resolveEffectParameters(effectId, eff.parameters);
+      def.bindUniforms(gl, program, resolvedParams, frameWidth, frameHeight, time);
+
+      this.quad.draw();
+
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.useProgram(null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+      layerPP.swap();
+    }
+
+    return layerPP.read.texture;
+  }
+
+  /**
+   * Universal Composition Model: Renders an ImageSource layer.
+   * Resolves the asset strictly from `source.assetId` (ignoring any legacy `layer.assetId`).
+   * Fits to frame bounds, applies spatial transforms, and executes intra-layer effect stack.
+   */
+  private renderImageSourceLayer(
+    layer: Layer,
+    source: ImageSource,
     frameWidth: number,
     frameHeight: number,
     assetSources?: Map<string, TextureSource>,
@@ -471,16 +626,16 @@ export class WebGL2FrameCompositor {
   ): WebGLTexture | null {
     const gl = this.gl;
 
-    // Resolve asset GPU texture
-    let texRecord = this.assetTextureCache.get(layer.assetId);
+    // Canonical resolution: source.assetId is the authoritative asset reference
+    const assetId = source.assetId;
 
-    if (!texRecord && assetSources?.has(layer.assetId)) {
-      const source = assetSources.get(layer.assetId)!;
-      texRecord = this.uploadAsset(layer.assetId, source);
+    let texRecord = this.assetTextureCache.get(assetId);
+    if (!texRecord && assetSources?.has(assetId)) {
+      const textureSource = assetSources.get(assetId)!;
+      texRecord = this.uploadAsset(assetId, textureSource);
     }
 
     if (!texRecord) {
-      // Asset not yet uploaded or available
       return null;
     }
 
@@ -527,55 +682,106 @@ export class WebGL2FrameCompositor {
     layerPP.swap();
 
     // Step 2: Intra-layer effect stack execution
-    const activeEffects = (layer.effectStack ?? []).filter((eff) => eff.enabled !== false);
+    return this.executeLayerEffectStack(layerPP, layer, frameWidth, frameHeight, time);
+  }
 
-    if (activeEffects.length === 0) {
-      // No effects to execute; fitted image is ready in layerPP.read
-      return layerPP.read.texture;
+  /**
+   * @deprecated Legacy adapter for un-migrated callers. Calls renderImageSourceLayer.
+   */
+  private renderImageLayer(
+    layer: ImageLayer,
+    frameWidth: number,
+    frameHeight: number,
+    assetSources?: Map<string, TextureSource>,
+    time = 0,
+  ): WebGLTexture | null {
+    const source: ImageSource =
+      layer.source && layer.source.type === "image"
+        ? layer.source
+        : { type: "image", assetId: layer.assetId };
+    return this.renderImageSourceLayer(layer, source, frameWidth, frameHeight, assetSources, time);
+  }
+
+  /**
+   * Universal Composition Model: Renders a ProceduralSource layer.
+   * Generates procedural shader content from canonical source (kind, parameters, seed).
+   * Applies layer transform and executes intra-layer effect stack.
+   */
+  private renderProceduralSourceLayer(
+    layer: Layer,
+    source: ProceduralSource,
+    frameWidth: number,
+    frameHeight: number,
+    time = 0,
+  ): WebGLTexture {
+    const gl = this.gl;
+    const layerPP = this.layerPingPong!;
+
+    // Step 1: Render procedural source into reusable scratch FBO (backgroundFbo)
+    const procTex = this.backgroundRenderer.renderProceduralSourceToTexture(
+      frameWidth,
+      frameHeight,
+      source,
+      time,
+    );
+
+    const transform = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
+    const hasTransform =
+      transform.x !== 0 ||
+      transform.y !== 0 ||
+      transform.scaleX !== 1 ||
+      transform.scaleY !== 1 ||
+      transform.rotation !== 0;
+
+    const rawEffects = (layer as any).effects ?? layer.effectStack ?? [];
+    const activeEffects = rawEffects.filter((eff: any) => eff.enabled !== false);
+    const hasEffects = activeEffects.length > 0;
+
+    // Fast path: if no transform and no effects, scratch texture is immediately ready for cross-layer composite
+    if (!hasTransform && !hasEffects) {
+      return procTex;
     }
 
-    // Ping-pong through layerPP applying each active effect
-    for (let e = 0; e < activeEffects.length; e++) {
-      const eff = activeEffects[e]!;
-      const effectId = eff.effectId as GPUEffectId;
+    // Step 2: Transfer to layerPingPong, applying transform if present
+    gl.viewport(0, 0, frameWidth, frameHeight);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, layerPP.write.framebuffer);
+    gl.clearColor(0.0, 0.0, 0.0, 0.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
 
-      const def = GPU_EFFECT_REGISTRY[effectId];
-      if (!def) {
-        continue;
-      }
-
-      let program = this.effectPrograms.get(effectId);
-      if (!program) {
-        program = this.resourceManager.registerProgram(
-          createProgram(gl, def.vertexShader, def.fragmentShader),
-        );
-        this.effectPrograms.set(effectId, program);
-      }
-
-      gl.viewport(0, 0, frameWidth, frameHeight);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, layerPP.write.framebuffer);
-
-      gl.useProgram(program.program);
-
-      // Bind current input texture (from layerPP.read)
+    if (hasTransform) {
+      gl.useProgram(this.imageProgram.program);
       gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, layerPP.read.texture);
-      setUniform(gl, program, "u_texture", { type: "1i", value: 0 });
-
-      // Bind effect uniforms
-      const resolvedParams = resolveEffectParameters(effectId, eff.parameters);
-      def.bindUniforms(gl, program, resolvedParams, frameWidth, frameHeight, time);
-
+      gl.bindTexture(gl.TEXTURE_2D, procTex);
+      setUniform(gl, this.imageProgram, "u_assetTexture", { type: "1i", value: 0 });
+      setUniform(gl, this.imageProgram, "u_frameSize", { type: "2f", value: [frameWidth, frameHeight] });
+      setUniform(gl, this.imageProgram, "u_assetSize", { type: "2f", value: [frameWidth, frameHeight] });
+      setUniform(gl, this.imageProgram, "u_fitMode", { type: "1i", value: 0 });
+      setUniform(gl, this.imageProgram, "u_layerOffset", { type: "2f", value: [transform.x, transform.y] });
+      setUniform(gl, this.imageProgram, "u_layerScale", { type: "2f", value: [transform.scaleX, transform.scaleY] });
+      setUniform(gl, this.imageProgram, "u_layerRotation", {
+        type: "1f",
+        value: (transform.rotation * Math.PI) / 180.0,
+      });
       this.quad.draw();
-
       gl.bindTexture(gl.TEXTURE_2D, null);
       gl.useProgram(null);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-      layerPP.swap();
+    } else {
+      gl.useProgram(this.passThroughProgram.program);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, procTex);
+      setUniform(gl, this.passThroughProgram, "u_texture", { type: "1i", value: 0 });
+      setUniform(gl, this.passThroughProgram, "u_resolution", { type: "2f", value: [frameWidth, frameHeight] });
+      setUniform(gl, this.passThroughProgram, "u_time", { type: "1f", value: time });
+      this.quad.draw();
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.useProgram(null);
     }
 
-    return layerPP.read.texture;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    layerPP.swap();
+
+    // Step 3: Intra-layer effect stack
+    return this.executeLayerEffectStack(layerPP, layer, frameWidth, frameHeight, time);
   }
 
   /**

@@ -1,5 +1,5 @@
 import type { BackgroundState, BackgroundType } from "../../types/look";
-import type { BackgroundItem, GenerativeSublayer } from "../../types/frame";
+import type { BackgroundItem, GenerativeSublayer, ProceduralSource } from "../../types/frame";
 import type { CompiledProgram } from "./webgl-types";
 import { createProgram, setUniform } from "./webgl-shader";
 import { createFullscreenQuad, type FullscreenQuad } from "./webgl-quad";
@@ -309,6 +309,32 @@ export class GPUBackgroundRenderer {
     time = 0,
   ): WebGLTexture {
     return this.renderSublayerToTexture(width, height, item, time);
+  }
+
+  /**
+   * Universal Composition Model: Renders a canonical ProceduralSource to the reusable scratch FBO texture.
+   * Consumes canonical procedural source parameters (kind, parameters, seed) and draws to backgroundFbo without feedback loops.
+   */
+  public renderProceduralSourceToTexture(
+    width: number,
+    height: number,
+    source: ProceduralSource,
+    time = 0,
+  ): WebGLTexture {
+    return this.renderSublayerToTexture(
+      width,
+      height,
+      {
+        id: "canonical-procedural-source",
+        type: source.kind,
+        parameters: source.parameters,
+        seed: source.seed,
+        enabled: true,
+        opacity: 1.0,
+        blendMode: "normal",
+      },
+      time,
+    );
   }
 
   /**

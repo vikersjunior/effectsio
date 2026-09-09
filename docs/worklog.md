@@ -3307,9 +3307,87 @@ Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed 
 
 ### 4. Downstream Migration Boundaries (Phase 2+ Scope)
 
-- **Phase 2 (Pending)**: WebGL frame compositor migration to consume `Layer.source` natively instead of `layer.type === "generative"` and `layer.type === "image"`.
+- **Phase 2 (Completed)**: WebGL frame compositor migration to consume `Layer.source` natively instead of legacy layer fields (`layer.type`, `layer.assetId`).
 - **Phase 3 (Pending)**: Studio Context migration from legacy `activeImageId` + asset-keyed maps to `activeFrameId` + `activeLayerId`.
 - **Phase 4 (Pending)**: Inspector panel and UI migration to universal Layer and Source controls.
+
+---
+
+## Unified Composition Model — Phase 2 Compositor Migration: Canonical Layer/Source Runtime
+
+- **Date**: 2026-09-09
+- **Task**: Migrate the runtime compositor/rendering path (`WebGL2FrameCompositor` in `src/rendering/webgl/webgl-frame-compositor.ts`) from legacy layer fields (`layer.type`, `layer.assetId`, `layer.backgrounds`) to the canonical `Layer.source` model (`ImageSource`, `ProceduralSource`).
+
+### 1. Implementation Summary
+
+1. **GPU Background Renderer ProceduralSource Support (`src/rendering/webgl/webgl-background.ts`)**:
+   - Added `renderProceduralSourceToTexture(width, height, source: ProceduralSource, time)` method to `GPUBackgroundRenderer`.
+   - Renders canonical procedural shader content (`source.kind`, `source.parameters`, `source.seed`) to the reusable offscreen scratch FBO (`backgroundFbo`) with zero feedback loops.
+
+2. **Canonical Layer/Source Resolution & Authoritative Binding (`src/rendering/webgl/webgl-frame-compositor.ts`)**:
+   - Implemented `resolveLayerSource(layer: Layer): LayerSource | null`:
+     - Canonical `layer.source` is authoritative (`ImageSource` or `ProceduralSource`).
+     - Retains graceful backward-compatibility fallback for legacy layers lacking `source`.
+   - Implemented `renderImageSourceLayer(layer, source: ImageSource, ...)`:
+     - Resolves texture strictly from `source.assetId`.
+     - Ignores legacy `layer.assetId` if contradictory, establishing `source.assetId` as the sole authoritative asset reference.
+     - Fits to frame bounds, applies spatial transforms (`x, y, scaleX, scaleY, rotation`), and runs intra-layer effect pipeline.
+   - Implemented `renderProceduralSourceLayer(layer, source: ProceduralSource, ...)`:
+     - Renders procedural content directly from canonical source representation without requiring `GenerativeLayer` or `BackgroundLayer`.
+     - Supports spatial transforms and intra-layer effect execution.
+   - Extracted shared `executeLayerEffectStack(layerPP, layer, frameWidth, frameHeight, time)` for intra-layer GPU effect execution across both source types.
+   - Preserved `renderImageLayer` as a backward-compatibility adapter delegating to `renderImageSourceLayer`.
+   - Preserved `renderGenerativeLayer` for legacy multi-sublayer generative layers (Stage 3B tests).
+
+3. **Layer-Level Compositing Pipeline Invariants**:
+   - Maintained full bottom-to-top evaluation (`index 0..N-1`).
+   - Visibility: layers with `visible: false` or `visibility: false` are skipped with zero draw calls.
+   - Opacity: zero-opacity layers are skipped; opacity values in `[0..1]` are applied as uniforms in cross-layer blend pass.
+   - Blend Mode: 12 W3C blend modes mapped via `BLEND_MODE_MAP`.
+   - Canonical pipeline order preserved: `Layer.source -> source rendering -> Layer.effects -> Layer.transform -> Layer.opacity -> Layer.blendMode -> Frame composite`.
+
+4. **Composition Cache Key Invalidation (`generateCompositionKey`)**:
+   - Updated to invalidate on changes to `source.assetId` (for image sources) and `source.kind`, `source.parameters`, `source.seed` (for procedural sources).
+   - Retained support for legacy sublayer property changes.
+
+5. **Phase 2 Test Suite (`src/rendering/webgl/webgl-frame-compositor.test.ts`)**:
+   - Added 6 dedicated unit tests in `Phase 2: Unified Composition Model — Canonical Layer & Source Runtime Suite`:
+     - Authoritative `ImageSource` resolution (`source.assetId = "asset-canonical"` vs `layer.assetId = "asset-legacy"`).
+     - Direct `ProceduralSource` rendering via `GPUBackgroundRenderer`.
+     - Multi-layer heterogeneous compositing (4 layers, 8 draw calls).
+     - Visibility and opacity zero-draw skipping.
+     - Spatial transforms and intra-layer effect pipeline execution on both `ImageSource` and `ProceduralSource` (7 draw calls).
+     - Composition cache invalidation on canonical source changes.
+
+### 2. Empirical Verification Evidence (Rule 1)
+
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm test`: **PASS (exit code 0, 29/29 test files passed, 371/371 tests passed)**:
+  - `src/rendering/webgl/webgl-frame-compositor.test.ts`: **35 passed (35)** (all 29 previous + 6 new Phase 2 tests).
+  - `src/export/gpu-frame-export.test.ts`: **13 passed (13)**.
+  - `src/types/frame-migration.test.ts`: **23 passed (23)**.
+  - `src/components/layout/inspector-panel.test.tsx`: **29 passed (29)**.
+- `pnpm build`: **PASS (exit code 0, Vite production build completed in 4.42s)**.
+- `pnpm verify:approvals`: **PASS (exit code 0, all mechanical approval gates verified)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 621 tracked files scanned, 0 deny-list violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external provenance references found in tracked files)**.
+- `pnpm graphify:update`: **PASS (exit code 0, AST knowledge graph updated: 4249 nodes, 11322 edges)**.
+
+### 3. Graphify & Headroom Actual-Use Governance
+
+1. **Graphify Actual Use**:
+   - Pre-implementation query: `graphify query "webgl frame compositor rendering Layer Source"`. Identified `composeFrame`, `renderGenerativeLayer`, `renderImageLayer`, `generateCompositionKey`, and `GPUBackgroundRenderer`.
+   - Post-implementation update: Synchronized AST knowledge graph via `pnpm graphify:update`.
+2. **Headroom Actual Use**:
+   - Pre-flight diagnostic: Checked `pnpm agent:stats` / `http://127.0.0.1:8787`. Proxy inactive (Connection refused). Proceeded without proxy per Rule 11. Zero token compression or savings claimed.
+
+### 4. Hard Scope Boundary Enforcement
+
+- **Phase 2 Complete**: Runtime compositor now consumes `Layer.source` natively.
+- **Phase 3 Pending**: Studio Context state architecture (`activeFrameId` + `activeLayerId`).
+- **Phase 4 Pending**: Inspector panel and UI layer/source controls.
+- **Zero Phase 3/4 Changes**: `src/context/studio-context.tsx`, UI components, and compatibility adapters in `src/types/frame.ts` were strictly untouched.
+
 
 
 

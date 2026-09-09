@@ -12,11 +12,13 @@ import {
   LAYER_IMAGE_VERTEX_SHADER,
   LAYER_IMAGE_FRAGMENT_SHADER,
 } from "./shaders/layer-image";
-import type { Frame, GenerativeLayer, ImageLayer } from "../../types/frame";
+import type { Frame, GenerativeLayer, ImageLayer, Layer, ImageSource, ProceduralSource } from "../../types/frame";
 import {
   createDefaultFrame,
   createDefaultGenerativeLayer,
   createImageLayer,
+  createLayer,
+  createProceduralLayer,
 } from "../../types/frame";
 import { createGenerativeSublayer } from "../../generative/registry";
 
@@ -1181,6 +1183,367 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
 
       // Draw calls: 2 sublayers (4 draws) + gen cross-layer (1 draw) + img fit (1 draw) + bw effect (1 draw) + img cross-layer (1 draw) = 8 draws
       expect((mockGL.drawArrays as any).mock.calls.length).toBe(8);
+
+      compositor.dispose();
+    });
+  });
+
+  describe("Phase 2: Unified Composition Model — Canonical Layer & Source Runtime Suite", () => {
+    it("resolves image assets authoritatively via Layer.source.assetId ignoring legacy layer.assetId", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      // Layer with canonical source "asset-canonical", but legacy compatibility field "asset-legacy"
+      const layer = createLayer({
+        name: "Test Image Layer",
+        source: {
+          type: "image",
+          assetId: "asset-canonical",
+        },
+      });
+      // Deliberately set contradictory legacy assetId
+      (layer as any).assetId = "asset-legacy";
+
+      const frame: Frame = {
+        id: "frame-canonical-image",
+        name: "Canonical Image Frame",
+        dimensions: { width: 1000, height: 1000, presetId: null },
+        layers: [layer],
+        activeLayerId: layer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const uploadSpy = vi.spyOn(compositor, "uploadAsset");
+
+      // Provide map containing both assets
+      const assetMap = new Map<string, any>();
+      assetMap.set("asset-canonical", { width: 800, height: 600 });
+      assetMap.set("asset-legacy", { width: 400, height: 300 });
+
+      compositor.composeFrame(frame, assetMap);
+
+      // Compositor MUST upload and use asset-canonical, NEVER asset-legacy
+      expect(uploadSpy).toHaveBeenCalledWith("asset-canonical", expect.anything());
+      expect(uploadSpy).not.toHaveBeenCalledWith("asset-legacy", expect.anything());
+
+      compositor.dispose();
+    });
+
+    it("renders canonical ProceduralSource layers directly via GPUBackgroundRenderer without requiring GenerativeLayer", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const proceduralLayer = createLayer({
+        name: "Grid Layer",
+        source: {
+          type: "procedural",
+          kind: "grid",
+          parameters: {
+            lineColor: "#ff00ff",
+            backgroundColor: "#111111",
+            spacing: 32,
+            lineWidth: 2,
+          },
+          seed: 42,
+        },
+      });
+
+      // Confirm canonical layer has type "procedural" and NO legacy sublayers/backgrounds
+      expect(proceduralLayer.source.type).toBe("procedural");
+      expect(proceduralLayer.type).toBe("procedural");
+      expect(proceduralLayer.sublayers).toBeUndefined();
+      expect(proceduralLayer.backgrounds).toBeUndefined();
+
+      const bgRenderer = compositor.getBackgroundRenderer();
+      const renderProcSpy = vi.spyOn(bgRenderer, "renderProceduralSourceToTexture");
+
+      const frame: Frame = {
+        id: "frame-procedural",
+        name: "Procedural Frame",
+        dimensions: { width: 800, height: 600, presetId: null },
+        layers: [proceduralLayer],
+        activeLayerId: proceduralLayer.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const result = compositor.composeFrame(frame);
+      expect(result).toBeDefined();
+
+      // GPUBackgroundRenderer.renderProceduralSourceToTexture was invoked with canonical source parameters
+      expect(renderProcSpy).toHaveBeenCalledWith(
+        800,
+        600,
+        expect.objectContaining({
+          type: "procedural",
+          kind: "grid",
+          parameters: expect.objectContaining({
+            lineColor: "#ff00ff",
+            spacing: 32,
+          }),
+          seed: 42,
+        }),
+        0,
+      );
+
+      compositor.dispose();
+    });
+
+    it("composites multiple layers with heterogeneous sources in strict bottom-to-top order", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      // Layer 0: Solid backdrop ProceduralSource
+      const layer0 = createLayer({
+        name: "Solid Backdrop",
+        source: {
+          type: "procedural",
+          kind: "solid",
+          parameters: { color: "#000000" },
+        },
+      });
+
+      // Layer 1: ImageSource
+      const layer1 = createLayer({
+        name: "Photo 1",
+        source: {
+          type: "image",
+          assetId: "photo-1",
+        },
+        opacity: 0.8,
+        blendMode: "multiply",
+      });
+
+      // Layer 2: Dots pattern ProceduralSource
+      const layer2 = createLayer({
+        name: "Dots Overlay",
+        source: {
+          type: "procedural",
+          kind: "dots",
+          parameters: { dotColor: "#ffffff", backgroundColor: "#000000", spacing: 16 },
+        },
+        opacity: 0.5,
+        blendMode: "screen",
+      });
+
+      // Layer 3: ImageSource
+      const layer3 = createLayer({
+        name: "Photo 2",
+        source: {
+          type: "image",
+          assetId: "photo-2",
+        },
+        opacity: 0.9,
+        blendMode: "normal",
+      });
+
+      compositor.uploadAsset("photo-1", { width: 500, height: 500 } as any);
+      compositor.uploadAsset("photo-2", { width: 600, height: 400 } as any);
+
+      const frame: Frame = {
+        id: "frame-heterogeneous",
+        name: "Heterogeneous Multi-Layer Frame",
+        dimensions: { width: 1080, height: 1080, presetId: null },
+        layers: [layer0, layer1, layer2, layer3],
+        activeLayerId: layer3.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      (mockGL.drawArrays as any).mockClear();
+      const resultFBO = compositor.composeFrame(frame);
+      expect(resultFBO).toBeDefined();
+
+      // Verified draw calls:
+      // Layer 0 (proc solid): 1 primitive draw + 1 cross-layer blend draw = 2
+      // Layer 1 (img photo-1): 1 fit draw + 1 cross-layer blend draw = 2
+      // Layer 2 (proc dots): 1 primitive draw + 1 cross-layer blend draw = 2
+      // Layer 3 (img photo-2): 1 fit draw + 1 cross-layer blend draw = 2
+      // Total = 8 draw calls
+      expect((mockGL.drawArrays as any).mock.calls.length).toBe(8);
+
+      compositor.dispose();
+    });
+
+    it("honors layer-level visibility and opacity skipping invisible or zero-opacity layers", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const layerVisible = createLayer({
+        name: "Visible Layer",
+        source: { type: "image", assetId: "asset-vis" },
+        visible: true,
+        opacity: 1.0,
+      });
+
+      const layerInvisible = createLayer({
+        name: "Invisible Layer",
+        source: { type: "image", assetId: "asset-invis" },
+        visible: false,
+        opacity: 1.0,
+      });
+
+      const layerZeroOpacity = createLayer({
+        name: "Zero Opacity Layer",
+        source: { type: "procedural", kind: "solid", parameters: { color: "#ff0000" } },
+        visible: true,
+        opacity: 0,
+      });
+
+      compositor.uploadAsset("asset-vis", { width: 500, height: 500 } as any);
+      compositor.uploadAsset("asset-invis", { width: 500, height: 500 } as any);
+
+      const frame: Frame = {
+        id: "frame-vis-test",
+        name: "Visibility Frame",
+        dimensions: { width: 500, height: 500, presetId: null },
+        layers: [layerVisible, layerInvisible, layerZeroOpacity],
+        activeLayerId: layerVisible.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      (mockGL.drawArrays as any).mockClear();
+      compositor.composeFrame(frame);
+
+      // Only layerVisible should be drawn (1 fit draw + 1 blend draw = 2 draws)
+      expect((mockGL.drawArrays as any).mock.calls.length).toBe(2);
+
+      compositor.dispose();
+    });
+
+    it("applies transforms and intra-layer effect pipeline to both ImageSource and ProceduralSource layers", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      // Procedural layer with spatial transform and effect
+      const procWithEffects = createLayer({
+        name: "Procedural With Transform and Effect",
+        source: {
+          type: "procedural",
+          kind: "linear-gradient",
+          parameters: { startColor: "#ff0000", endColor: "#0000ff" },
+        },
+        transform: { x: 20, y: -10, scaleX: 1.5, scaleY: 1.5, rotation: 45 },
+        effectStack: [
+          {
+            instanceId: "inst-1",
+            effectId: "black-and-white",
+            enabled: true,
+            parameters: {},
+          },
+        ],
+        blendMode: "screen",
+        opacity: 0.85,
+      });
+
+      // Image layer with spatial transform and effect
+      const imgWithEffects = createLayer({
+        name: "Image With Transform and Effect",
+        source: {
+          type: "image",
+          assetId: "asset-fx",
+        },
+        transform: { x: -30, y: 40, scaleX: 0.8, scaleY: 0.8, rotation: 10 },
+        effectStack: [
+          {
+            instanceId: "inst-2",
+            effectId: "black-and-white",
+            enabled: true,
+            parameters: {},
+          },
+        ],
+        blendMode: "overlay",
+        opacity: 0.75,
+      });
+
+      compositor.uploadAsset("asset-fx", { width: 400, height: 400 } as any);
+
+      const frame: Frame = {
+        id: "frame-fx-test",
+        name: "Effects and Transform Frame",
+        dimensions: { width: 800, height: 800, presetId: null },
+        layers: [procWithEffects, imgWithEffects],
+        activeLayerId: imgWithEffects.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      (mockGL.drawArrays as any).mockClear();
+      const resultFBO = compositor.composeFrame(frame);
+      expect(resultFBO).toBeDefined();
+
+      // Pipeline verification:
+      // Proc: 1 primitive draw + 1 transform draw + 1 black-and-white draw + 1 cross-layer blend = 4
+      // Image: 1 fit/transform draw + 1 black-and-white draw + 1 cross-layer blend = 3
+      // Total = 7 draw calls
+      expect((mockGL.drawArrays as any).mock.calls.length).toBe(7);
+
+      compositor.dispose();
+    });
+
+    it("invalidates composition cache when canonical source parameters or assetId changes", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const layerA = createLayer({
+        name: "Layer A",
+        source: {
+          type: "procedural",
+          kind: "dots",
+          parameters: { spacing: 20 },
+        },
+      });
+
+      const frameA: Frame = {
+        id: "frame-cache",
+        name: "Cache Test",
+        dimensions: { width: 500, height: 500, presetId: null },
+        layers: [layerA],
+        activeLayerId: layerA.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const key1 = (compositor as any).generateCompositionKey(frameA);
+
+      // Change procedural parameter
+      const frameB: Frame = {
+        ...frameA,
+        layers: [
+          {
+            ...layerA,
+            source: {
+              type: "procedural",
+              kind: "dots",
+              parameters: { spacing: 40 },
+            },
+          },
+        ],
+      };
+      const key2 = (compositor as any).generateCompositionKey(frameB);
+      expect(key1).not.toBe(key2);
+
+      // Change image source assetId
+      const imgLayerA = createLayer({
+        name: "Img Layer",
+        source: { type: "image", assetId: "img-1" },
+      });
+      const frameImgA: Frame = { ...frameA, layers: [imgLayerA] };
+      const keyImg1 = (compositor as any).generateCompositionKey(frameImgA);
+
+      const frameImgB: Frame = {
+        ...frameA,
+        layers: [
+          {
+            ...imgLayerA,
+            source: { type: "image", assetId: "img-2" },
+          },
+        ],
+      };
+      const keyImg2 = (compositor as any).generateCompositionKey(frameImgB);
+      expect(keyImg1).not.toBe(keyImg2);
 
       compositor.dispose();
     });
