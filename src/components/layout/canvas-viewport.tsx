@@ -84,14 +84,20 @@ export function CanvasViewport({
   const [containerSize, setContainerSize] = React.useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
   const activeLayer = React.useMemo(() => {
-    if (!activeFrame) return null;
-    const targetId = activeLayerId || activeFrame.activeLayerId;
-    return activeFrame.layers.find((l) => l.id === targetId) || null;
+    if (!activeFrame || !activeLayerId) return null;
+    return activeFrame.layers.find((l) => l.id === activeLayerId) || null;
   }, [activeFrame, activeLayerId]);
 
   const activeImageLayerAsset = React.useMemo(() => {
-    if (!activeLayer || activeLayer.type !== "image") return null;
-    return assets.find((a) => a.id === activeLayer.assetId) || null;
+    if (!activeLayer) return null;
+    const isImage = activeLayer.source?.type === "image" || activeLayer.type === "image";
+    if (!isImage) return null;
+    const assetId =
+      activeLayer.source?.type === "image"
+        ? activeLayer.source.assetId
+        : activeLayer.assetId;
+    if (!assetId) return null;
+    return assets.find((a) => a.id === assetId) || null;
   }, [activeLayer, assets]);
 
   // Loaded source bitmap reference
@@ -757,7 +763,7 @@ export function CanvasViewport({
       // Stage 2: Arrow Key Nudging for active ImageLayer
       if (
         (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight") &&
-        activeLayer?.type === "image"
+        (activeLayer?.source?.type === "image" || activeLayer?.type === "image")
       ) {
         e.preventDefault();
         const step = e.shiftKey ? 10 : 1;
@@ -1232,7 +1238,7 @@ export function CanvasViewport({
 
         {/* Stage 2 DOM/SVG Layer Selection & Transform Overlay */}
         {activeFrame &&
-          activeLayer?.type === "image" &&
+          (activeLayer?.source?.type === "image" || activeLayer?.type === "image") &&
           activeImageLayerAsset &&
           (containerSize.width > 0 || (containerRef.current?.clientWidth ?? 0) > 0) && (
             <LayerSelectionOverlay

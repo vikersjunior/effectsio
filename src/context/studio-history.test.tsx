@@ -141,9 +141,11 @@ describe("Phase 7.8 Multi-Asset Selection, Batch Looks & Global History Suite", 
       act(() => {
         hookResult.current.selectAsset("asset-2", true);
       });
-      expect(hookResult.current.activeImageId).toBe("asset-2");
+      // Asset library selection is updated
       expect(hookResult.current.selectedAssetIds.has("asset-2")).toBe(true);
       expect(hookResult.current.selectedAssetIds.size).toBe(1);
+      // Phase 3 invariant: selecting asset in library does not alter canvas activeImageId
+      expect(hookResult.current.activeImageId).toBe("asset-4");
     });
 
     it("supports modifier toggle selection via toggleAssetSelection(id)", () => {
@@ -159,7 +161,8 @@ describe("Phase 7.8 Multi-Asset Selection, Batch Looks & Global History Suite", 
       expect(hookResult.current.selectedAssetIds.size).toBe(2);
       expect(hookResult.current.selectedAssetIds.has("asset-1")).toBe(true);
       expect(hookResult.current.selectedAssetIds.has("asset-2")).toBe(true);
-      expect(hookResult.current.activeImageId).toBe("asset-2");
+      // Phase 3 invariant: canvas activeImageId remains unchanged
+      expect(hookResult.current.activeImageId).toBe("asset-4");
 
       // Toggle asset-1 out of selection
       act(() => {
@@ -168,6 +171,7 @@ describe("Phase 7.8 Multi-Asset Selection, Batch Looks & Global History Suite", 
       expect(hookResult.current.selectedAssetIds.size).toBe(1);
       expect(hookResult.current.selectedAssetIds.has("asset-1")).toBe(false);
       expect(hookResult.current.selectedAssetIds.has("asset-2")).toBe(true);
+      expect(hookResult.current.activeImageId).toBe("asset-4");
     });
 
     it("supports Shift range selection via selectAssetRange", () => {
@@ -179,7 +183,8 @@ describe("Phase 7.8 Multi-Asset Selection, Batch Looks & Global History Suite", 
       expect(hookResult.current.selectedAssetIds.has("asset-2")).toBe(true);
       expect(hookResult.current.selectedAssetIds.has("asset-3")).toBe(true);
       expect(hookResult.current.selectedAssetIds.has("asset-4")).toBe(false);
-      expect(hookResult.current.activeImageId).toBe("asset-3");
+      // Phase 3 invariant: canvas activeImageId remains unchanged
+      expect(hookResult.current.activeImageId).toBe("asset-4");
     });
 
     it("supports selectAllAssets and clearAssetSelection", () => {
@@ -380,7 +385,16 @@ describe("Phase 7.8 Multi-Asset Selection, Batch Looks & Global History Suite", 
 
     it("supports background updates and undo/redo", () => {
       act(() => {
-        hookResult.current.setActiveImageId("asset-1");
+        const targetFrame = hookResult.current.frames.find((f) =>
+          f.layers.some(
+            (l) =>
+              (l.source?.type === "image" && l.source.assetId === "asset-1") ||
+              (l.type === "image" && l.assetId === "asset-1")
+          )
+        );
+        if (targetFrame) {
+          hookResult.current.setActiveFrameId(targetFrame.id);
+        }
         hookResult.current.resetActiveBackground();
       });
 

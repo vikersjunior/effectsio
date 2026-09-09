@@ -383,44 +383,39 @@ export function StudioProvider({
     }
   }, [theme]);
 
-  // Derived active frame
+  // Derived active frame (strict lookup, zero fallback)
   const activeFrame = React.useMemo((): Frame | null => {
-    if (!activeFrameId) return frames[0] || null;
-    return frames.find((f) => f.id === activeFrameId) || frames[0] || null;
+    if (!activeFrameId) return null;
+    return frames.find((f) => f.id === activeFrameId) ?? null;
   }, [frames, activeFrameId]);
 
-  // Derived active layer (strictly belongs to activeFrame)
+  // Derived active layer (strict lookup within activeFrame, zero fallback)
   const activeLayer = React.useMemo((): Layer | null => {
-    if (!activeFrame) return null;
-    if (activeLayerId) {
-      const found = activeFrame.layers.find((l) => l.id === activeLayerId);
-      if (found) return found;
-    }
-    const firstImage = activeFrame.layers.find((l): l is ImageLayer => l.type === "image");
-    return firstImage || activeFrame.layers[0] || null;
+    if (!activeFrame || !activeLayerId) return null;
+    return activeFrame.layers.find((l) => l.id === activeLayerId) ?? null;
   }, [activeFrame, activeLayerId]);
 
-  // Transitional Compatibility Getters (Stage 1A)
+  // Transitional Compatibility Getters (strictly derived from activeLayer.source, null for procedural/backdrop/empty)
   const activeImageId = React.useMemo((): string | null => {
     if (!activeLayer) return null;
-    if (activeLayer.type === "image") return (activeLayer as ImageLayer).assetId;
-    const firstImage = activeFrame?.layers.find((l): l is ImageLayer => l.type === "image");
-    return firstImage ? firstImage.assetId : null;
-  }, [activeLayer, activeFrame]);
+    if (activeLayer.source?.type === "image") {
+      return activeLayer.source.assetId;
+    }
+    if (activeLayer.type === "image" && activeLayer.assetId) {
+      return activeLayer.assetId;
+    }
+    return null;
+  }, [activeLayer]);
 
   const activeAsset = React.useMemo((): Asset | null => {
     if (!activeImageId) return null;
     return assets.find((a) => a.id === activeImageId) || null;
   }, [assets, activeImageId]);
 
+  // Universal Effect Stack (every Layer owns effectStack regardless of source type)
   const activeEffectStack = React.useMemo((): EffectStack => {
-    if (!activeLayer) return [];
-    if (activeLayer.type === "image") {
-      return activeLayer.effectStack || [];
-    }
-    const firstImage = activeFrame?.layers.find((l): l is ImageLayer => l.type === "image");
-    return firstImage ? firstImage.effectStack || [] : [];
-  }, [activeLayer, activeFrame]);
+    return activeLayer?.effectStack ?? [];
+  }, [activeLayer]);
 
   const activeBackgrounds = React.useMemo((): BackgroundItem[] => {
     if (!activeFrame) return [];
@@ -503,9 +498,14 @@ export function StudioProvider({
 
   const selectedInstanceId = React.useMemo((): string | null => {
     if (selectedEffectInstanceId) return selectedEffectInstanceId;
-    if (!activeImageId) return null;
-    return selectedInstanceIds[activeImageId] || null;
-  }, [selectedEffectInstanceId, activeImageId, selectedInstanceIds]);
+    if (activeLayer?.id && selectedInstanceIds[activeLayer.id]) {
+      return selectedInstanceIds[activeLayer.id];
+    }
+    if (activeImageId && selectedInstanceIds[activeImageId]) {
+      return selectedInstanceIds[activeImageId];
+    }
+    return null;
+  }, [selectedEffectInstanceId, activeLayer, activeImageId, selectedInstanceIds]);
 
   const selectedInstance = React.useMemo((): EffectInstance | null => {
     if (!selectedInstanceId || !activeEffectStack) return null;
@@ -677,13 +677,44 @@ export function StudioProvider({
 
           if (state.frames && Array.isArray(state.frames) && state.frames.length > 0) {
             setFrames(state.frames);
-            const resolvedFrameId = state.activeFrameId || state.frames[0].id;
+            // 1. Resolve activeFrameId (validated against loaded frames)
+            const targetFrame =
+              state.activeFrameId && state.frames.some((f) => f.id === state.activeFrameId)
+                ? state.frames.find((f) => f.id === state.activeFrameId)!
+                : state.frames[0];
+            const resolvedFrameId = targetFrame.id;
             setActiveFrameIdState(resolvedFrameId);
-            const targetFrame = state.frames.find((f) => f.id === resolvedFrameId) || state.frames[0];
-            const resolvedLayerId =
-              state.activeLayerId && targetFrame.layers.some((l) => l.id === state.activeLayerId)
-                ? state.activeLayerId
-                : targetFrame.activeLayerId || targetFrame.layers[1]?.id || targetFrame.layers[0].id;
+
+            // 2. Resolve activeLayerId according to approved precedence
+            let resolvedLayerId: string | null = null;
+            if (state.activeLayerId && targetFrame.layers.some((l) => l.id === state.activeLayerId)) {
+              resolvedLayerId = state.activeLayerId;
+            } else if (targetFrame.activeLayerId && targetFrame.layers.some((l) => l.id === targetFrame.activeLayerId)) {
+              resolvedLayerId = targetFrame.activeLayerId;
+            } else if (state.activeImageId) {
+              // Migration bridge: only consulted if canonical activeLayerId was absent/invalid
+              const matchingImg = targetFrame.layers.find(
+                (l) =>
+                  (l.source?.type === "image" && l.source.assetId === state.activeImageId) ||
+                  (l.type === "image" && l.assetId === state.activeImageId)
+              );
+              resolvedLayerId = matchingImg
+                ? matchingImg.id
+                : (targetFrame.layers[targetFrame.layers.length - 1]?.id ?? null);
+            } else if (targetFrame.layers.length > 0) {
+              // Top-most layer (ordered bottom-to-top)
+              resolvedLayerId = targetFrame.layers[targetFrame.layers.length - 1].id;
+            } else {
+              resolvedLayerId = null;
+            }
+
+            if (targetFrame.activeLayerId !== resolvedLayerId) {
+              setFrames((prev) =>
+                prev.map((f) =>
+                  f.id === targetFrame.id ? { ...f, activeLayerId: resolvedLayerId } : f
+                )
+              );
+            }
             setActiveLayerIdState(resolvedLayerId);
           } else if (state.assets && state.assets.length > 0) {
             // Defensive synthesis for test mocks that return assets without frames
@@ -710,7 +741,8 @@ export function StudioProvider({
             const targetAssetId = state.activeImageId || state.assets[0].id;
             const initialFrame = synthesizedFrames.find((f) => f.id === `frame-${targetAssetId}`) || synthesizedFrames[0];
             setActiveFrameIdState(initialFrame.id);
-            setActiveLayerIdState(initialFrame.activeLayerId || initialFrame.layers[1]?.id || initialFrame.layers[0].id);
+            const initialLayerId = initialFrame.activeLayerId || initialFrame.layers[initialFrame.layers.length - 1]?.id || null;
+            setActiveLayerIdState(initialLayerId);
           }
 
           setIsHydrated(true);
@@ -743,81 +775,108 @@ export function StudioProvider({
     }
   }, []);
 
-  // Frame and Layer Setters (Stage 1 Source of Truth)
+  // Frame and Layer Setters (Canonical Source of Truth)
   const setActiveFrameId = React.useCallback((id: string | null) => {
     setActiveFrameIdState(id);
-    if (id) {
-      const frame = framesRef.current.find((f) => f.id === id);
-      if (frame) {
-        const nextLayerId =
-          frame.activeLayerId ||
-          frame.layers.find((l) => l.type === "image")?.id ||
-          frame.layers[0]?.id ||
-          null;
-        setActiveLayerIdState(nextLayerId);
-        const imgLayer = frame.layers.find((l): l is ImageLayer => l.type === "image");
-        if (typeof dbSaveSessionState === "function") {
-          dbSaveSessionState(
-            id,
-            nextLayerId,
-            imgLayer?.assetId || null,
-            projectNameRef.current
-          ).catch(console.error);
-        }
-      }
-    }
-  }, []);
-
-  const setActiveLayerId = React.useCallback((id: string | null) => {
-    setActiveLayerIdState(id);
-    setFrames((prevFrames) =>
-      prevFrames.map((f) =>
-        f.id === activeFrameRef.current?.id ? { ...f, activeLayerId: id } : f
-      )
-    );
-    if (activeFrameRef.current && typeof dbSaveSessionState === "function") {
-      const frame = activeFrameRef.current;
-      const targetLayer = frame.layers.find((l) => l.id === id);
-      const assetId = targetLayer?.type === "image" ? (targetLayer as ImageLayer).assetId : null;
-      dbSaveSessionState(
-        frame.id,
-        id,
-        assetId,
-        projectNameRef.current
-      ).catch(console.error);
-    }
-  }, []);
-
-  // Compatibility setter for activeImageId
-  const setActiveImageId = React.useCallback((id: string | null) => {
     if (!id) {
       setActiveLayerIdState(null);
       return;
     }
 
-    const currentFrames = framesRef.current;
-    const targetFrame = currentFrames.find((f) =>
-      f.layers.some((l) => l.type === "image" && l.assetId === id)
-    );
-
-    if (targetFrame) {
-      setActiveFrameIdState(targetFrame.id);
-      const targetLayer = targetFrame.layers.find(
-        (l) => l.type === "image" && l.assetId === id
-      );
-      if (targetLayer) {
-        setActiveLayerIdState(targetLayer.id);
+    const frame = framesRef.current.find((f) => f.id === id);
+    if (frame) {
+      // Validate frame.activeLayerId against frame.layers
+      let resolvedLayerId: string | null = null;
+      if (frame.activeLayerId && frame.layers.some((l) => l.id === frame.activeLayerId)) {
+        resolvedLayerId = frame.activeLayerId;
+      } else if (frame.layers.length > 0) {
+        // Top-most layer (ordered bottom-to-top)
+        resolvedLayerId = frame.layers[frame.layers.length - 1].id;
+      } else {
+        resolvedLayerId = null;
       }
+
+      if (frame.activeLayerId !== resolvedLayerId) {
+        setFrames((prevFrames) =>
+          prevFrames.map((f) =>
+            f.id === frame.id ? { ...f, activeLayerId: resolvedLayerId } : f
+          )
+        );
+      }
+      setActiveLayerIdState(resolvedLayerId);
+
+      const targetLayer = frame.layers.find((l) => l.id === resolvedLayerId);
+      const assetId =
+        targetLayer?.source?.type === "image"
+          ? targetLayer.source.assetId
+          : targetLayer?.type === "image" && targetLayer.assetId
+          ? targetLayer.assetId
+          : null;
+
       if (typeof dbSaveSessionState === "function") {
         dbSaveSessionState(
-          targetFrame.id,
-          targetLayer?.id || null,
           id,
+          resolvedLayerId,
+          assetId,
+          projectNameRef.current
+        ).catch(console.error);
+      }
+    } else {
+      setActiveLayerIdState(null);
+    }
+  }, []);
+
+  const setActiveLayerId = React.useCallback((id: string | null) => {
+    setActiveLayerIdState(id);
+    const activeFId = activeFrameIdRef.current;
+    if (activeFId) {
+      setFrames((prevFrames) =>
+        prevFrames.map((f) =>
+          f.id === activeFId ? { ...f, activeLayerId: id } : f
+        )
+      );
+      const frame = framesRef.current.find((f) => f.id === activeFId);
+      const targetLayer = frame?.layers.find((l) => l.id === id);
+      const assetId =
+        targetLayer?.source?.type === "image"
+          ? targetLayer.source.assetId
+          : targetLayer?.type === "image" && targetLayer.assetId
+          ? targetLayer.assetId
+          : null;
+      if (typeof dbSaveSessionState === "function") {
+        dbSaveSessionState(
+          activeFId,
+          id,
+          assetId,
           projectNameRef.current
         ).catch(console.error);
       }
     }
   }, []);
+
+  // Compatibility setter for activeImageId (frame-isolated, resolves ImageSource in current active frame)
+  const setActiveImageId = React.useCallback((id: string | null) => {
+    if (!id) {
+      setActiveLayerId(null);
+      return;
+    }
+
+    const currentFrame = activeFrameRef.current;
+    if (!currentFrame) return;
+
+    // Resolve matching ImageSource layer in CURRENT activeFrame only
+    const targetLayer = currentFrame.layers.find(
+      (l) =>
+        (l.source?.type === "image" && l.source.assetId === id) ||
+        (l.type === "image" && l.assetId === id)
+    );
+
+    if (targetLayer) {
+      setActiveLayerId(targetLayer.id);
+    }
+    // If unplaced in the active frame: no-op with respect to canvas editing.
+    // Does NOT switch frames, does NOT change activeFrameId, does NOT steal canvas focus.
+  }, [setActiveLayerId]);
 
   // ---------------------------------------------------------------------------
   // Stage 1C Layer & Frame Operations
@@ -1008,12 +1067,21 @@ export function StudioProvider({
           const layerIdx = frame.layers.findIndex((l) => l.id === layerId);
           if (layerIdx === -1) return frame;
 
-          const isGenerative = frame.layers[layerIdx].type === "generative";
+          const isGenerative =
+            frame.layers[layerIdx].source?.type === "procedural" ||
+            frame.layers[layerIdx].type === "generative";
           const newLayers = frame.layers.filter((l) => l.id !== layerId);
           let nextActiveLayerId = frame.activeLayerId;
-          if (frame.activeLayerId === layerId) {
-            const fallback = newLayers[Math.max(0, layerIdx - 1)] || newLayers[0];
-            nextActiveLayerId = fallback?.id || null;
+          const wasActive = frame.activeLayerId === layerId || activeLayerIdRef.current === layerId;
+
+          if (wasActive) {
+            if (newLayers.length === 0) {
+              nextActiveLayerId = null;
+            } else {
+              // Prefer adjacent layer below (index - 1), else first remaining layer (index 0)
+              const adjacentIdx = layerIdx > 0 ? layerIdx - 1 : 0;
+              nextActiveLayerId = newLayers[adjacentIdx]?.id || null;
+            }
             setActiveLayerIdState(nextActiveLayerId);
           }
 
@@ -1030,6 +1098,22 @@ export function StudioProvider({
 
           if (typeof dbSaveFrame === "function") {
             dbSaveFrame(updatedFrame).catch(console.error);
+          }
+
+          if (wasActive && typeof dbSaveSessionState === "function") {
+            const activeL = newLayers.find((l) => l.id === nextActiveLayerId);
+            const activeImg =
+              activeL?.source?.type === "image"
+                ? activeL.source.assetId
+                : activeL?.type === "image" && activeL.assetId
+                ? activeL.assetId
+                : null;
+            dbSaveSessionState(
+              frame.id,
+              nextActiveLayerId,
+              activeImg,
+              projectNameRef.current
+            ).catch(console.error);
           }
 
           return updatedFrame;
@@ -1133,9 +1217,8 @@ export function StudioProvider({
         }
         return next;
       });
-      setActiveImageId(assetId);
     },
-    [setActiveImageId]
+    []
   );
 
   const selectAsset = React.useCallback(
@@ -1148,9 +1231,8 @@ export function StudioProvider({
         next.add(assetId);
         return next;
       });
-      setActiveImageId(assetId);
     },
-    [setActiveImageId]
+    []
   );
 
   const selectAssetRange = React.useCallback(
@@ -1165,9 +1247,8 @@ export function StudioProvider({
       const end = Math.max(fromIdx, toIdx);
       const rangeIds = assetList.slice(start, end + 1).map((a) => a.id);
       setSelectedAssetIds(new Set(rangeIds));
-      setActiveImageId(toAssetId);
     },
-    [selectAsset, setActiveImageId]
+    [selectAsset]
   );
 
   const deselectAsset = React.useCallback((assetId: string) => {
@@ -1368,14 +1449,18 @@ export function StudioProvider({
         let updatedFrames = prevFrames
           .map((f) => {
             const nextLayers = f.layers.filter(
-              (l) => !(l.type === "image" && l.assetId === id)
+              (l) =>
+                !(
+                  (l.source?.type === "image" && l.source.assetId === id) ||
+                  (l.type === "image" && l.assetId === id)
+                )
             );
             return {
               ...f,
               layers: nextLayers,
               activeLayerId:
                 f.activeLayerId && !nextLayers.some((l) => l.id === f.activeLayerId)
-                  ? nextLayers.find((l) => l.type === "image")?.id || nextLayers[0]?.id || null
+                  ? nextLayers[nextLayers.length - 1]?.id ?? null
                   : f.activeLayerId,
               updatedAt: Date.now(),
             };
@@ -1397,21 +1482,26 @@ export function StudioProvider({
 
         setActiveFrameIdState(nextActiveFrame.id);
         const nextActiveLayerId =
-          nextActiveFrame.activeLayerId ||
-          nextActiveFrame.layers.find((l) => l.type === "image")?.id ||
-          nextActiveFrame.layers[0]?.id ||
-          null;
+          nextActiveFrame.activeLayerId && nextActiveFrame.layers.some((l) => l.id === nextActiveFrame.activeLayerId)
+            ? nextActiveFrame.activeLayerId
+            : (nextActiveFrame.layers[nextActiveFrame.layers.length - 1]?.id ?? null);
         setActiveLayerIdState(nextActiveLayerId);
 
         if (typeof dbSaveFrames === "function") {
           dbSaveFrames(updatedFrames).catch(console.error);
         }
         if (typeof dbSaveSessionState === "function") {
-          const activeImg = nextActiveFrame.layers.find((l): l is ImageLayer => l.type === "image");
+          const activeL = nextActiveFrame.layers.find((l) => l.id === nextActiveLayerId);
+          const activeImgId =
+            activeL?.source?.type === "image"
+              ? activeL.source.assetId
+              : activeL?.type === "image" && activeL.assetId
+              ? activeL.assetId
+              : null;
           dbSaveSessionState(
             nextActiveFrame.id,
             nextActiveLayerId,
-            activeImg?.assetId || null,
+            activeImgId,
             projectNameRef.current
           ).catch(console.error);
         }
@@ -1458,9 +1548,15 @@ export function StudioProvider({
 
         for (let fi = 0; fi < prevFrames.length; fi++) {
           const frame = prevFrames[fi];
-          const li = frame.layers.findIndex(
-            (l) => l.id === targetId || (l.type === "image" && l.assetId === targetId)
-          );
+          const li = frame.layers.findIndex((l) => {
+            // Priority 1 — Canonical Layer ID
+            if (l.id === targetId) return true;
+            // Priority 2 — Transitional ImageSource
+            if (l.source?.type === "image" && l.source.assetId === targetId) return true;
+            // Priority 3 — Legacy compatibility
+            if (l.type === "image" && l.assetId === targetId) return true;
+            return false;
+          });
           if (li !== -1) {
             frameIndex = fi;
             layerIndex = li;
@@ -1472,8 +1568,9 @@ export function StudioProvider({
           frameIndex = prevFrames.findIndex((f) => f.id === activeFrameRef.current!.id);
           if (frameIndex !== -1) {
             const frame = prevFrames[frameIndex];
+            // Priority 4 — Active layer fallback strictly by layer ID
             layerIndex = frame.layers.findIndex(
-              (l) => l.id === activeLayerRef.current?.id || l.type === "image"
+              (l) => l.id === activeLayerRef.current?.id
             );
           }
         }
@@ -2319,15 +2416,40 @@ export function StudioProvider({
 
     // Restore state
     if (snapshotToRestore.frames && snapshotToRestore.frames.length > 0) {
-      setFrames(snapshotToRestore.frames);
-      if (snapshotToRestore.activeFrameId !== undefined) {
-        setActiveFrameIdState(snapshotToRestore.activeFrameId);
+      const restoredFrames = snapshotToRestore.frames;
+      setFrames(restoredFrames);
+
+      // Validate and resolve activeFrameId
+      const targetFrame =
+        snapshotToRestore.activeFrameId && restoredFrames.some((f) => f.id === snapshotToRestore.activeFrameId)
+          ? restoredFrames.find((f) => f.id === snapshotToRestore.activeFrameId)!
+          : restoredFrames[0];
+      const resolvedFrameId = targetFrame.id;
+      setActiveFrameIdState(resolvedFrameId);
+
+      // Validate and resolve activeLayerId
+      let resolvedLayerId: string | null = null;
+      if (snapshotToRestore.activeLayerId && targetFrame.layers.some((l) => l.id === snapshotToRestore.activeLayerId)) {
+        resolvedLayerId = snapshotToRestore.activeLayerId;
+      } else if (targetFrame.activeLayerId && targetFrame.layers.some((l) => l.id === targetFrame.activeLayerId)) {
+        resolvedLayerId = targetFrame.activeLayerId;
+      } else if (targetFrame.layers.length > 0) {
+        resolvedLayerId = targetFrame.layers[targetFrame.layers.length - 1].id;
+      } else {
+        resolvedLayerId = null;
       }
-      if (snapshotToRestore.activeLayerId !== undefined) {
-        setActiveLayerIdState(snapshotToRestore.activeLayerId);
+
+      if (targetFrame.activeLayerId !== resolvedLayerId) {
+        setFrames((prev) =>
+          prev.map((f) =>
+            f.id === targetFrame.id ? { ...f, activeLayerId: resolvedLayerId } : f
+          )
+        );
       }
+      setActiveLayerIdState(resolvedLayerId);
+
       if (typeof dbSaveFrames === "function") {
-        dbSaveFrames(snapshotToRestore.frames).catch(console.error);
+        dbSaveFrames(restoredFrames).catch(console.error);
       }
     } else if (snapshotToRestore.effectStacks || snapshotToRestore.backgrounds) {
       // Legacy snapshot fallback
@@ -2402,15 +2524,40 @@ export function StudioProvider({
 
     // Restore state
     if (snapshotToRestore.frames && snapshotToRestore.frames.length > 0) {
-      setFrames(snapshotToRestore.frames);
-      if (snapshotToRestore.activeFrameId !== undefined) {
-        setActiveFrameIdState(snapshotToRestore.activeFrameId);
+      const restoredFrames = snapshotToRestore.frames;
+      setFrames(restoredFrames);
+
+      // Validate and resolve activeFrameId
+      const targetFrame =
+        snapshotToRestore.activeFrameId && restoredFrames.some((f) => f.id === snapshotToRestore.activeFrameId)
+          ? restoredFrames.find((f) => f.id === snapshotToRestore.activeFrameId)!
+          : restoredFrames[0];
+      const resolvedFrameId = targetFrame.id;
+      setActiveFrameIdState(resolvedFrameId);
+
+      // Validate and resolve activeLayerId
+      let resolvedLayerId: string | null = null;
+      if (snapshotToRestore.activeLayerId && targetFrame.layers.some((l) => l.id === snapshotToRestore.activeLayerId)) {
+        resolvedLayerId = snapshotToRestore.activeLayerId;
+      } else if (targetFrame.activeLayerId && targetFrame.layers.some((l) => l.id === targetFrame.activeLayerId)) {
+        resolvedLayerId = targetFrame.activeLayerId;
+      } else if (targetFrame.layers.length > 0) {
+        resolvedLayerId = targetFrame.layers[targetFrame.layers.length - 1].id;
+      } else {
+        resolvedLayerId = null;
       }
-      if (snapshotToRestore.activeLayerId !== undefined) {
-        setActiveLayerIdState(snapshotToRestore.activeLayerId);
+
+      if (targetFrame.activeLayerId !== resolvedLayerId) {
+        setFrames((prev) =>
+          prev.map((f) =>
+            f.id === targetFrame.id ? { ...f, activeLayerId: resolvedLayerId } : f
+          )
+        );
       }
+      setActiveLayerIdState(resolvedLayerId);
+
       if (typeof dbSaveFrames === "function") {
-        dbSaveFrames(snapshotToRestore.frames).catch(console.error);
+        dbSaveFrames(restoredFrames).catch(console.error);
       }
     } else if (snapshotToRestore.effectStacks || snapshotToRestore.backgrounds) {
       // Legacy snapshot fallback

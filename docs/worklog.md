@@ -3451,6 +3451,102 @@ Automated verification script (`scratch/verify-zoom-range-motion.mjs`) executed 
 - **Phase 4 Pending**: Inspector panel and UI layer controls.
 - **Zero Phase 3/4 Changes**: Studio context and UI surfaces remain completely untouched.
 
+---
+
+## Phase 3 Implementation: Studio Context & Active Editing State
+
+- **Date**: 2026-09-09
+- **Task**: Implement Phase 3 Unified Composition Model in `StudioContext` and persistence layer: establish `activeFrameId + activeLayerId` as the single authoritative active editing target.
+- **Approval Gate**: `docs/approvals/phase-3-studio-context.md` (`APPROVED: 2026-09-09`).
+
+### 1. Architectural Changes Implemented
+
+1. **Authoritative `activeFrameId + activeLayerId` in `StudioContext` (`src/context/studio-context.tsx`)**:
+   - `activeFrame`: Converted to strict lookup `frames.find(f => f.id === activeFrameId) ?? null`, eliminating silent `|| frames[0]` fallback that masked invalid frame IDs.
+   - `activeLayer`: Converted to strict lookup `activeFrame?.layers.find(l => l.id === activeLayerId) ?? null`, eliminating silent `firstImage` and `layers[0]` fallbacks.
+   - `activeImageId`: Converted to a strictly derived property (`useMemo`) from `activeLayer.source` (`source.type === "image" ? source.assetId : null`). For procedural layers, backdrops, or empty states, returns `null` rather than falling back to unrelated images.
+   - `activeEffectStack`: Universally derived as `activeLayer?.effectStack ?? []`, removing `activeLayer.type === "image"` restriction so procedural and future layer types receive native effect stack access.
+   - `selectedInstanceId`: Updated to prioritize active layer ID with `activeImageId` fallback.
+
+2. **Decoupled Asset Library Selection from Active Canvas Editing**:
+   - `selectAsset()`, `toggleAssetSelection()`, and `selectAssetRange()` now mutate `selectedAssetIds` in isolation.
+   - Removed implicit `setActiveImageId()` invocations from asset selection methods. Clicking an asset in the library no longer steals canvas focus, mutates `activeImageId`, or overrides active layer selection.
+
+3. **Frame Isolation in `setActiveImageId()` Compatibility Setter**:
+   - Calling `setActiveImageId(assetId)` now searches ONLY within the current `activeFrame.layers`.
+   - If the asset is placed in the active frame, it selects that layer and sets `activeLayerId`.
+   - If the asset is NOT placed in the current frame, it is a safe no-op. It never silently switches frames or steals focus to an unplaced asset.
+
+4. **Per-Frame Active Layer Memory & Canonical State Mutations**:
+   - `setActiveFrameId(frameId)`: Validates the target frame and resolves its active layer using stored `Frame.activeLayerId`, repairing stale/invalid IDs to top-most layer or `null`.
+   - `setActiveLayerId(layerId)`: Authoritatively updates `activeLayerId`, writes per-frame memory `Frame.activeLayerId`, and syncs session state without creating spurious undo history entries.
+   - `removeLayer(layerId)`: Deterministically selects the adjacent layer below (or at index 0); sets `activeLayerId = null` if the frame becomes completely empty; synchronizes frame and session state.
+   - `removeAsset(assetId)`: Filters out layers referencing the deleted asset via canonical `source.assetId` (and compatibility `assetId`), repairing `activeLayerId` to top-most layer if the active layer was deleted.
+   - `mutateLayerStack()`: Follows strict targeting priority (target layer ID → canonical `source.assetId` → compatibility `assetId` → `activeLayerId`), removing the unsafe fallback to any arbitrary image layer.
+
+5. **Persistence & Hydration Alignment (`src/storage/db.ts`)**:
+   - Maintained IndexedDB schema at `DB_VERSION = 2` with zero structural migration required.
+   - Implemented strict hydration precedence in `loadHydratedProject()`:
+     1. Validated `session.activeFrameId`.
+     2. Validated `session.activeLayerId` within the resolved frame.
+     3. Validated `Frame.activeLayerId`.
+     4. Transitional migration bridge: `session.activeImageId` resolved to placed layer.
+     5. Top-most layer fallback.
+     6. `null` fallback.
+   - Derived legacy snapshot `activeImageId` strictly from `activeLayer.source` without fallback to unrelated assets.
+
+6. **Canvas Viewport Consumer Alignment (`src/components/layout/canvas-viewport.tsx`)**:
+   - Updated `activeLayer` to strict lookup using `activeLayerId`.
+   - Updated `activeImageLayerAsset`, arrow key nudging, and `LayerSelectionOverlay` to check canonical `activeLayer.source?.type === "image"`.
+
+7. **History Snapshot Typings (`src/types/history.ts`)**:
+   - Annotated `activeFrameId` and `activeLayerId` as canonical fields.
+   - Marked `activeImageId`, `effectStacks`, and `backgrounds` as `@deprecated` legacy compatibility fields.
+
+8. **Phase 3 Test Suite (`src/context/phase-3-active-state.test.tsx`)**:
+   - Implemented 20 dedicated automated tests validating all 20 scenarios from Section 22:
+     - Canonical active layer authority and selection.
+     - Procedural active layer handling (`activeImageId === null`, `activeEffectStack` accessible).
+     - Asset library selection isolation (`selectedAssetIds` isolated from `activeImageId`).
+     - Frame-isolated `setActiveImageId` (no-op on unplaced assets).
+     - Deterministic layer deletion and fallback.
+     - Cross-frame switching and per-frame `activeLayerId` memory.
+     - Stale/invalid ID repair on frame switch.
+     - Layer stack mutations targeted by layer ID.
+     - Undo/redo active state restoration and repair.
+     - Hydration precedence and empty frame handling.
+
+### 2. Empirical Verification Evidence (Rule 1)
+
+- `pnpm verify:approvals`: **PASS (exit code 0, all 6 approval gates verified, including `docs/approvals/phase-3-studio-context.md`)**.
+- `pnpm typecheck`: **PASS (exit code 0, 0 TypeScript errors)**.
+- `pnpm test`: **PASS (exit code 0, 30/30 test files passed, 394/394 tests passed)**:
+  - `src/context/phase-3-active-state.test.tsx`: **20 passed (20)**.
+  - `src/context/studio-history.test.tsx`: **19 passed (19)**.
+  - `src/components/layout/inspector-panel.test.tsx`: **29 passed (29)**.
+  - `src/rendering/webgl/webgl-frame-compositor.test.ts`: **38 passed (38)**.
+- `pnpm build`: **PASS (exit code 0, Vite production build completed in 4.15s)**.
+- `pnpm check:no-competitor-refs`: **PASS (exit code 0, 621 tracked files scanned, 0 deny-list violations)**.
+- `pnpm check:public-provenance`: **PASS (exit code 0, 0 external runtime/provenance references found in tracked files)**.
+- `pnpm graphify:update`: **PASS (exit code 0, AST knowledge graph updated: 4252 nodes, 11340 edges, 149 communities)**.
+
+### 3. Graphify & Headroom Actual-Use Governance
+
+1. **Graphify Actual Use**:
+   - Pre-implementation query: `graphify query "StudioContext activeFrameId activeLayerId activeImageId"` and `graphify explain "StudioContext"`. Mapped dependency relationships among `StudioContext`, `activeFrameId`, `activeLayerId`, `selectedAssetIds`, `mutateLayerStack`, and `loadHydratedProject`.
+   - Post-implementation update: Synchronized AST knowledge graph via `pnpm graphify:update`.
+2. **Headroom Actual Use**:
+   - Pre-flight diagnostic: Tested `pnpm agent:proxy` and daemon responsiveness. Environment sandbox socket restrictions prevented proxy interceptor metrics from being gathered. Development proceeded without proxy compression per Rule 11. Zero token compression or proxy savings claimed.
+
+### 4. Hard Scope Boundary Enforcement
+
+- **Phase 3 Complete**: Studio Context active editing state is fully migrated to canonical `activeFrameId + activeLayerId`.
+- **Phase 4 Pending**: Layer stack UI, Inspector panel controls, and procedural layer parameter editing.
+- **Zero Phase 4 Changes**: UI layer list components and inspector panels remain untouched.
+- **Zero WebGL Renderer Changes**: WebGL compositor files in `src/rendering/webgl/` were not modified.
+- **Zero DB Schema Changes**: IndexedDB version remains `DB_VERSION = 2`.
+
+
 
 
 

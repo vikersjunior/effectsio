@@ -508,28 +508,50 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
       }
     } else {
       // Existing frames found
+      // 1. Resolve activeFrameId (validated against loaded frames)
       const matchingFrame = session?.activeFrameId
         ? frames.find((f) => f.id === session.activeFrameId)
         : null;
       const activeFrame = matchingFrame || frames[0];
-      activeFrameId = activeFrame.id;
+      activeFrameId = activeFrame?.id ?? null;
 
-      if (session?.activeLayerId && activeFrame.layers.some((l) => l.id === session.activeLayerId)) {
-        activeLayerId = session.activeLayerId;
+      // 2. Resolve activeLayerId according to approved precedence
+      if (activeFrame) {
+        if (session?.activeLayerId && activeFrame.layers.some((l) => l.id === session.activeLayerId)) {
+          activeLayerId = session.activeLayerId;
+        } else if (activeFrame.activeLayerId && activeFrame.layers.some((l) => l.id === activeFrame.activeLayerId)) {
+          activeLayerId = activeFrame.activeLayerId;
+        } else if (session?.activeImageId) {
+          // Migration bridge: only consulted if canonical activeLayerId was absent/invalid
+          const matchingImg = activeFrame.layers.find(
+            (l) =>
+              (l.source?.type === "image" && l.source.assetId === session.activeImageId) ||
+              (l.type === "image" && l.assetId === session.activeImageId)
+          );
+          activeLayerId = matchingImg
+            ? matchingImg.id
+            : (activeFrame.layers[activeFrame.layers.length - 1]?.id ?? null);
+        } else if (activeFrame.layers.length > 0) {
+          // Top-most layer (ordered bottom-to-top)
+          activeLayerId = activeFrame.layers[activeFrame.layers.length - 1].id;
+        } else {
+          activeLayerId = null;
+        }
       } else {
-        activeLayerId = activeFrame.activeLayerId || activeFrame.layers[1]?.id || activeFrame.layers[0].id;
+        activeLayerId = null;
       }
     }
 
-    // Derive activeImageId safely for legacy compatibility
+    // Derive activeImageId strictly from activeLayer for legacy compatibility (null for procedural/empty)
     const currentActiveFrame = frames.find((f) => f.id === activeFrameId);
     const currentActiveLayer = currentActiveFrame?.layers.find((l) => l.id === activeLayerId);
     let resolvedActiveImageId: string | null = null;
-    if (currentActiveLayer?.type === "image") {
-      resolvedActiveImageId = (currentActiveLayer as ImageLayer).assetId;
-    } else {
-      const firstImg = currentActiveFrame?.layers.find((l): l is ImageLayer => l.type === "image");
-      resolvedActiveImageId = firstImg ? firstImg.assetId : (validAssets[0]?.id || null);
+    if (currentActiveLayer) {
+      if (currentActiveLayer.source?.type === "image") {
+        resolvedActiveImageId = currentActiveLayer.source.assetId;
+      } else if (currentActiveLayer.type === "image" && currentActiveLayer.assetId) {
+        resolvedActiveImageId = currentActiveLayer.assetId;
+      }
     }
 
     // Populate legacy effectStacks and backgrounds from frames if needed
