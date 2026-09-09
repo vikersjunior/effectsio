@@ -2,23 +2,25 @@
 
 **Document:** `architecture.md`  
 **Product:** EffectsIO  
-**Status:** Phase 6 Complete / Phase 7 Architecture Proposal & Readiness  
-**Last updated:** August 2026
+**Status:** Canonical Architecture Specification — Unified Composition Model (Phases 1–3 Complete)  
+**Last updated:** September 2026  
+**Supersession Note:** This document has been updated to reflect the approved Unified Composition Model (`docs/approvals/unified-composition-model.md`). The composition model is `Project → Frame → (Group) → Layer → Source`, and the single authoritative runtime editing target is `activeFrameId + activeLayerId`.
 
 ---
 
 ## 1. Executive Summary & Core Invariants
 
-EffectsIO is a high-performance, local-first browser creative studio for image effects, composition, and visual experimentation built with **React 19, TypeScript, Vite, Tailwind CSS v4, and Canvas 2D**.
+EffectsIO is a high-performance, local-first browser creative studio for image effects, visual composition, and procedural generative visuals built with **React 19, TypeScript, Vite, Tailwind CSS v4, and native WebGL2**.
 
 ### Core Architecture Invariants:
 1. **Empirical Evidence First**: All claims of functionality, performance, or correctness require runtime evidence (typecheck, tests, build).
-2. **Single Source of Truth (`activeImageId`)**: The active composition image is strictly identified by `activeImageId` in `StudioContext`. Thumbnail selection in the Image Library sets `activeImageId`. Canvas, Inspector, and Effects consume `activeImageId`. No duplicate selection dropdowns exist.
-3. **Pure Effect Module Separation**: Pixel transformation algorithms (`src/effects/modules/*.ts`) are pure, side-effect-free functions operating on raw `ImageData` parameters, 100% decoupled from React, DOM, and stores.
-4. **Canvas Output Isolation**: Visual results render inside canvas pipelines. Interactive controls (sliders, toolbars, selection handles, split divider knobs) live strictly in DOM overlays.
-5. **Native Component Ownership**: All UI components in `src/components/` are native EffectsIO primitives styled with design tokens declared in `src/styles.css`.
-6. **Non-Destructive Source Assets**: Original imported image bitmaps and `Asset` objects remain immutable.
-7. **Strict Viewport Independence in Export**: Viewport camera transforms (`zoom`, `panX`, `panY`, `fitMode`, `splitView`, `splitPosition`, `showGrid`, `showCheckerboard`) have zero effect on exported pixels.
+2. **Canonical Composition Model (`Project → Frame → (Group) → Layer → Source`)**: Universal `Layer` objects own visibility, lock, opacity, blend mode, transform, effects, and a discriminated `LayerSource` (`ImageSource`, `ProceduralSource`).
+3. **Authoritative Active Editing Target (`activeFrameId + activeLayerId`)**: The active editing target is strictly identified by `activeFrameId` and `activeLayerId` in `StudioContext`. In the Unified Composition Model, `activeFrame` and `activeLayer` are resolved by strict ID lookup without silent fallbacks. `activeImageId` is strictly a derived compatibility property for image-source layers (`null` for procedural/empty). Asset library selection (`selectedAssetIds`) is decoupled from canvas editing.
+4. **Pure Effect Module Separation**: Pixel transformation algorithms (`src/effects/modules/*.ts`) are pure, side-effect-free functions operating on raw `ImageData` parameters, 100% decoupled from React, DOM, and stores.
+5. **Canvas Output Isolation**: Visual results render inside canvas pipelines. Interactive controls (sliders, toolbars, selection handles, split divider knobs) live strictly in DOM overlays.
+6. **Native Component Ownership**: All UI components in `src/components/` are native EffectsIO primitives styled with design tokens declared in `src/styles.css`.
+7. **Non-Destructive Source Assets**: Original imported image bitmaps and `Asset` objects remain immutable.
+8. **Strict Viewport Independence in Export**: Viewport camera transforms (`zoom`, `panX`, `panY`, `fitMode`, `splitView`, `splitPosition`, `showGrid`, `showCheckerboard`) have zero effect on exported pixels.
 
 ---
 
@@ -32,22 +34,25 @@ EffectsIO is a high-performance, local-first browser creative studio for image e
 │  ┌────────────────────┐  │  ┌────────────────────────┐ │  ┌────────────────────┐ │
 │  │ Image Ingestion    │  │  │ RAF Viewport Matrix    │ │  │ Effects Stack Tab  │ │
 │  │ Raw Blob IDB Store │  │  │ Split View HUD Overlay │ │  │ Looks Library Tab  │ │
-│  │ Thumbnail Grid     │  │  │ Creative Background    │ │  │ Background Tab     │ │
-│  └─────────┬──────────┘  │  │ Canvas 2D Buffer       │ │  │ Asset Info Tab     │ │
-│            │             │  └───────────▲────────────┘ │  └────────▲───────────┘ │
-└────────────┼─────────────┴──────────────┼──────────────┴───────────┼─────────────┘
-             │                            │                          │
-             │ Selection                  │ Consumes                 │ Consumes
-             ▼                            │ activeImageId            │ activeImageId
+│  │ Thumbnail Grid     │  │  │ WebGL2 Compositor      │ │  │ Procedural Tab     │ │
+│  │ selectedAssetIds   │  │  │ Canvas Buffer          │ │  │ Transform Tab      │ │
+│  └─────────┬──────────┘  │  └───────────▲────────────┘ │  └────────▲───────────┘ │
+│            │             │              │                          │
+└────────────┼─────────────┴──────────────┼──────────────────────────┼─────────────┘
+             │                            │ Consumes                 │ Consumes
+             │ Decoupled                  │ activeFrameId +          │ activeFrameId +
+             ▼                            │ activeLayerId            │ activeLayerId
 ┌─────────────────────────────────────────┴──────────────────────────┴─────────────┐
 │                          StudioContext (React Context)                           │
-│  - assets: Asset[] (with fresh Object URLs from raw Blobs)                       │
-│  - activeImageId: string | null                                                  │
-│  - effectStacks: Record<string, EffectStack>                                     │
-│  - backgrounds: Record<string, BackgroundState>                                  │
+│  - frames: Frame[] (Project → Frame → Group → Layer → Source)                    │
+│  - activeFrameId: string | null (authoritative active frame)                     │
+│  - activeLayerId: string | null (authoritative active layer)                     │
+│  - assets: Asset[] (raw image media store)                                       │
+│  - selectedAssetIds: Set<string> (decoupled asset library selection)             │
 │  - userLooks: Look[]                                                             │
 │  - viewport: ViewportState (ephemeral pan/zoom camera)                           │
 │  - isHydrated: boolean (startup lifecycle gate)                                  │
+│  - activeImageId: string | null (derived compatibility property from source)     │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -152,10 +157,10 @@ User File Import (Picker / Drag & Drop)
     Generate Downscaled Thumbnail (Canvas Data URL)
                  │
                  ▼
-    Persist Raw Blob to IndexedDB (`assets` store)
-                 │
-                 ▼
-    Append Asset to StudioContext & Set activeImageId
+     Persist Raw Blob to IndexedDB (`assets` store)
+                  │
+                  ▼
+     Append Asset to StudioContext & Ingest into Asset Library
 ```
 
 ### Memory Lifecycle & Cleanup Policy:
@@ -228,7 +233,7 @@ User File Import (Picker / Drag & Drop)
   - `effect_stacks`: Stores per-asset `EffectStack` arrays.
   - `backgrounds`: Stores per-asset `BackgroundState` records.
   - `user_looks`: Stores custom user Look presets.
-  - `app_state`: Stores session state (`activeImageId`).
+  - `app_state`: Stores session state (`activeFrameId`, `activeLayerId`, `activeImageId`, `projectName`).
 - **Controlled Hydration Lifecycle**:
   - Application starts with `isHydrated: false` and renders a clean loading overlay ("Restoring workspace...").
   - `loadHydratedProject()` reads stored records, creates fresh runtime Object URLs (`URL.createObjectURL(rawBlob)`), restores active asset and stacks, and sets `isHydrated: true`.

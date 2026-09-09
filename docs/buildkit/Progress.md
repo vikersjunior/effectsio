@@ -11,7 +11,7 @@
 
 - **Phase 1 (MVP Core Foundations)**: **Complete & Verified** (Native UI primitives, 3-column resizable studio shell).
 - **Phase 1.5 (Design Quality & UX Pass)**: **Complete & Verified** (Refined component states, ARIA roles, canvas framing).
-- **Phase 2 (Real Assets + Active Image + Canvas)**: **Complete & Verified** (PNG/JPG/WebP ingestion, thumbnail grid, `activeImageId` single source of truth, canvas render, inspector info).
+- **Phase 2 (Real Assets + Active Image + Canvas)**: **Complete & Verified** (PNG/JPG/WebP ingestion, thumbnail grid, `activeImageId` tracking, canvas render, inspector info). *`activeImageId` is now a derived compatibility property per UCM Phase 3 — see Section 4.*
 - **Phase 2 Correction Pass**: **Complete & Verified** (Multi-asset selection & Object URL lifecycle resolution).
 - **Phase 3 (Interactive Canvas Viewport)**: **Complete & Verified** (Pan/zoom affine matrix, focal point wheel zoom, ResizeObserver fit, fixed viewport checkerboard transparency preview).
 - **Phase 3 Stability Correction**: **Complete & Verified** (Buffer sizing isolation from draw loop, RAF pan coalescing, finite guards).
@@ -37,7 +37,8 @@
 | **Native Design System Primitives** | Specified | **Implemented & Polished** (`src/components/ui/*`) | Phase 1 & 1.5 |
 | **Image Ingestion & Drag/Drop** | Specified | **Implemented & Verified** (`src/utils/image-ingestion.ts`) | Phase 2 |
 | **Image Library Grid (`assets[]`)** | Specified | **Implemented & Verified** (`src/components/layout/asset-panel.tsx`) | Phase 2 |
-| **Active Image State (`activeImageId`)**| Specified | **Implemented & Verified** (`src/context/studio-context.tsx`) | Phase 2 |
+| **Active Editing State (`activeFrameId + activeLayerId`)** | Specified | **Implemented & Verified** (`src/context/studio-context.tsx` — UCM Phase 3) | UCM Phase 3 |
+| **Active Image Compat (`activeImageId`)** | Specified | **Derived compatibility property** (strictly computed from `activeLayer.source` via `useMemo`; not source of truth) | UCM Phase 3 |
 | **Canvas Viewport Real Image Render** | Specified | **Implemented & Verified** (`src/components/layout/canvas-viewport.tsx`) | Phase 2 |
 | **Active Asset Inspector Metadata** | Specified | **Implemented & Verified** (`src/components/layout/inspector-panel.tsx`) | Phase 2 |
 | **Interactive Canvas Pan & Focal Zoom**| Specified | **Implemented & Verified** (`src/utils/viewport-math.ts`) | Phase 3 |
@@ -121,3 +122,28 @@
   - **Automated Verification**: 109/109 unit tests passing across 13 test files; `pnpm typecheck` (0 errors); production build clean in 3.62s.
   - **Empirical Browser Verification**: Captured 12 live screenshots via headless Chrome CDP verifying active playback, paused frame stability (0 byte drift), seek determinism (100% byte match on return), live parameter updates during playback, and multi-pass split view synchronization.
   - **Graphify Repository Intelligence**: Updated knowledge graph (`graphify-out/graph.json`: 3412 nodes, 8876 edges, 127 communities).
+
+- **Entry 2026-09-05 (Unified Composition Model — Phase 1: Frame & Layer Architecture)**:
+  - Approved (`docs/approvals/stage-1-frame-layer.md`: `APPROVED: 2026-09-05`).
+  - Introduced canonical `BaseLayer`, `Layer extends BaseLayer`, required `Layer.source: LayerSource`, `ImageSource`, `ProceduralSource`.
+  - Canonical `Frame.layers: Layer[]`, canonical default backdrop Layer, groups, idempotent normalization.
+  - Temporary compatibility fields for unmigrated consumers explicitly documented at the migration boundary.
+  - Phase 1 correction pass refined documentation boundary between canonical architecture and compatibility stubs.
+
+- **Entry 2026-09-06 (Unified Composition Model — Phase 2: Compositor Migration)**:
+  - Moved WebGL compositor/rendering path from legacy layer fields to canonical `Layer.source` dispatch.
+  - `composeFrame()` now reads `Layer.source` as authoritative; legacy `type` field no longer overrides source-based dispatch.
+  - Phase 2 correction fixed residual compositor dispatch that still checked `layer.type === "generative"` before `layer.source`.
+  - Zero new npm dependencies. 394/394 tests passing post-migration.
+
+- **Entry 2026-09-09 (Unified Composition Model — Phase 3: Studio Context & Active Editing State)**:
+  - Approved (`docs/approvals/phase-3-studio-context.md`: `APPROVED: 2026-09-09`; commit `99cf30d`).
+  - `activeFrameId + activeLayerId` established as the single authoritative active editing model in `StudioContext`.
+  - `activeImageId` demoted to a strictly derived `useMemo` compatibility property (reads `activeLayer.source`, never scans other layers/frames).
+  - `setActiveImageId` made frame-isolated (searches only `activeFrameRef.current.layers`, no frame-switching).
+  - Asset library selection (`selectAsset`, `toggleAssetSelection`, `selectAssetRange`) decoupled from `activeImageId` — mutates only `selectedAssetIds`.
+  - `activeLayer?.effectStack` is now universal (no `type === "image"` restriction).
+  - Per-frame active layer memory via `Frame.activeLayerId`; runtime authority remains in `StudioContext.activeLayerId`.
+  - Undo/redo validates and repairs `activeFrameId`/`activeLayerId` from snapshot.
+  - Persistence precedence: `session.activeLayerId` → `Frame.activeLayerId` → `session.activeImageId` bridge → top-most → `null`.
+  - 20/20 phase-specific tests passing; 394/394 total tests passing.

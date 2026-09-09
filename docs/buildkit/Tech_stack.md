@@ -2,8 +2,8 @@
 
 **Document:** `Tech_stack.md`  
 **Product:** EffectsIO  
-**Status:** Refined Specification (Technology Pass)  
-**Last updated:** August 2026
+**Status:** Refined Specification (Technology Pass) — Updated September 2026 (Icon library migration reflected)  
+**Last updated:** September 2026
 
 ---
 
@@ -31,7 +31,7 @@ Technologies actively executing in the current EffectsIO keep-alive codebase:
 | **Vite** | `vite` (`^8.0.0`), `@vitejs/plugin-react` (`^6.0.1`) | Development server, HMR, and production bundler. |
 | **Tailwind CSS v4** | `tailwindcss` (`^4.1.18`), `@tailwindcss/vite` (`^4.1.18`) | Styling engine (`@import "tailwindcss";`, `@theme` directives in `src/styles.css`). |
 | **Inter Variable Font** | `@fontsource-variable/inter` (`^5.2.8`) | Primary application typography font (`var(--font-sans)`). |
-| **Lucide Icons** | `lucide-react` (`^0.511.0`) | Icon standard for application shell UI (Rule 5). |
+| **Phosphor Icons** | `@phosphor-icons/react` | Canonical icon system for all application shell UI (Rule 5). Regular weight default; fill/light variants contextual. |
 | **Vitest** | `vitest` (`^3.0.5`) | Unit test runner executing pixel module tests in `src/effects/*.test.ts`. |
 | **Canvas 2D Context** | HTML5 `CanvasRenderingContext2D` | Active rendering engine for full-viewport canvas clear and 12 pure `ImageData` effect modules. |
 
@@ -50,6 +50,7 @@ Packages installed in `package.json` for upcoming MVP UI/Layout phases, but **no
 | **mediabunny** | `mediabunny` (`1.52.2`) | Video/audio encoding reserved for V2 animated canvas export (GIF/MP4). |
 | **sonner** | `sonner` (`^2.0.7`) | Toast notifications for Phase 2 asset upload errors & export feedback. |
 | **clsx / tailwind-merge / cva** | `clsx`, `tailwind-merge`, `class-variance-authority` | Dynamic class merging utilities for Phase 1 primitive components. |
+| **Lucide Icons** | `lucide-react` (`^0.511.0`) | Superseded by `@phosphor-icons/react` (Rule 5 migration). Still present in `package.json`; no longer imported in active UI code. |
 
 ---
 
