@@ -19,8 +19,8 @@ import { parseStopPosition } from '../ui/controls/gradient/gradient-control-util
 
 export function FloatingEffectPanel(): React.JSX.Element | null {
   const {
-    activeAsset,
-    activeImageId,
+    activeLayer,
+    activeLayerId,
     selectedInstance,
     updateInstanceParameters,
     resetInstanceParameters,
@@ -122,19 +122,19 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     );
   }, [definition, gradientConfig]);
 
-  if (!activeAsset || !activeImageId || !selectedInstance || !definition) {
+  if (!activeLayer || !activeLayerId || !selectedInstance || !definition) {
     return null;
   }
 
   const handleClose = () => {
-    if (activeImageId) {
-      selectInstance(activeImageId, null);
+    if (activeLayerId) {
+      selectInstance(activeLayerId, null);
     }
   };
 
   const handleReset = () => {
-    if (activeImageId && selectedInstance) {
-      resetInstanceParameters(activeImageId, selectedInstance.instanceId);
+    if (activeLayerId && selectedInstance) {
+      resetInstanceParameters(activeLayerId, selectedInstance.instanceId);
     }
   };
 
@@ -256,9 +256,9 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                 gradientConfig.endLabel ?? "Highlight",
               ]}
               onReverse={() => {
-                if (activeImageId && selectedInstance) {
+                if (activeLayerId && selectedInstance) {
                   updateInstanceParameters(
-                    activeImageId,
+                    activeLayerId,
                     selectedInstance.instanceId,
                     {
                       [gradientConfig.startColorParam]: endColor,
@@ -268,7 +268,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                 }
               }}
               onValueChange={({ stops: nextStops }) => {
-                if (activeImageId && selectedInstance) {
+                if (activeLayerId && selectedInstance) {
                   const nextStart = nextStops[0]?.color;
                   const nextEnd = nextStops[nextStops.length - 1]?.color;
                   const nextStartPos =
@@ -291,7 +291,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                   }
 
                   updateInstanceParameters(
-                    activeImageId,
+                    activeLayerId,
                     selectedInstance.instanceId,
                     updates
                   );
@@ -318,9 +318,9 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                     max={schema.max ?? 100}
                     step={schema.step ?? 1}
                     onValueChange={(val: number) => {
-                      if (activeImageId && selectedInstance) {
+                      if (activeLayerId && selectedInstance) {
                         updateInstanceParameters(
-                          activeImageId,
+                          activeLayerId,
                           selectedInstance.instanceId,
                           {
                             [paramName]: val,
@@ -342,9 +342,9 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                       value: String(opt.value),
                     }))}
                     onValueChange={(val: string) => {
-                      if (activeImageId && selectedInstance) {
+                      if (activeLayerId && selectedInstance) {
                         updateInstanceParameters(
-                          activeImageId,
+                          activeLayerId,
                           selectedInstance.instanceId,
                           {
                             [paramName]: val,
@@ -362,9 +362,9 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                     name={paramName}
                     value={String(currentValue)}
                     onValueChange={(val: string) => {
-                      if (activeImageId && selectedInstance) {
+                      if (activeLayerId && selectedInstance) {
                         updateInstanceParameters(
-                          activeImageId,
+                          activeLayerId,
                           selectedInstance.instanceId,
                           {
                             [paramName]: val,
@@ -382,9 +382,9 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                     name={paramName}
                     value={Boolean(currentValue)}
                     onValueChange={(val: boolean) => {
-                      if (activeImageId && selectedInstance) {
+                      if (activeLayerId && selectedInstance) {
                         updateInstanceParameters(
-                          activeImageId,
+                          activeLayerId,
                           selectedInstance.instanceId,
                           {
                             [paramName]: val,

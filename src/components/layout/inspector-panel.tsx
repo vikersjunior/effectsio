@@ -174,7 +174,6 @@ export interface InspectorPanelProps {
 export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Element {
   const {
     activeAsset,
-    activeImageId,
     activeEffectStack,
     activeBackground,
     hasActiveBackground,
@@ -240,13 +239,13 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!activeImageId || !over || active.id === over.id) return;
+    if (!activeLayer || !over || active.id === over.id) return;
 
     const oldIndex = activeEffectStack.findIndex((i) => i.instanceId === active.id);
     const newIndex = activeEffectStack.findIndex((i) => i.instanceId === over.id);
 
     if (oldIndex !== -1 && newIndex !== -1) {
-      reorderEffectStack(activeImageId, oldIndex, newIndex);
+      reorderEffectStack(activeLayer.id, oldIndex, newIndex);
     }
   };
 
@@ -262,9 +261,15 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     }
   };
 
-  const isImageLayerActive = activeLayer?.type === "image" || Boolean(activeAsset);
-  const isGenerativeLayerExplicitlyActive = activeLayer?.type === "generative";
-  const isPopulated = isImageLayerActive || isGenerativeLayerExplicitlyActive;
+  const isPopulated = Boolean(activeLayer);
+  const isImageLayer =
+    activeLayer?.source?.type === "image" ||
+    activeLayer?.type === "image" ||
+    (!activeLayer?.source && Boolean(activeAsset));
+  const isProceduralLayer =
+    activeLayer?.source?.type === "procedural" ||
+    activeLayer?.type === "generative" ||
+    activeLayer?.type === "procedural";
 
   return (
     <PanelSurface
@@ -441,334 +446,46 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
             </div>
           </div>
         </ScrollFade>
-      ) : (
+      ) : activeLayer ? (
         /* Populated Design Mode Inspector (Figma node 61:1306): Stacked Sections */
-        <ScrollFade className="flex-1 overflow-y-auto" containerClassName="flex-1 min-h-0">
-          <div className="flex flex-col">
-            {/* Section 0: Layer Properties (Stage 1C - Opacity, Blend Mode, Fit) */}
-            {(activeLayer?.type === "image" || activeLayer?.type === "generative") && (
-              <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
-                <span className="text-sm font-medium text-[color:var(--foreground)]">
-                  Layer Properties
-                </span>
-
-                {/* Opacity */}
-                <SliderControl
-                  name="Opacity"
-                  min={0}
-                  max={100}
-                  step={1}
-                  unit="%"
-                  value={Math.round((activeLayer.opacity ?? 1) * 100)}
-                  onValueChange={(val) => {
-                    updateLayer(activeLayer.id, { opacity: val / 100 });
-                  }}
-                />
-
-                {/* Blend Mode */}
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-2xs text-[color:var(--muted-foreground)]">Blend Mode</span>
-                  <StaticSelect
-                    size="sm"
-                    value={activeLayer.blendMode || "normal"}
-                    options={BLEND_MODE_OPTIONS}
-                    onValueChange={(val) => {
-                      updateLayer(activeLayer.id, { blendMode: val as BlendMode });
-                    }}
-                  />
-                </div>
-
-                {/* Fit (Image layers only) */}
-                {activeLayer.type === "image" && (
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-2xs text-[color:var(--muted-foreground)]">Fit</span>
-                    <SegmentedControl
-                      name="Fit"
-                      showLabel={false}
-                      value={(activeLayer as ImageLayer).fit || "contain"}
-                      options={FIT_OPTIONS}
-                      onValueChange={(val) => {
-                        updateLayer(activeLayer.id, { fit: val as "contain" | "cover" });
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Section 0B: Transform (Stage 2 - Position, Scale, Rotation, Reset) */}
-            {activeLayer?.type === "image" && (() => {
-              const transform = (activeLayer as ImageLayer).transform ?? DEFAULT_LAYER_TRANSFORM;
-              return (
-                <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
-                  <span className="text-sm font-medium text-[color:var(--foreground)]">
-                    Transform
-                  </span>
-
-                  {/* Position */}
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-2xs text-[color:var(--muted-foreground)]">Position</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-[color:var(--muted-foreground)] w-3 shrink-0">X</span>
-                        <div className="relative flex-1 min-w-0">
-                          <Input
-                            type="number"
-                            size="sm"
-                            value={Math.round(transform.x)}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value);
-                              updateLayer(activeLayer.id, {
-                                transform: {
-                                  ...transform,
-                                  x: isNaN(val) ? 0 : val,
-                                },
-                              });
-                            }}
-                            className="pr-6 text-right font-mono"
-                          />
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2xs text-[color:var(--muted-foreground)] pointer-events-none">
-                            px
-                          </span>
-                        </div>
+        (() => {
+          const currentLayer = activeLayer;
+          const layerId = currentLayer.id;
+          return (
+            <ScrollFade className="flex-1 overflow-y-auto" containerClassName="flex-1 min-h-0">
+              <div className="flex flex-col">
+                {/* TIER 1: Source Properties */}
+                {isImageLayer && (
+                  <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
+                    <span className="text-sm font-medium text-[color:var(--foreground)]">
+                      Source
+                    </span>
+                    {activeAsset && (
+                      <div className="flex flex-col gap-0.5 text-2xs text-[color:var(--muted-foreground)]">
+                        <span className="truncate font-medium text-[color:var(--foreground)] text-xs">
+                          {activeAsset.filename}
+                        </span>
+                        <span>
+                          {activeAsset.width} × {activeAsset.height} px
+                        </span>
                       </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-[color:var(--muted-foreground)] w-3 shrink-0">Y</span>
-                        <div className="relative flex-1 min-w-0">
-                          <Input
-                            type="number"
-                            size="sm"
-                            value={Math.round(transform.y)}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value);
-                              updateLayer(activeLayer.id, {
-                                transform: {
-                                  ...transform,
-                                  y: isNaN(val) ? 0 : val,
-                                },
-                              });
-                            }}
-                            className="pr-6 text-right font-mono"
-                          />
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2xs text-[color:var(--muted-foreground)] pointer-events-none">
-                            px
-                          </span>
-                        </div>
-                      </div>
+                    )}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-2xs text-[color:var(--muted-foreground)]">Fit</span>
+                      <SegmentedControl
+                        name="Fit"
+                        showLabel={false}
+                        value={(currentLayer as ImageLayer).fit || (currentLayer as any).fit || "contain"}
+                        options={FIT_OPTIONS}
+                        onValueChange={(val) => {
+                          updateLayer(layerId, { fit: val as "contain" | "cover" });
+                        }}
+                      />
                     </div>
                   </div>
-
-                  {/* Scale */}
-                  <SliderControl
-                    name="Scale"
-                    min={5}
-                    max={500}
-                    inputMax={2000}
-                    step={1}
-                    unit="%"
-                    value={Math.round(transform.scaleX * 100)}
-                    onValueChange={(val) => {
-                      const nextScale = val / 100;
-                      updateLayer(activeLayer.id, {
-                        transform: {
-                          ...transform,
-                          scaleX: nextScale,
-                          scaleY: nextScale,
-                        },
-                      });
-                    }}
-                  />
-
-                  {/* Rotation */}
-                  <SliderControl
-                    name="Rotation"
-                    min={-180}
-                    max={180}
-                    step={1}
-                    unit="°"
-                    value={Math.round(transform.rotation)}
-                    onValueChange={(val) => {
-                      updateLayer(activeLayer.id, {
-                        transform: {
-                          ...transform,
-                          rotation: val,
-                        },
-                      });
-                    }}
-                  />
-
-                  {/* Reset Transform */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full mt-1 text-xs"
-                    onClick={() => {
-                      updateLayer(activeLayer.id, {
-                        transform: { ...DEFAULT_LAYER_TRANSFORM },
-                      });
-                    }}
-                  >
-                    Reset Transform
-                  </Button>
-                </div>
-              );
-            })()}
-
-            {/* Section 1: Effects (shown for image layers) */}
-            {!isGenerativeLayerExplicitlyActive && (
-              <div className="flex flex-col border-b border-[color:var(--border)]">
-                <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
-                  <span className="text-sm font-medium text-[color:var(--foreground)]">Effects</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsEffectBrowserOpen(true)}
-                    aria-label="Add effect"
-                    title="Add effect"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
-                  >
-                    <PlusIcon size={16} />
-                  </button>
-                </div>
-
-                {activeEffectStack.length > 0 && (
-                  <div className="flex flex-col gap-1 px-2 pb-2.5">
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext
-                        items={activeEffectStack.map((i) => i.instanceId)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {activeEffectStack.map((instance, index) => {
-                          const isSelected = selectedInstanceId === instance.instanceId;
-                          return (
-                            <SortableEffectRow
-                              key={instance.instanceId}
-                              instance={instance}
-                              index={index}
-                              isSelected={isSelected}
-                              onSelect={() =>
-                                activeImageId &&
-                                selectInstance(
-                                  activeImageId,
-                                  isSelected ? null : instance.instanceId
-                                )
-                              }
-                              onToggleEnabled={() =>
-                                activeImageId &&
-                                toggleInstanceEnabled(activeImageId, instance.instanceId)
-                              }
-                              onRemove={() =>
-                                activeImageId &&
-                                removeInstanceFromStack(activeImageId, instance.instanceId)
-                              }
-                            />
-                          );
-                        })}
-                      </SortableContext>
-                    </DndContext>
-                  </div>
                 )}
-              </div>
-            )}
 
-            {/* Section 2: Looks */}
-            {!isGenerativeLayerExplicitlyActive && (
-              <div className="flex flex-col border-b border-[color:var(--border)]">
-                <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
-                  <span className="text-sm font-medium text-[color:var(--foreground)]">Looks</span>
-                  {appliedLook ? (
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={clearAppliedLook}
-                      aria-label="Remove applied look"
-                      title="Remove applied look"
-                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors [&_svg]:!size-4 cursor-pointer"
-                    >
-                      <MinusIcon size={16} />
-                    </Button>
-                  ) : (
-                    <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
-                      <PopoverTrigger
-                        type="button"
-                        aria-label="Open looks browser"
-                        title="Open looks browser"
-                        className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
-                      >
-                        <PlusIcon size={16} />
-                      </PopoverTrigger>
-                      <PopoverContent
-                        side="left"
-                        align="start"
-                        sideOffset={8}
-                        className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
-                      >
-                        <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                </div>
-
-                {appliedLook && (
-                  <div className="px-4 pb-2.5 flex items-center gap-1.5">
-                    <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
-                      <PopoverTrigger
-                        data-slot="look-row"
-                        data-testid="look-row"
-                        className="group flex-1 min-w-0 flex items-center gap-2 px-2.5 h-8 rounded-[6px] border border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--foreground)_20%,transparent)] cursor-pointer transition-colors select-none text-left outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                      >
-                        <div className="size-4 shrink-0 flex items-center justify-center text-[color:var(--foreground)] [&_svg]:!size-4">
-                          <SparkleIcon size={16} />
-                        </div>
-                        <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
-                          {appliedLook.name}
-                        </span>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        side="left"
-                        align="start"
-                        sideOffset={8}
-                        className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
-                      >
-                        <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
-                      </PopoverContent>
-                    </Popover>
-
-                    {/* Eye control sits OUTSIDE the bordered Look control */}
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => {
-                        setIsLookVisible((prev) => {
-                          const next = !prev;
-                          if (activeImageId && appliedLook) {
-                            activeEffectStack.forEach((inst) => {
-                              if (inst.enabled !== next) {
-                                toggleInstanceEnabled(activeImageId, inst.instanceId);
-                              }
-                            });
-                          }
-                          return next;
-                        });
-                      }}
-                      title={isLookVisible ? "Hide look" : "Show look"}
-                      aria-label={isLookVisible ? "Hide look" : "Show look"}
-                      data-testid="look-eye-button"
-                      className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer shrink-0"
-                    >
-                      {isLookVisible ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Section 3: Background Stack (shown exclusively when Background Layer is selected) */}
-            {isGenerativeLayerExplicitlyActive && (
+            {isProceduralLayer && (
               <div className="flex flex-col border-b border-[color:var(--border)]">
                 <div
                   className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0"
@@ -920,9 +637,308 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                 )}
               </div>
             )}
+
+            {/* TIER 2: Layer Properties (Universal across all layer types) */}
+            <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
+              <span className="text-sm font-medium text-[color:var(--foreground)]">
+                Layer Properties
+              </span>
+
+              {/* Opacity */}
+              <SliderControl
+                name="Opacity"
+                min={0}
+                max={100}
+                step={1}
+                unit="%"
+                value={Math.round((currentLayer.opacity ?? 1) * 100)}
+                onValueChange={(val) => {
+                  updateLayer(layerId, { opacity: val / 100 });
+                }}
+              />
+
+              {/* Blend Mode */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-2xs text-[color:var(--muted-foreground)]">Blend Mode</span>
+                <StaticSelect
+                  size="sm"
+                  value={currentLayer.blendMode || "normal"}
+                  options={BLEND_MODE_OPTIONS}
+                  onValueChange={(val) => {
+                    updateLayer(layerId, { blendMode: val as BlendMode });
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Transform (Universal across all layer types) */}
+            {(() => {
+              const transform = currentLayer.transform ?? DEFAULT_LAYER_TRANSFORM;
+              return (
+                <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
+                  <span className="text-sm font-medium text-[color:var(--foreground)]">
+                    Transform
+                  </span>
+
+                  {/* Position */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-2xs text-[color:var(--muted-foreground)]">Position</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-[color:var(--muted-foreground)] w-3 shrink-0">X</span>
+                        <div className="relative flex-1 min-w-0">
+                          <Input
+                            type="number"
+                            size="sm"
+                            value={Math.round(transform.x)}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              updateLayer(layerId, {
+                                transform: {
+                                  ...transform,
+                                  x: isNaN(val) ? 0 : val,
+                                },
+                              });
+                            }}
+                            className="pr-6 text-right font-mono"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2xs text-[color:var(--muted-foreground)] pointer-events-none">
+                            px
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-[color:var(--muted-foreground)] w-3 shrink-0">Y</span>
+                        <div className="relative flex-1 min-w-0">
+                          <Input
+                            type="number"
+                            size="sm"
+                            value={Math.round(transform.y)}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              updateLayer(layerId, {
+                                transform: {
+                                  ...transform,
+                                  y: isNaN(val) ? 0 : val,
+                                },
+                              });
+                            }}
+                            className="pr-6 text-right font-mono"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2xs text-[color:var(--muted-foreground)] pointer-events-none">
+                            px
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scale */}
+                  <SliderControl
+                    name="Scale"
+                    min={5}
+                    max={500}
+                    inputMax={2000}
+                    step={1}
+                    unit="%"
+                    value={Math.round(transform.scaleX * 100)}
+                    onValueChange={(val) => {
+                      const nextScale = val / 100;
+                      updateLayer(layerId, {
+                        transform: {
+                          ...transform,
+                          scaleX: nextScale,
+                          scaleY: nextScale,
+                        },
+                      });
+                    }}
+                  />
+
+                  {/* Rotation */}
+                  <SliderControl
+                    name="Rotation"
+                    min={-180}
+                    max={180}
+                    step={1}
+                    unit="°"
+                    value={Math.round(transform.rotation)}
+                    onValueChange={(val) => {
+                      updateLayer(layerId, {
+                        transform: {
+                          ...transform,
+                          rotation: val,
+                        },
+                      });
+                    }}
+                  />
+
+                  {/* Reset Transform */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-1 text-xs"
+                    onClick={() => {
+                      updateLayer(layerId, {
+                        transform: { ...DEFAULT_LAYER_TRANSFORM },
+                      });
+                    }}
+                  >
+                    Reset Transform
+                  </Button>
+                </div>
+              );
+            })()}
+
+            {/* TIER 3: Effects (Universal across all layer types) */}
+            <div className="flex flex-col border-b border-[color:var(--border)]">
+              <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
+                <span className="text-sm font-medium text-[color:var(--foreground)]">Effects</span>
+                <button
+                  type="button"
+                  onClick={() => setIsEffectBrowserOpen(true)}
+                  aria-label="Add effect"
+                  title="Add effect"
+                  className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
+                >
+                  <PlusIcon size={16} />
+                </button>
+              </div>
+
+              {activeEffectStack.length > 0 && (
+                <div className="flex flex-col gap-1 px-2 pb-2.5">
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={activeEffectStack.map((i) => i.instanceId)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {activeEffectStack.map((instance, index) => {
+                        const isSelected = selectedInstanceId === instance.instanceId;
+                        return (
+                          <SortableEffectRow
+                            key={instance.instanceId}
+                            instance={instance}
+                            index={index}
+                            isSelected={isSelected}
+                            onSelect={() =>
+                              selectInstance(
+                                layerId,
+                                isSelected ? null : instance.instanceId
+                              )
+                            }
+                            onToggleEnabled={() =>
+                              toggleInstanceEnabled(layerId, instance.instanceId)
+                            }
+                            onRemove={() =>
+                              removeInstanceFromStack(layerId, instance.instanceId)
+                            }
+                          />
+                        );
+                      })}
+                    </SortableContext>
+                  </DndContext>
+                </div>
+              )}
+            </div>
+
+            {/* TIER 3: Looks (Universal across all layer types) */}
+            <div className="flex flex-col border-b border-[color:var(--border)]">
+              <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
+                <span className="text-sm font-medium text-[color:var(--foreground)]">Looks</span>
+                {appliedLook ? (
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={clearAppliedLook}
+                    aria-label="Remove applied look"
+                    title="Remove applied look"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors [&_svg]:!size-4 cursor-pointer"
+                  >
+                    <MinusIcon size={16} />
+                  </Button>
+                ) : (
+                  <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
+                    <PopoverTrigger
+                      type="button"
+                      aria-label="Open looks browser"
+                      title="Open looks browser"
+                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
+                    >
+                      <PlusIcon size={16} />
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="left"
+                      align="start"
+                      sideOffset={8}
+                      className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
+                    >
+                      <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+
+              {appliedLook && (
+                <div className="px-4 pb-2.5 flex items-center gap-1.5">
+                  <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
+                    <PopoverTrigger
+                      data-slot="look-row"
+                      data-testid="look-row"
+                      className="group flex-1 min-w-0 flex items-center gap-2 px-2.5 h-8 rounded-[6px] border border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--foreground)_20%,transparent)] cursor-pointer transition-colors select-none text-left outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                    >
+                      <div className="size-4 shrink-0 flex items-center justify-center text-[color:var(--foreground)] [&_svg]:!size-4">
+                        <SparkleIcon size={16} />
+                      </div>
+                      <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
+                        {appliedLook.name}
+                      </span>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="left"
+                      align="start"
+                      sideOffset={8}
+                      className="w-80 p-0 max-h-[420px] overflow-hidden flex flex-col dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)]"
+                    >
+                      <LooksBrowser onSelectLook={() => setIsLooksPopoverOpen(false)} />
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Eye control sits OUTSIDE the bordered Look control */}
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => {
+                      setIsLookVisible((prev) => {
+                        const next = !prev;
+                        if (appliedLook) {
+                          activeEffectStack.forEach((inst) => {
+                            if (inst.enabled !== next) {
+                              toggleInstanceEnabled(layerId, inst.instanceId);
+                            }
+                          });
+                        }
+                        return next;
+                      });
+                    }}
+                    title={isLookVisible ? "Hide look" : "Show look"}
+                    aria-label={isLookVisible ? "Hide look" : "Show look"}
+                    data-testid="look-eye-button"
+                    className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer shrink-0"
+                  >
+                    {isLookVisible ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </ScrollFade>
-      )}
+          );
+        })()
+      ) : null}
 
       {/* Global Modals: Export Modal & Effect Browser Modal */}
       <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
@@ -930,8 +946,8 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
         isOpen={isEffectBrowserOpen}
         onClose={() => setIsEffectBrowserOpen(false)}
         onSelectEffect={(effectId) => {
-          if (activeImageId) {
-            addEffectToStack(activeImageId, effectId);
+          if (activeLayer) {
+            addEffectToStack(activeLayer.id, effectId);
           }
         }}
       />

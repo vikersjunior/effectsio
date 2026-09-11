@@ -50,7 +50,7 @@ export function CanvasControlDock({
     editorMode,
     isEffectBrowserOpen,
     setIsEffectBrowserOpen,
-    activeImageId,
+    activeLayerId,
     addEffectToStack,
     activeFrame,
     setFrameDimensions,
@@ -357,8 +357,8 @@ export function CanvasControlDock({
           isOpen={isEffectBrowserOpen}
           onClose={() => setIsEffectBrowserOpen(false)}
           onSelectEffect={(effectId) => {
-            if (activeImageId) {
-              addEffectToStack(activeImageId, effectId);
+            if (activeLayerId) {
+              addEffectToStack(activeLayerId, effectId);
             }
             setIsEffectBrowserOpen(false);
           }}

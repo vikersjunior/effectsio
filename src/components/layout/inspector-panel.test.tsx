@@ -179,7 +179,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       );
     }
 
-    it("renders stacked sections: Effects and Looks when ImageLayer is selected, and Background only when Background Layer is selected", async () => {
+    it("renders stacked sections: Effects and Looks when ImageLayer is selected, and Background with universal Effects & Looks when Background Layer is selected", async () => {
       let storeRef!: ReturnType<typeof useStudioStore>;
       function PopulatedHost() {
         const store = useStudioStore();
@@ -220,13 +220,16 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
         expect(screen.queryByText("Background")).toBeNull();
       });
 
-      // When Background Layer is selected, Background section appears and Effects disappears
-      const bgLayer = storeRef.activeFrame?.layers.find((l) => l.type === "generative");
+      // When Background Layer is selected, Background section appears AND Effects & Looks are present (UCM Sections 13 & 26)
+      const bgLayer = storeRef.activeFrame?.layers.find(
+        (l) => l.source?.type === "procedural" || l.type === "generative"
+      );
       if (bgLayer) {
         storeRef.setActiveLayerId(bgLayer.id);
         await waitFor(() => {
           expect(screen.getByText("Background")).toBeDefined();
-          expect(screen.queryByText("Effects")).toBeNull();
+          expect(screen.getByText("Effects")).toBeDefined();
+          expect(screen.getByText("Looks")).toBeDefined();
         });
       }
     });

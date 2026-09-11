@@ -309,7 +309,7 @@ describe("EffectsIO — Authoritative Background Workflow Suite", () => {
   });
 
   describe("E. Background Layer Lifecycle", () => {
-    it("background layer can be deleted, showing empty canvas, and recreated via LayersPanel", async () => {
+    it("preserves base locked backdrop layer and prevents deletion", async () => {
       let storeRef!: ReturnType<typeof useStudioStore>;
       render(
         <StudioProvider>
@@ -325,36 +325,13 @@ describe("EffectsIO — Authoritative Background Workflow Suite", () => {
       const bgRow = screen.getByTestId("locked-background-row");
       expect(bgRow).toBeDefined();
 
-      // Delete the Background Layer
-      const removeBgLayerBtn = screen.getByTestId("remove-background-layer");
-      fireEvent.click(removeBgLayerBtn);
+      // Delete button is protected/hidden on locked backdrop layer (BLK-02)
+      expect(screen.queryByTestId("remove-background-layer")).toBeNull();
 
-      await waitFor(() => {
-        expect(screen.queryByTestId("locked-background-row")).toBeNull();
-        expect(storeRef.activeFrame?.layers.some((l) => l.type === "generative")).toBe(false);
-      });
-
-      // Mandatory Invariant: addBackgroundItem() MUST NEVER recreate a missing Background Layer
-      storeRef.addBackgroundItem("solid");
-      expect(storeRef.activeFrame?.layers.some((l) => l.type === "generative")).toBe(false);
-      expect(screen.queryByTestId("locked-background-row")).toBeNull();
-
-      // Recreate Background Layer via Add Layer popover
-      const addLayerBtn = screen.getByRole("button", { name: "Add layer" });
-      fireEvent.click(addLayerBtn);
-
-      const addBgOption = await screen.findByTestId("add-background-layer-button");
-      fireEvent.click(addBgOption);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("locked-background-row")).toBeDefined();
-        expect(storeRef.activeBackgrounds.length).toBe(0);
-      });
-
-      // Empty background state displays 'No backgrounds' in Inspector
+      // Selecting background layer displays Background section in Inspector
       fireEvent.click(screen.getByTestId("select-background-layer"));
       await waitFor(() => {
-        expect(screen.getByText("No backgrounds")).toBeDefined();
+        expect(screen.getByTestId("background-section-header")).toBeDefined();
       });
     });
   });

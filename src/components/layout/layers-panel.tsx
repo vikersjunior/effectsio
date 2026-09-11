@@ -31,18 +31,18 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, ScrollFade, Popover, PopoverTrigger, PopoverContent, ICON_SIZES } from "../ui";
 import { cn } from "../ui/lib/utils";
 import { useStudioStore } from "../../context/studio-context";
-import type { ImageLayer, GenerativeLayer } from "../../types/frame";
+import type { Layer } from "../../types/frame";
 import type { Asset } from "../../types/asset";
 import { DEFAULT_BACKGROUND_STATE } from "../../types/look";
 import { deriveLegacyBackgroundFromBackgrounds } from "../../generative/normalization";
 
 interface SortableLayerRowProps {
-  layer: ImageLayer;
+  layer: Layer;
   asset?: Asset;
   isSelected: boolean;
   onSelect: () => void;
   onToggleVisibility: (e: React.MouseEvent) => void;
-  onRemove: (e: React.MouseEvent) => void;
+  onRemove?: (e: React.MouseEvent) => void;
 }
 
 function SortableLayerRow({
@@ -53,6 +53,7 @@ function SortableLayerRow({
   onToggleVisibility,
   onRemove,
 }: SortableLayerRowProps): React.JSX.Element {
+  const isLocked = Boolean(layer.locked);
   const {
     attributes,
     listeners,
@@ -60,19 +61,49 @@ function SortableLayerRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: layer.id });
+  } = useSortable({ id: layer.id, disabled: isLocked });
+
+  const isVisible = layer.visible !== false;
+  const isProcedural =
+    layer.source?.type === "procedural" ||
+    layer.type === "generative" ||
+    layer.type === "procedural";
+
+  const backgrounds = layer.backgrounds ?? layer.sublayers ?? [];
+  const bgConfig =
+    layer.backgroundConfig ??
+    (backgrounds.length > 0
+      ? deriveLegacyBackgroundFromBackgrounds(backgrounds)
+      : isProcedural && layer.source?.type === "procedural" && layer.source.parameters
+      ? {
+          type:
+            (layer.source.kind as any) ??
+            (layer.source.parameters.type as any) ??
+            "solid",
+          color: (layer.source.parameters.color as string) || "#000000",
+          gradientEndColor:
+            (layer.source.parameters.gradientEndColor as string) ||
+            (layer.source.parameters.endColor as string) ||
+            "#E20000",
+          gradientAngle:
+            (layer.source.parameters.gradientAngle as number) ||
+            (layer.source.parameters.angle as number) ||
+            90,
+        }
+      : DEFAULT_BACKGROUND_STATE);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : layer.visible === false ? 0.6 : 1,
+    opacity: isDragging ? 0.5 : !isVisible ? 0.6 : 1,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      data-slot="layer-row"
+      data-slot={isLocked ? "layer-row-background" : "layer-row"}
+      data-testid={isLocked ? "locked-background-row" : "layer-row"}
       data-layer-id={layer.id}
       onClick={onSelect}
       className={cn(
@@ -82,20 +113,54 @@ function SortableLayerRow({
           : "border-[color:color-mix(in_oklab,var(--border)_40%,transparent)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--border)_80%,transparent)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_3%,var(--card))]"
       )}
     >
-      {/* 1. Drag Handle */}
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        aria-label={`Reorder ${layer.name}`}
-        className="cursor-grab active:cursor-grabbing text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] p-0.5 rounded-xs shrink-0 touch-none outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ring)]"
-      >
-        <DotsSixVerticalIcon size={ICON_SIZES.md} />
-      </button>
+      {/* 1. Drag Handle vs Locked Indicator */}
+      {isLocked ? (
+        <div
+          className="p-0.5 text-[color:var(--muted-foreground)] shrink-0 opacity-60 flex items-center justify-center"
+          title="Layer is locked at base"
+        >
+          <LockSimpleIcon size={ICON_SIZES.sm} />
+        </div>
+      ) : (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`Reorder ${layer.name}`}
+          className="cursor-grab active:cursor-grabbing text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] p-0.5 rounded-xs shrink-0 touch-none outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ring)]"
+        >
+          <DotsSixVerticalIcon size={ICON_SIZES.md} />
+        </button>
+      )}
 
-      {/* 2. Thumbnail */}
+      {/* 2. Thumbnail / Swatch */}
       <div className="size-6 rounded-xs bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] overflow-hidden shrink-0 border border-[color:color-mix(in_oklab,var(--border)_50%,transparent)] flex items-center justify-center">
-        {asset?.thumbnailUrl ? (
+        {isProcedural ? (
+          bgConfig.type === "solid" ? (
+            <div
+              className="size-full"
+              style={{ backgroundColor: bgConfig.color || "#000000" }}
+            />
+          ) : bgConfig.type === "linear-gradient" || bgConfig.type === "radial-gradient" ? (
+            <div
+              className="size-full"
+              style={{
+                background:
+                  bgConfig.type === "radial-gradient"
+                    ? `radial-gradient(circle, ${bgConfig.color || "#000000"}, ${bgConfig.gradientEndColor || "#E20000"})`
+                    : `linear-gradient(${bgConfig.gradientAngle ?? 90}deg, ${bgConfig.color || "#000000"}, ${bgConfig.gradientEndColor || "#E20000"})`,
+              }}
+            />
+          ) : bgConfig.type === "transparent" ? (
+            <CircleHalfIcon size={ICON_SIZES.sm} className="text-[color:var(--muted-foreground)]" />
+          ) : bgConfig.type === "dots" ? (
+            <DotsNineIcon size={ICON_SIZES.sm} className="text-[color:var(--muted-foreground)]" />
+          ) : bgConfig.type === "grid" ? (
+            <GridFourIcon size={ICON_SIZES.sm} className="text-[color:var(--muted-foreground)]" />
+          ) : (
+            <SquareIcon size={ICON_SIZES.sm} className="text-[color:var(--muted-foreground)]" />
+          )
+        ) : asset?.thumbnailUrl ? (
           <img
             src={asset.thumbnailUrl}
             alt={layer.name}
@@ -106,157 +171,50 @@ function SortableLayerRow({
         )}
       </div>
 
-      {/* 3. Layer Name */}
-      <span className="flex-1 min-w-0 text-xs font-medium text-[color:var(--foreground)] truncate">
-        {layer.name}
-      </span>
-
-      {/* 4. Action Buttons (Remove on hover, Visibility toggle) */}
-      <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          onClick={onRemove}
-          title="Remove layer"
-          aria-label={`Remove ${layer.name}`}
-          className="size-6 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-all p-0"
-        >
-          <TrashIcon size={ICON_SIZES.sm} />
-        </Button>
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          onClick={onToggleVisibility}
-          title={layer.visible === false ? "Show layer" : "Hide layer"}
-          aria-label={layer.visible === false ? `Show ${layer.name}` : `Hide ${layer.name}`}
-          className="size-6 rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors p-0"
-        >
-          {layer.visible === false ? (
-            <EyeSlashIcon size={ICON_SIZES.md} />
-          ) : (
-            <EyeIcon size={ICON_SIZES.md} />
-          )}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-interface BackgroundRowProps {
-  layer: GenerativeLayer;
-  isSelected: boolean;
-  onSelect: () => void;
-  onToggleVisibility: (e: React.MouseEvent) => void;
-  onRemove: (e: React.MouseEvent) => void;
-}
-
-function BackgroundRow({
-  layer,
-  isSelected,
-  onSelect,
-  onToggleVisibility,
-  onRemove,
-}: BackgroundRowProps): React.JSX.Element {
-  const backgrounds = layer.backgrounds ?? layer.sublayers ?? [];
-  const bgConfig =
-    layer.backgroundConfig ??
-    (backgrounds.length > 0 ? deriveLegacyBackgroundFromBackgrounds(backgrounds) : DEFAULT_BACKGROUND_STATE);
-  const isVisible = layer.visible !== false;
-  const count = backgrounds.length;
-
-  return (
-    <div
-      data-slot="layer-row-background"
-      data-testid="locked-background-row"
-      data-layer-id={layer.id}
-      onClick={onSelect}
-      className={cn(
-        "group relative flex items-center gap-2 px-2.5 h-10 rounded-md border transition-colors cursor-pointer select-none",
-        isSelected
-          ? "border-[color:var(--primary)] bg-[color:color-mix(in_oklab,var(--primary)_10%,var(--card))] ring-1 ring-[color:var(--primary)]"
-          : "border-[color:color-mix(in_oklab,var(--border)_40%,transparent)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--border)_80%,transparent)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_3%,var(--card))]"
-      )}
-      style={{ opacity: isVisible ? 1 : 0.6 }}
-    >
-      {/* 1. Permanent Locked Icon */}
-      <div
-        className="p-0.5 text-[color:var(--muted-foreground)] shrink-0 opacity-60"
-        title="Background is locked at base"
-      >
-        <LockSimpleIcon size={ICON_SIZES.sm} />
-      </div>
-
-      {/* 2. Swatch Thumbnail */}
-      <div className="size-6 rounded-xs bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] overflow-hidden shrink-0 border border-[color:color-mix(in_oklab,var(--border)_50%,transparent)] flex items-center justify-center">
-        {bgConfig.type === "solid" ? (
-          <div
-            className="size-full"
-            style={{ backgroundColor: bgConfig.color || "#E20000" }}
-          />
-        ) : bgConfig.type === "linear-gradient" || bgConfig.type === "radial-gradient" ? (
-          <div
-            className="size-full"
-            style={{
-              background: `linear-gradient(${bgConfig.gradientAngle ?? 90}deg, ${bgConfig.color || "#000000"}, ${bgConfig.gradientEndColor || "#E20000"})`,
-            }}
-          />
-        ) : bgConfig.type === "transparent" ? (
-          <CircleHalfIcon size={ICON_SIZES.sm} className="text-[color:var(--muted-foreground)]" />
-        ) : bgConfig.type === "dots" ? (
-          <DotsNineIcon size={ICON_SIZES.sm} className="text-[color:var(--muted-foreground)]" />
-        ) : bgConfig.type === "grid" ? (
-          <GridFourIcon size={ICON_SIZES.sm} className="text-[color:var(--muted-foreground)]" />
-        ) : (
-          <SquareIcon size={ICON_SIZES.sm} className="text-[color:var(--muted-foreground)]" />
-        )}
-      </div>
-
-      {/* 3. Layer Name & Count */}
+      {/* 3. Layer Name & Sub-item Count */}
       <div className="flex-1 min-w-0 flex items-center gap-1.5">
         <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
-          {layer.name || "Background"}
+          {layer.name || (isProcedural ? "Background" : "Layer")}
         </span>
-        {count > 0 && (
+        {isProcedural && backgrounds.length > 0 && (
           <span
             data-testid="background-count-badge"
             className="text-3xs font-mono px-1.5 py-0.5 rounded-full bg-[color:var(--secondary)] text-[color:var(--muted-foreground)] shrink-0"
           >
-            {count}
+            {backgrounds.length}
           </span>
         )}
       </div>
 
-      {/* 4. Action Buttons (Remove on hover, Visibility toggle) */}
+      {/* 4. Action Buttons (Remove on hover if not locked, Visibility toggle) */}
       <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          data-testid="remove-background-layer"
-          onClick={onRemove}
-          title="Remove background layer"
-          aria-label="Remove background layer"
-          className="size-6 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-all p-0 cursor-pointer"
-        >
-          <TrashIcon size={ICON_SIZES.sm} />
-        </Button>
+        {!isLocked && onRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            onClick={onRemove}
+            title="Remove layer"
+            aria-label={`Remove ${layer.name}`}
+            className="size-6 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-all p-0 cursor-pointer"
+          >
+            <TrashIcon size={ICON_SIZES.sm} />
+          </Button>
+        )}
 
         <Button
           type="button"
           variant="ghost"
           size="icon-xs"
           onClick={onToggleVisibility}
-          title={isVisible ? "Hide background" : "Show background"}
-          aria-label={isVisible ? "Hide background" : "Show background"}
+          title={!isVisible ? "Show layer" : "Hide layer"}
+          aria-label={!isVisible ? `Show ${layer.name}` : `Hide ${layer.name}`}
           className="size-6 rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors p-0 cursor-pointer"
         >
-          {isVisible ? (
-            <EyeIcon size={ICON_SIZES.md} />
-          ) : (
+          {!isVisible ? (
             <EyeSlashIcon size={ICON_SIZES.md} />
+          ) : (
+            <EyeIcon size={ICON_SIZES.md} />
           )}
         </Button>
       </div>
@@ -296,11 +254,13 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
   );
 
   const layers = activeFrame?.layers || [];
-  const baseBackground = layers.find((l): l is GenerativeLayer => l.type === "generative");
+  const hasBaseBackground = layers.some(
+    (l) => l.source?.type === "procedural" || l.type === "generative"
+  );
 
-  // Visual stack: ImageLayers displayed in reverse array order (top layer at top of UI list)
-  const imageLayers = React.useMemo(() => {
-    return layers.filter((l): l is ImageLayer => l.type === "image").reverse();
+  // Visual stack: all layers displayed in reverse array order (top layer at top of UI list, backdrop at bottom)
+  const visualLayers = React.useMemo(() => {
+    return [...layers].reverse();
   }, [layers]);
 
   const assetMap = React.useMemo(() => {
@@ -317,11 +277,13 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
 
     const fromIndex = activeFrame.layers.findIndex((l) => l.id === active.id);
     const toIndex = activeFrame.layers.findIndex((l) => l.id === over.id);
+    if (fromIndex === -1 || toIndex === -1) return;
 
-    // Hard invariant: never reorder beneath index 0 if GenerativeLayer exists
-    const minIndex = baseBackground ? 1 : 0;
-    if (fromIndex >= minIndex && toIndex >= minIndex) {
-      reorderLayers(fromIndex, toIndex);
+    // Hard invariant: backdrop at index 0 (if locked) must never be reordered or displaced below index 0
+    const minIndex = activeFrame.layers[0]?.locked ? 1 : 0;
+    if (fromIndex >= minIndex) {
+      const clampedToIndex = Math.max(minIndex, toIndex);
+      reorderLayers(fromIndex, clampedToIndex);
     }
   };
 
@@ -360,7 +322,7 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
             sideOffset={8}
             className="w-56 p-2 flex flex-col gap-1 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg"
           >
-            {!baseBackground && (
+            {!hasBaseBackground && (
               <div className="flex flex-col gap-1 pb-1 mb-1 border-b border-[color:var(--border)]">
                 <button
                   type="button"
@@ -425,57 +387,49 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
       {/* Layer Stack Body */}
       <ScrollFade className="flex-1 overflow-y-auto p-3" containerClassName="flex-1 min-h-0">
         <div className="flex flex-col gap-1.5">
-          {/* Reorderable ImageLayers */}
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={imageLayers.map((l) => l.id)}
+              items={visualLayers.map((l) => l.id)}
               strategy={verticalListSortingStrategy}
             >
-              {imageLayers.map((layer) => (
-                <SortableLayerRow
-                  key={layer.id}
-                  layer={layer}
-                  asset={assetMap.get(layer.assetId)}
-                  isSelected={activeLayerId === layer.id}
-                  onSelect={() => setActiveLayerId(layer.id)}
-                  onToggleVisibility={(e) => {
-                    e.stopPropagation();
-                    updateLayer(layer.id, { visible: layer.visible === false ? true : false });
-                  }}
-                  onRemove={(e) => {
-                    e.stopPropagation();
-                    removeLayer(layer.id);
-                  }}
-                />
-              ))}
+              {visualLayers.map((layer) => {
+                const assetId =
+                  layer.source?.type === "image" ? layer.source.assetId : layer.assetId;
+                const isProcedural =
+                  layer.source?.type === "procedural" ||
+                  layer.type === "generative" ||
+                  layer.type === "procedural";
+                return (
+                  <SortableLayerRow
+                    key={layer.id}
+                    layer={layer}
+                    asset={assetId ? assetMap.get(assetId) : undefined}
+                    isSelected={activeLayerId === layer.id}
+                    onSelect={() => {
+                      setActiveLayerId(layer.id);
+                      if (isProcedural) {
+                        setIsBackgroundPanelOpen(true);
+                      }
+                    }}
+                    onToggleVisibility={(e) => {
+                      e.stopPropagation();
+                      updateLayer(layer.id, {
+                        visible: layer.visible === false ? true : false,
+                      });
+                    }}
+                    onRemove={(e) => {
+                      e.stopPropagation();
+                      removeLayer(layer.id);
+                    }}
+                  />
+                );
+              })}
             </SortableContext>
           </DndContext>
-
-          {/* Locked Background Layer at Bottom */}
-          {baseBackground && (
-            <BackgroundRow
-              layer={baseBackground}
-              isSelected={activeLayerId === baseBackground.id}
-              onSelect={() => {
-                setActiveLayerId(baseBackground.id);
-                setIsBackgroundPanelOpen(true);
-              }}
-              onToggleVisibility={(e) => {
-                e.stopPropagation();
-                updateLayer(baseBackground.id, {
-                  visible: baseBackground.visible === false ? true : false,
-                });
-              }}
-              onRemove={(e) => {
-                e.stopPropagation();
-                removeLayer(baseBackground.id);
-              }}
-            />
-          )}
         </div>
       </ScrollFade>
     </div>

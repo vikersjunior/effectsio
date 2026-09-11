@@ -152,7 +152,12 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     return `linear-gradient(90deg, ${stopStrs.join(", ")})`;
   }, [stops]);
 
-  if (!activeFrame || !isBackgroundPanelOpen || activeLayer?.type !== "generative") {
+  const isProceduralLayer =
+    activeLayer?.source?.type === "procedural" ||
+    activeLayer?.type === "generative" ||
+    activeLayer?.type === "procedural";
+
+  if (!activeFrame || !isBackgroundPanelOpen || !isProceduralLayer) {
     return null;
   }
 
