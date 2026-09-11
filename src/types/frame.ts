@@ -354,6 +354,7 @@ export function createDefaultBackdropLayer(backgroundConfig?: BackgroundState): 
     opacity: 1.0,
     blendMode: "normal",
     effectStack: [],
+    locked: true,
     source,
     transform: { ...DEFAULT_LAYER_TRANSFORM },
     fit: "contain",

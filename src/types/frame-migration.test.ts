@@ -547,6 +547,7 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
         expect(backdrop.source.parameters).toMatchObject({ color: "#112233" });
       }
       expect(backdrop.visible).toBe(true);
+      expect(backdrop.locked).toBe(true);
 
       // Legacy compatibility fields populated
       expect(backdrop.type).toBe("generative");

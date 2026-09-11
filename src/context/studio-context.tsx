@@ -14,6 +14,8 @@ import type {
   BlendMode,
   FrameDimensions,
   FrameSizePreset,
+  LayerSource,
+  ProceduralSource,
 } from "../types/frame";
 import {
   createDefaultFrame,
@@ -70,6 +72,33 @@ import {
   dbDeleteFrame,
   dbGetAllFrames,
 } from "../storage/db";
+
+/**
+ * Synchronizes and extracts canonical ProceduralSource from background items.
+ * BLK-01: Ensures layer.source remains the single authoritative representation for rendering.
+ */
+function deriveProceduralSourceFromBackgrounds(
+  backgrounds: BackgroundItem[] | undefined,
+  fallbackSource?: LayerSource
+): ProceduralSource {
+  const primaryBg = backgrounds && backgrounds[0];
+  if (primaryBg) {
+    return {
+      type: "procedural",
+      kind: primaryBg.type,
+      parameters: { ...primaryBg.parameters },
+      seed: primaryBg.seed,
+    };
+  }
+  if (fallbackSource && fallbackSource.type === "procedural") {
+    return fallbackSource;
+  }
+  return {
+    type: "procedural",
+    kind: "solid",
+    parameters: { color: "#000000" },
+  };
+}
 
 const MAX_HISTORY_LIMIT = 40;
 
@@ -944,10 +973,10 @@ export function StudioProvider({
           const current = frame.layers[layerIdx];
           let updatedLayer: Layer;
 
-          if (layerIdx === 0 && current.type === "generative") {
+          if (layerIdx === 0 && (current.type === "generative" || current.source?.type === "procedural")) {
             const genUpdates = updates as Partial<GenerativeLayer>;
-            let nextSublayers = genUpdates.sublayers || current.sublayers;
-            if (genUpdates.backgroundConfig && !genUpdates.sublayers) {
+            let nextSublayers = genUpdates.sublayers || genUpdates.backgrounds || current.sublayers || current.backgrounds || [];
+            if (genUpdates.backgroundConfig && !genUpdates.sublayers && !genUpdates.backgrounds) {
               const mergedBg = { ...current.backgroundConfig, ...genUpdates.backgroundConfig };
               nextSublayers = normalizeLegacyBackgroundToSublayers(mergedBg);
             }
@@ -955,15 +984,43 @@ export function StudioProvider({
               ? { ...current.backgroundConfig, ...genUpdates.backgroundConfig }
               : current.backgroundConfig;
 
+            let nextSource: ProceduralSource;
+            if (updates.source && updates.source.type === "procedural") {
+              nextSource = updates.source;
+              const primaryId = nextSublayers[0]?.id || `bg-${Date.now()}`;
+              const mirroredBg: BackgroundItem = {
+                id: primaryId,
+                type: nextSource.kind,
+                enabled: true,
+                opacity: 1.0,
+                blendMode: "normal",
+                parameters: { ...nextSource.parameters },
+                seed: nextSource.seed,
+              };
+              nextSublayers = [mirroredBg, ...nextSublayers.slice(1)];
+            } else if (nextSublayers.length > 0) {
+              nextSource = deriveProceduralSourceFromBackgrounds(nextSublayers, current.source);
+            } else if (current.source?.type === "procedural") {
+              nextSource = current.source;
+            } else {
+              nextSource = {
+                type: "procedural",
+                kind: "solid",
+                parameters: { color: "#000000" },
+              };
+            }
+
             updatedLayer = {
               ...current,
               ...updates,
+              source: nextSource,
               type: "generative",
+              backgrounds: nextSublayers,
               sublayers: nextSublayers,
               backgroundConfig: nextBgConfig,
               updatedAt: Date.now(),
             };
-          } else if (current.type === "image") {
+          } else if (current.type === "image" || current.source?.type === "image") {
             const imgUpdates = updates as Partial<ImageLayer>;
             const nextTransform =
               imgUpdates.transform !== undefined
@@ -978,9 +1035,28 @@ export function StudioProvider({
               updatedAt: Date.now(),
             };
           } else {
+            let nextSource = updates.source || current.source;
+            let nextBgs = (updates as any).backgrounds || (current as any).backgrounds;
+            if (updates.source && updates.source.type === "procedural") {
+              const proc = updates.source;
+              const existingBgs = nextBgs || [];
+              const primaryId = existingBgs[0]?.id || `bg-${Date.now()}`;
+              const mirroredBg: BackgroundItem = {
+                id: primaryId,
+                type: proc.kind,
+                enabled: true,
+                opacity: 1.0,
+                blendMode: "normal",
+                parameters: { ...proc.parameters },
+                seed: proc.seed,
+              };
+              nextBgs = [mirroredBg, ...existingBgs.slice(1)];
+            }
             updatedLayer = {
               ...current,
               ...updates,
+              ...(nextSource ? { source: nextSource } : {}),
+              ...(nextBgs ? { backgrounds: nextBgs, sublayers: nextBgs } : {}),
               updatedAt: Date.now(),
             } as Layer;
           }
@@ -1014,10 +1090,10 @@ export function StudioProvider({
         return prev.map((frame) => {
           if (frame.id !== activeFId) return frame;
 
-          // Hard Invariant: index 0 is GenerativeLayer (locked background)
-          // Image layers are only reorderable at indices >= 1
-          if (fromIndex <= 0 || toIndex <= 0) {
-            console.warn("Cannot reorder locked GenerativeLayer at index 0");
+          // Hard Invariant: index 0 is canonical backdrop / locked background
+          // Layers are only reorderable at indices >= 1, and locked layers cannot be moved
+          if (fromIndex <= 0 || toIndex <= 0 || frame.layers[fromIndex]?.locked) {
+            console.warn("Cannot reorder locked backdrop layer at index 0");
             return frame;
           }
           if (
@@ -1032,10 +1108,11 @@ export function StudioProvider({
           const [moved] = newLayers.splice(fromIndex, 1);
           newLayers.splice(toIndex, 0, moved);
 
-          // Structural invariant: if a GenerativeLayer exists, it must remain behind all image layers at index 0
-          const hasGenerative = frame.layers.some((l) => l.type === "generative");
-          if (hasGenerative && newLayers[0].type !== "generative") {
-            console.warn("Reorder rejected: index 0 must be GenerativeLayer");
+          // Structural invariant: if a backdrop exists, it must remain behind all upper layers at index 0
+          const hasBackdrop = frame.layers.some((l) => l.source?.type === "procedural" || l.type === "generative");
+          const firstIsBackdrop = newLayers[0]?.source?.type === "procedural" || newLayers[0]?.type === "generative";
+          if (hasBackdrop && !firstIsBackdrop) {
+            console.warn("Reorder rejected: index 0 must be backdrop layer");
             return frame;
           }
 
@@ -1129,28 +1206,33 @@ export function StudioProvider({
       const activeFId = activeFrameIdRef.current;
       return prev.map((frame) => {
         if (frame.id !== activeFId) return frame;
-        const existingGen = frame.layers.find((l) => l.type === "generative");
+        const existingGen = frame.layers.find(
+          (l) => l.type === "generative" || l.source?.type === "procedural"
+        );
         if (existingGen) {
           setActiveLayerIdState(existingGen.id);
           return frame;
         }
 
+        const now = Date.now();
         const newGenLayer: GenerativeLayer = {
-          id: `layer-bg-${Date.now()}`,
+          id: `layer-bg-${now}`,
           type: "generative",
           name: "Background",
           visible: true,
           opacity: 1.0,
           blendMode: "normal",
           effectStack: [],
+          locked: true,
           source: {
             type: "procedural" as const,
             kind: "solid" as const,
             parameters: { color: "#000000" },
           },
           backgrounds: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          sublayers: [],
+          createdAt: now,
+          updatedAt: now,
         };
 
         const nextLayers = [newGenLayer, ...frame.layers];
@@ -1934,7 +2016,9 @@ export function StudioProvider({
         const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
         if (frameIndex === -1) return prev;
         const targetFrame = prev[frameIndex];
-        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        const genLayerIndex = targetFrame.layers.findIndex(
+          (l) => l.type === "generative" || l.source?.type === "procedural"
+        );
         if (genLayerIndex === -1) return prev;
 
         const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
@@ -1945,10 +2029,12 @@ export function StudioProvider({
           type: updates.type || currentBg.type,
         };
         const nextBackgrounds = normalizeLegacyBackgroundToBackgrounds(nextBg);
+        const nextSource = deriveProceduralSourceFromBackgrounds(nextBackgrounds, genLayer.source);
 
         const updatedGenLayer: GenerativeLayer = {
           ...genLayer,
           visible: true,
+          source: nextSource,
           backgrounds: nextBackgrounds,
           sublayers: nextBackgrounds,
           backgroundMode: nextBg.type,
@@ -1997,13 +2083,20 @@ export function StudioProvider({
       const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
       if (frameIndex === -1) return prev;
       const targetFrame = prev[frameIndex];
-      const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+      const genLayerIndex = targetFrame.layers.findIndex(
+        (l) => l.type === "generative" || l.source?.type === "procedural"
+      );
       if (genLayerIndex === -1) return prev;
 
       const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
       const updatedGenLayer: GenerativeLayer = {
         ...genLayer,
         visible: false,
+        source: {
+          type: "procedural",
+          kind: "solid",
+          parameters: { color: "#000000" },
+        },
         backgrounds: [],
         sublayers: [],
         backgroundMode: "transparent",
@@ -2045,7 +2138,9 @@ export function StudioProvider({
       atIndex?: number
     ) => {
       if (!activeFrame) return;
-      const hasGenLayer = activeFrame.layers.some((l) => l.type === "generative");
+      const hasGenLayer = activeFrame.layers.some(
+        (l) => l.type === "generative" || l.source?.type === "procedural"
+      );
       if (!hasGenLayer) {
         // Non-negotiable invariant: addBackgroundItem() MUST NEVER CREATE A BACKGROUND LAYER
         return;
@@ -2056,7 +2151,9 @@ export function StudioProvider({
         const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
         if (frameIndex === -1) return prev;
         const targetFrame = prev[frameIndex];
-        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        const genLayerIndex = targetFrame.layers.findIndex(
+          (l) => l.type === "generative" || l.source?.type === "procedural"
+        );
         if (genLayerIndex === -1) return prev;
 
         const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
@@ -2083,9 +2180,12 @@ export function StudioProvider({
 
         setSelectedBackgroundId(newBackground.id);
 
+        const nextSource = deriveProceduralSourceFromBackgrounds(nextBackgrounds, genLayer.source);
+
         const updatedGenLayer: GenerativeLayer = {
           ...genLayer,
           visible: true,
+          source: nextSource,
           backgrounds: nextBackgrounds,
           sublayers: nextBackgrounds,
         };
@@ -2121,7 +2221,9 @@ export function StudioProvider({
         const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
         if (frameIndex === -1) return prev;
         const targetFrame = prev[frameIndex];
-        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        const genLayerIndex = targetFrame.layers.findIndex(
+          (l) => l.type === "generative" || l.source?.type === "procedural"
+        );
         if (genLayerIndex === -1) return prev;
 
         const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
@@ -2137,8 +2239,11 @@ export function StudioProvider({
           return nextBackgrounds[nextIdx]?.id ?? null;
         });
 
+        const nextSource = deriveProceduralSourceFromBackgrounds(nextBackgrounds, genLayer.source);
+
         const updatedGenLayer: GenerativeLayer = {
           ...genLayer,
+          source: nextSource,
           backgrounds: nextBackgrounds,
           sublayers: nextBackgrounds,
         };
@@ -2173,7 +2278,9 @@ export function StudioProvider({
         const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
         if (frameIndex === -1) return prev;
         const targetFrame = prev[frameIndex];
-        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        const genLayerIndex = targetFrame.layers.findIndex(
+          (l) => l.type === "generative" || l.source?.type === "procedural"
+        );
         if (genLayerIndex === -1) return prev;
 
         const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
@@ -2193,8 +2300,11 @@ export function StudioProvider({
         const [moved] = currentBackgrounds.splice(fromIndex, 1);
         currentBackgrounds.splice(toIndex, 0, moved);
 
+        const nextSource = deriveProceduralSourceFromBackgrounds(currentBackgrounds, genLayer.source);
+
         const updatedGenLayer: GenerativeLayer = {
           ...genLayer,
+          source: nextSource,
           backgrounds: currentBackgrounds,
           sublayers: currentBackgrounds,
         };
@@ -2233,7 +2343,9 @@ export function StudioProvider({
         const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
         if (frameIndex === -1) return prev;
         const targetFrame = prev[frameIndex];
-        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        const genLayerIndex = targetFrame.layers.findIndex(
+          (l) => l.type === "generative" || l.source?.type === "procedural"
+        );
         if (genLayerIndex === -1) return prev;
 
         const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
@@ -2286,8 +2398,11 @@ export function StudioProvider({
           return updated;
         });
 
+        const nextSource = deriveProceduralSourceFromBackgrounds(nextBackgrounds, genLayer.source);
+
         const updatedGenLayer: GenerativeLayer = {
           ...genLayer,
+          source: nextSource,
           backgrounds: nextBackgrounds,
           sublayers: nextBackgrounds,
         };
@@ -2332,7 +2447,9 @@ export function StudioProvider({
         const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
         if (frameIndex === -1) return prev;
         const targetFrame = prev[frameIndex];
-        const genLayerIndex = targetFrame.layers.findIndex((l) => l.type === "generative");
+        const genLayerIndex = targetFrame.layers.findIndex(
+          (l) => l.type === "generative" || l.source?.type === "procedural"
+        );
         if (genLayerIndex === -1) return prev;
 
         const genLayer = targetFrame.layers[genLayerIndex] as GenerativeLayer;
@@ -2348,8 +2465,11 @@ export function StudioProvider({
           };
         });
 
+        const nextSource = deriveProceduralSourceFromBackgrounds(nextBackgrounds, genLayer.source);
+
         const updatedGenLayer: GenerativeLayer = {
           ...genLayer,
+          source: nextSource,
           backgrounds: nextBackgrounds,
           sublayers: nextBackgrounds,
         };
