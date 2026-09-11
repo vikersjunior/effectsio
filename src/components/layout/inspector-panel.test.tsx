@@ -62,7 +62,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
             <button
               data-testid="delete-bg-layer"
               onClick={() => {
-                const bg = store.activeFrame?.layers.find((l) => l.type === "generative");
+                const bg = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
                 if (bg) store.removeLayer(bg.id);
               }}
             >
@@ -222,7 +222,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
 
       // When Background Layer is selected, Background section appears AND Effects & Looks are present (UCM Sections 13 & 26)
       const bgLayer = storeRef.activeFrame?.layers.find(
-        (l) => l.source?.type === "procedural" || l.type === "generative"
+        (l) => l.source?.type === "procedural"
       );
       if (bgLayer) {
         storeRef.setActiveLayerId(bgLayer.id);
@@ -423,7 +423,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
           <button
             data-testid="select-bg-layer"
             onClick={() => {
-              const bg = store.activeFrame?.layers.find((l) => l.type === "generative");
+              const bg = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
               if (bg) store.setActiveLayerId(bg.id);
             }}
           >
@@ -611,7 +611,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
           <button
             data-testid="select-bg-layer"
             onClick={() => {
-              const bg = store.activeFrame?.layers.find((l) => l.type === "generative");
+              const bg = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
               if (bg) store.setActiveLayerId(bg.id);
             }}
           >
@@ -1078,6 +1078,107 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
         expect(screen.getByTestId("transform-y").textContent).toBe("0");
         expect(screen.getByTestId("transform-scale").textContent).toBe("1");
         expect(screen.getByTestId("transform-rot").textContent).toBe("0");
+      });
+    });
+  });
+
+  describe("Phase 4 UCM Inspector Canonical Alignment Suite", () => {
+    it("recognizes procedural layer via activeLayer.source.type === 'procedural' and gives access to Effects and Looks", async () => {
+      let storeRef!: ReturnType<typeof useStudioStore>;
+      function ProcHost() {
+        const store = useStudioStore();
+        storeRef = store;
+        return (
+          <div>
+            <span data-testid="is-hydrated">{String(store.isHydrated)}</span>
+            <button
+              data-testid="select-procedural"
+              onClick={() => {
+                const proc = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
+                if (proc) store.setActiveLayerId(proc.id);
+              }}
+            >
+              Select Procedural
+            </button>
+            <InspectorPanel />
+          </div>
+        );
+      }
+
+      render(
+        <StudioProvider>
+          <ProcHost />
+        </StudioProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
+
+      fireEvent.click(screen.getByTestId("select-procedural"));
+
+      await waitFor(() => {
+        // Procedural layer Tier 1: Background header
+        expect(screen.getByTestId("background-section-header")).toBeDefined();
+        // Tier 2: Effects
+        expect(screen.getByText("Effects")).toBeDefined();
+        // Tier 3: Looks
+        expect(screen.getByText("Looks")).toBeDefined();
+      });
+    });
+
+    it("procedural background item operations mutate activeLayer.source canonically", async () => {
+      let storeRef!: ReturnType<typeof useStudioStore>;
+      function ProcMutationHost() {
+        const store = useStudioStore();
+        storeRef = store;
+        return (
+          <div>
+            <span data-testid="is-hydrated">{String(store.isHydrated)}</span>
+            <button
+              data-testid="select-procedural"
+              onClick={() => {
+                const proc = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
+                if (proc) store.setActiveLayerId(proc.id);
+              }}
+            >
+              Select Procedural
+            </button>
+            <InspectorPanel />
+          </div>
+        );
+      }
+
+      render(
+        <StudioProvider>
+          <ProcMutationHost />
+        </StudioProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
+
+      fireEvent.click(screen.getByTestId("select-procedural"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("add-background-button")).toBeDefined();
+      });
+
+      // Click Add Background (+)
+      fireEvent.click(screen.getByTestId("add-background-button"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("add-bg-solid")).toBeDefined();
+      });
+
+      // Click Solid
+      fireEvent.click(screen.getByTestId("add-bg-solid"));
+
+      await waitFor(() => {
+        const procLayer = storeRef.activeFrame?.layers.find((l) => l.id === storeRef.activeLayerId);
+        expect(procLayer?.source?.type).toBe("procedural");
+        expect((procLayer?.source as any)?.kind).toBe("solid");
       });
     });
   });

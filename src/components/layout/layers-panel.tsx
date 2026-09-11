@@ -31,7 +31,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, ScrollFade, Popover, PopoverTrigger, PopoverContent, ICON_SIZES } from "../ui";
 import { cn } from "../ui/lib/utils";
 import { useStudioStore } from "../../context/studio-context";
-import type { Layer } from "../../types/frame";
+import type { Layer, ProceduralSource } from "../../types/frame";
 import type { Asset } from "../../types/asset";
 import { DEFAULT_BACKGROUND_STATE } from "../../types/look";
 import { deriveLegacyBackgroundFromBackgrounds } from "../../generative/normalization";
@@ -43,6 +43,7 @@ interface SortableLayerRowProps {
   onSelect: () => void;
   onToggleVisibility: (e: React.MouseEvent) => void;
   onRemove?: (e: React.MouseEvent) => void;
+  isLocked?: boolean;
 }
 
 function SortableLayerRow({
@@ -52,8 +53,9 @@ function SortableLayerRow({
   onSelect,
   onToggleVisibility,
   onRemove,
+  isLocked: isLockedProp,
 }: SortableLayerRowProps): React.JSX.Element {
-  const isLocked = Boolean(layer.locked);
+  const isLocked = isLockedProp ?? Boolean(layer.locked);
   const {
     attributes,
     listeners,
@@ -64,32 +66,31 @@ function SortableLayerRow({
   } = useSortable({ id: layer.id, disabled: isLocked });
 
   const isVisible = layer.visible !== false;
-  const isProcedural =
-    layer.source?.type === "procedural" ||
-    layer.type === "generative" ||
-    layer.type === "procedural";
+  const isProcedural = layer.source?.type === "procedural";
+  const procSource = isProcedural ? (layer.source as ProceduralSource) : undefined;
 
   const backgrounds = layer.backgrounds ?? layer.sublayers ?? [];
   const bgConfig =
+    (procSource
+      ? {
+          type:
+            (procSource.kind as any) ??
+            (procSource.parameters?.type as any) ??
+            "solid",
+          color: (procSource.parameters?.color as string) || "#000000",
+          gradientEndColor:
+            (procSource.parameters?.gradientEndColor as string) ||
+            (procSource.parameters?.endColor as string) ||
+            "#E20000",
+          gradientAngle:
+            (procSource.parameters?.gradientAngle as number) ||
+            (procSource.parameters?.angle as number) ||
+            90,
+        }
+      : undefined) ??
     layer.backgroundConfig ??
     (backgrounds.length > 0
       ? deriveLegacyBackgroundFromBackgrounds(backgrounds)
-      : isProcedural && layer.source?.type === "procedural" && layer.source.parameters
-      ? {
-          type:
-            (layer.source.kind as any) ??
-            (layer.source.parameters.type as any) ??
-            "solid",
-          color: (layer.source.parameters.color as string) || "#000000",
-          gradientEndColor:
-            (layer.source.parameters.gradientEndColor as string) ||
-            (layer.source.parameters.endColor as string) ||
-            "#E20000",
-          gradientAngle:
-            (layer.source.parameters.gradientAngle as number) ||
-            (layer.source.parameters.angle as number) ||
-            90,
-        }
       : DEFAULT_BACKGROUND_STATE);
 
   const style: React.CSSProperties = {
@@ -255,7 +256,7 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
 
   const layers = activeFrame?.layers || [];
   const hasBaseBackground = layers.some(
-    (l) => l.source?.type === "procedural" || l.type === "generative"
+    (l) => l.source?.type === "procedural"
   );
 
   // Visual stack: all layers displayed in reverse array order (top layer at top of UI list, backdrop at bottom)
@@ -334,7 +335,7 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
                   className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
                 >
                   <div className="size-5 rounded-xs bg-[color:color-mix(in_oklab,var(--primary)_15%,transparent)] text-[color:var(--primary)] flex items-center justify-center shrink-0 border border-[color:color-mix(in_oklab,var(--primary)_30%,transparent)]">
-                    <SquareIcon size={12} weight="bold" />
+                    <SquareIcon size={ICON_SIZES.xs} weight="bold" />
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs font-medium text-[color:var(--foreground)]">
@@ -399,10 +400,7 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
               {visualLayers.map((layer) => {
                 const assetId =
                   layer.source?.type === "image" ? layer.source.assetId : layer.assetId;
-                const isProcedural =
-                  layer.source?.type === "procedural" ||
-                  layer.type === "generative" ||
-                  layer.type === "procedural";
+                const isProcedural = layer.source?.type === "procedural";
                 return (
                   <SortableLayerRow
                     key={layer.id}

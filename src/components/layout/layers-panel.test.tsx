@@ -392,4 +392,62 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
       });
     });
   });
+
+  describe("Phase 4 UCM Canonical Alignment Suite", () => {
+    function UcmHost({ onStore }: { onStore: (store: ReturnType<typeof useStudioStore>) => void }) {
+      const store = useStudioStore();
+      React.useEffect(() => {
+        onStore(store);
+      }, [store, onStore]);
+
+      return (
+        <div>
+          <span data-testid="is-hydrated">{String(store.isHydrated)}</span>
+        </div>
+      );
+    }
+
+    it("identifies procedural layer purely via layer.source.type === 'procedural'", async () => {
+      let currentStore!: ReturnType<typeof useStudioStore>;
+      render(
+        <StudioProvider>
+          <UcmHost onStore={(s) => { currentStore = s; }} />
+          <LayersPanel />
+        </StudioProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
+
+      const frame = currentStore.activeFrame!;
+      expect(frame.layers[0].source?.type).toBe("procedural");
+
+      // Verify the layer row is rendered with the locked-background-row data-slot
+      const lockedRow = screen.getByTestId("locked-background-row");
+      expect(lockedRow).toBeDefined();
+      expect(within(lockedRow).getByText("Background")).toBeDefined();
+    });
+
+    it("verifies backdrop at index 0 is non-deletable and non-reorderable (BLK-02)", async () => {
+      let currentStore!: ReturnType<typeof useStudioStore>;
+      render(
+        <StudioProvider>
+          <UcmHost onStore={(s) => { currentStore = s; }} />
+          <LayersPanel />
+        </StudioProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
+      });
+
+      const backdropId = currentStore.activeFrame!.layers[0].id;
+      // Attempt to remove backdrop
+      currentStore.removeLayer(backdropId);
+      expect(currentStore.activeFrame!.layers.length).toBe(1);
+      expect(currentStore.activeFrame!.layers[0].id).toBe(backdropId);
+      expect(currentStore.activeFrame!.layers[0].source?.type).toBe("procedural");
+    });
+  });
 });

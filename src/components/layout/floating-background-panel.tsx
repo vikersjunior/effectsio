@@ -152,10 +152,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     return `linear-gradient(90deg, ${stopStrs.join(", ")})`;
   }, [stops]);
 
-  const isProceduralLayer =
-    activeLayer?.source?.type === "procedural" ||
-    activeLayer?.type === "generative" ||
-    activeLayer?.type === "procedural";
+  const isProceduralLayer = activeLayer?.source?.type === "procedural";
 
   if (!activeFrame || !isBackgroundPanelOpen || !isProceduralLayer) {
     return null;
@@ -462,7 +459,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
             data-testid="close-background-panel"
             className="size-6 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] cursor-pointer [&_svg]:!size-4"
           >
-            <XIcon size={16} />
+            <XIcon size={ICON_SIZES.md} />
           </Button>
         </div>
       </div>
@@ -486,7 +483,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
               }`}
             >
-              <CircleHalfIcon size={18} />
+              <CircleHalfIcon size={ICON_SIZES.lg} />
             </TooltipTrigger>
             <TooltipContent side="top">Alpha</TooltipContent>
           </Tooltip>
@@ -504,7 +501,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
               }`}
             >
-              <CircleIcon size={18} />
+              <CircleIcon size={ICON_SIZES.lg} />
             </TooltipTrigger>
             <TooltipContent side="top">Solid</TooltipContent>
           </Tooltip>
@@ -522,7 +519,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
               }`}
             >
-              <GradientIcon size={18} />
+              <GradientIcon size={ICON_SIZES.lg} />
             </TooltipTrigger>
             <TooltipContent side="top">Gradient</TooltipContent>
           </Tooltip>
@@ -540,7 +537,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
               }`}
             >
-              <DotsNineIcon size={18} />
+              <DotsNineIcon size={ICON_SIZES.lg} />
             </TooltipTrigger>
             <TooltipContent side="top">Dot Pattern</TooltipContent>
           </Tooltip>
@@ -558,7 +555,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
               }`}
             >
-              <GridFourIcon size={18} />
+              <GridFourIcon size={ICON_SIZES.lg} />
             </TooltipTrigger>
             <TooltipContent side="top">Grid Pattern</TooltipContent>
           </Tooltip>
@@ -709,7 +706,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                       onClick={handleReverseGradient}
                       className="size-7 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:var(--secondary)] transition-colors cursor-pointer [&_svg]:!size-4"
                     >
-                      <ArrowsLeftRightIcon size={16} />
+                      <ArrowsLeftRightIcon size={ICON_SIZES.md} />
                     </TooltipTrigger>
                     <TooltipContent side="top">Reverse Gradient</TooltipContent>
                   </Tooltip>
@@ -721,7 +718,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                       onClick={handleResetGradient}
                       className="size-7 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:var(--secondary)] transition-colors cursor-pointer [&_svg]:!size-4"
                     >
-                      <ArrowCounterClockwiseIcon size={16} />
+                      <ArrowCounterClockwiseIcon size={ICON_SIZES.md} />
                     </TooltipTrigger>
                     <TooltipContent side="top">Reset Gradient</TooltipContent>
                   </Tooltip>
@@ -776,7 +773,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                       disabled={stops.length >= 8}
                       className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:var(--secondary)] disabled:opacity-40 transition-colors cursor-pointer [&_svg]:!size-4"
                     >
-                      <PlusIcon size={16} />
+                      <PlusIcon size={ICON_SIZES.md} />
                     </TooltipTrigger>
                     <TooltipContent side="top">Add stop</TooltipContent>
                   </Tooltip>
@@ -785,7 +782,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 <div className="flex flex-col gap-2">
                   {stops.map((stop, idx) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <DotsSixVerticalIcon size={16} className="text-[color:var(--muted-foreground)] shrink-0 cursor-grab" />
+                      <DotsSixVerticalIcon size={ICON_SIZES.md} className="text-[color:var(--muted-foreground)] shrink-0 cursor-grab" />
                       <span className="text-xs text-[color:var(--muted-foreground)] w-8 text-right shrink-0">
                         {stop.position}
                       </span>
@@ -813,7 +810,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                         aria-label={`Remove stop ${idx + 1}`}
                         className="size-7 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:var(--secondary)] disabled:opacity-30 shrink-0 cursor-pointer [&_svg]:!size-4"
                       >
-                        <MinusIcon size={16} className="shrink-0" />
+                        <MinusIcon size={ICON_SIZES.md} className="shrink-0" />
                       </Button>
                     </div>
                   ))}

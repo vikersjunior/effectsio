@@ -160,9 +160,9 @@ export function SortableBackgroundRow({
               }}
             />
           ) : item.type === "dots" ? (
-            <DotsNineIcon size={12} className="text-[color:var(--muted-foreground)]" />
+            <DotsNineIcon size={ICON_SIZES.xs} className="text-[color:var(--muted-foreground)]" />
           ) : (
-            <GridFourIcon size={12} className="text-[color:var(--muted-foreground)]" />
+            <GridFourIcon size={ICON_SIZES.xs} className="text-[color:var(--muted-foreground)]" />
           )}
         </div>
 

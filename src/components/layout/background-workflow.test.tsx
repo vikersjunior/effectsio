@@ -44,7 +44,7 @@ function FullTestStudioHost({ onStore }: { onStore?: (store: ReturnType<typeof u
       <button
         data-testid="select-background-layer"
         onClick={() => {
-          const gen = store.activeFrame?.layers.find((l) => l.type === "generative");
+          const gen = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
           if (gen) store.setActiveLayerId(gen.id);
         }}
       >

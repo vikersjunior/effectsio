@@ -45,6 +45,7 @@ import {
   StaticSelect,
   SegmentedControl,
   Input,
+  ICON_SIZES,
 } from "../ui";
 import { useStudioStore } from "../../context/studio-context";
 import { getEffectDefinition } from "../../effects/registry";
@@ -121,7 +122,7 @@ function SortableEffectRow({
           className="cursor-grab active:cursor-grabbing text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] p-0.5 shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
-          <DotsSixVerticalIcon size={16} />
+          <DotsSixVerticalIcon size={ICON_SIZES.md} />
         </button>
         <span className="font-medium truncate text-xs text-[color:var(--foreground)]">
           {def?.name || instance.effectId}
@@ -138,7 +139,7 @@ function SortableEffectRow({
           aria-label="Blending mode"
           className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150 [&_svg]:!size-4 cursor-pointer"
         >
-          <DropSimpleIcon size={16} />
+          <DropSimpleIcon size={ICON_SIZES.md} />
         </Button>
         {/* Visibility Toggle Button */}
         <Button
@@ -149,7 +150,7 @@ function SortableEffectRow({
           aria-label={instance.enabled ? "Disable effect" : "Enable effect"}
           className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150 [&_svg]:!size-4 cursor-pointer"
         >
-          {instance.enabled ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
+          {instance.enabled ? <EyeIcon size={ICON_SIZES.md} /> : <EyeSlashIcon size={ICON_SIZES.md} />}
         </Button>
         {/* Remove Effect Button */}
         <Button
@@ -160,7 +161,7 @@ function SortableEffectRow({
           aria-label="Remove effect"
           className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer"
         >
-          <MinusIcon size={16} />
+          <MinusIcon size={ICON_SIZES.md} />
         </Button>
       </div>
     </div>
@@ -262,14 +263,8 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
   };
 
   const isPopulated = Boolean(activeLayer);
-  const isImageLayer =
-    activeLayer?.source?.type === "image" ||
-    activeLayer?.type === "image" ||
-    (!activeLayer?.source && Boolean(activeAsset));
-  const isProceduralLayer =
-    activeLayer?.source?.type === "procedural" ||
-    activeLayer?.type === "generative" ||
-    activeLayer?.type === "procedural";
+  const isImageLayer = activeLayer?.source?.type === "image";
+  const isProceduralLayer = activeLayer?.source?.type === "procedural";
 
   return (
     <PanelSurface
@@ -333,7 +328,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                   }`}
                 >
                   <span className="capitalize">{t}</span>
-                  {theme === t && <CheckIcon size={13} className="text-[color:var(--primary)]" />}
+                  {theme === t && <CheckIcon size={ICON_SIZES.compact} className="text-[color:var(--primary)]" />}
                 </button>
               ))}
             </div>
@@ -349,7 +344,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
             title="Export composition or batch library"
             className="gap-1.5 px-3 h-7 text-xs font-medium rounded-md shadow-xs"
           >
-            <DownloadSimpleIcon size={14} className="shrink-0" />
+            <DownloadSimpleIcon size={ICON_SIZES.sm} className="shrink-0" />
             <span>Export</span>
           </Button>
 
@@ -361,7 +356,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
               aria-label="Close inspector panel"
               className="size-6 rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] [&_svg]:!size-4"
             >
-              <XIcon size={16} />
+              <XIcon size={ICON_SIZES.md} />
             </Button>
           )}
         </div>
@@ -404,7 +399,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
         <ScrollFade className="flex-1 overflow-y-auto p-4" containerClassName="flex-1 min-h-0">
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground)]">
-              <PlayIcon size={14} className="text-[color:var(--primary)]" />
+              <PlayIcon size={ICON_SIZES.sm} className="text-[color:var(--primary)]" />
               <span>Animation Timeline</span>
             </div>
 
@@ -511,7 +506,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                           data-testid="add-background-button"
                           className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
                         >
-                          <PlusIcon size={16} />
+                          <PlusIcon size={ICON_SIZES.md} />
                         </button>
                       )}
                     />
@@ -573,7 +568,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                         }}
                         className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
                       >
-                        <DotsNineIcon size={16} className="text-[color:var(--muted-foreground)] shrink-0" />
+                        <DotsNineIcon size={ICON_SIZES.md} className="text-[color:var(--muted-foreground)] shrink-0" />
                         Dots
                       </button>
                       <button
@@ -586,7 +581,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                         }}
                         className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
                       >
-                        <GridFourIcon size={16} className="text-[color:var(--muted-foreground)] shrink-0" />
+                        <GridFourIcon size={ICON_SIZES.md} className="text-[color:var(--muted-foreground)] shrink-0" />
                         Grid
                       </button>
                     </PopoverContent>
@@ -801,7 +796,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                   title="Add effect"
                   className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
                 >
-                  <PlusIcon size={16} />
+                  <PlusIcon size={ICON_SIZES.md} />
                 </button>
               </div>
 
@@ -858,7 +853,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                     title="Remove applied look"
                     className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors [&_svg]:!size-4 cursor-pointer"
                   >
-                    <MinusIcon size={16} />
+                    <MinusIcon size={ICON_SIZES.md} />
                   </Button>
                 ) : (
                   <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
@@ -868,7 +863,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                       title="Open looks browser"
                       className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
                     >
-                      <PlusIcon size={16} />
+                      <PlusIcon size={ICON_SIZES.md} />
                     </PopoverTrigger>
                     <PopoverContent
                       side="left"
@@ -891,7 +886,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                       className="group flex-1 min-w-0 flex items-center gap-2 px-2.5 h-8 rounded-[6px] border border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--foreground)_20%,transparent)] cursor-pointer transition-colors select-none text-left outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
                     >
                       <div className="size-4 shrink-0 flex items-center justify-center text-[color:var(--foreground)] [&_svg]:!size-4">
-                        <SparkleIcon size={16} />
+                        <SparkleIcon size={ICON_SIZES.md} />
                       </div>
                       <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
                         {appliedLook.name}
@@ -929,7 +924,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                     data-testid="look-eye-button"
                     className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-colors [&_svg]:!size-4 cursor-pointer shrink-0"
                   >
-                    {isLookVisible ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
+                    {isLookVisible ? <EyeIcon size={ICON_SIZES.md} /> : <EyeSlashIcon size={ICON_SIZES.md} />}
                   </Button>
                 </div>
               )}

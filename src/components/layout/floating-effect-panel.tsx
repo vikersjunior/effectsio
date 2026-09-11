@@ -12,6 +12,7 @@ import {
   ScrollFade,
   GradientControl,
   type GradientStop,
+  ICON_SIZES,
 } from '../ui';
 import { useStudioStore } from '../../context/studio-context';
 import { getEffectDefinition } from '../../effects/registry';
@@ -225,7 +226,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
             aria-label="Reset parameters"
             className="size-6 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] cursor-pointer [&_svg]:!size-4"
           >
-            <ArrowCounterClockwiseIcon size={16} />
+            <ArrowCounterClockwiseIcon size={ICON_SIZES.md} />
           </Button>
           <Button
             variant="ghost"
@@ -235,7 +236,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
             aria-label="Close parameters"
             className="size-6 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] cursor-pointer [&_svg]:!size-4"
           >
-            <XIcon size={16} />
+            <XIcon size={ICON_SIZES.md} />
           </Button>
         </div>
       </div>
