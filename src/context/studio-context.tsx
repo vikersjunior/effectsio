@@ -10,7 +10,6 @@ import type {
   Frame,
   Layer,
   ImageLayer,
-  GenerativeLayer,
   BlendMode,
   FrameDimensions,
   FrameSizePreset,
@@ -18,8 +17,8 @@ import type {
   ProceduralSource,
 } from "../types/frame";
 import {
+  createDefaultBackdropLayer,
   createDefaultFrame,
-  createDefaultGenerativeLayer,
   createImageLayer,
   createProceduralLayer,
 } from "../types/frame";
@@ -713,7 +712,7 @@ export function StudioProvider({
             // Defensive synthesis for test mocks that return assets without frames
             const synthesizedFrames: Frame[] = state.assets.map((asset) => {
               const assetBg = state.backgrounds?.[asset.id];
-              const baseGen = createDefaultGenerativeLayer(assetBg);
+              const baseBackdrop = createDefaultBackdropLayer(assetBg);
               const assetStack = state.effectStacks?.[asset.id] ? [...state.effectStacks[asset.id]] : [];
               const imgLayer = createImageLayer(asset.id, asset.filename, assetStack, "contain");
               return {
@@ -724,7 +723,7 @@ export function StudioProvider({
                   height: asset.height || 1080,
                   presetId: null,
                 },
-                layers: [baseGen, imgLayer],
+                layers: [baseBackdrop, imgLayer],
                 activeLayerId: imgLayer.id,
                 createdAt: asset.createdAt || Date.now(),
                 updatedAt: Date.now(),
@@ -1425,9 +1424,9 @@ export function StudioProvider({
 
           if (isOnlyEmptyDefault) {
             const firstAsset = newlyCreated[0];
-            const baseGen =
-              (updatedFrames[0].layers[0] as GenerativeLayer) ||
-              createDefaultGenerativeLayer();
+            const baseBackdrop =
+              updatedFrames[0].layers[0] ||
+              createDefaultBackdropLayer();
             const firstLayer = createImageLayer(
               firstAsset.id,
               firstAsset.filename,
@@ -1442,13 +1441,13 @@ export function StudioProvider({
                 height: firstAsset.height || 1080,
                 presetId: null,
               },
-              layers: [baseGen, firstLayer],
+              layers: [baseBackdrop, firstLayer],
               activeLayerId: firstLayer.id,
               updatedAt: Date.now(),
             };
 
             const otherFrames = newlyCreated.slice(1).map((asset) => {
-              const gen = createDefaultGenerativeLayer();
+              const backdrop = createDefaultBackdropLayer();
               const layer = createImageLayer(asset.id, asset.filename, [], "contain");
               return {
                 id: `frame-${asset.id}`,
@@ -1458,7 +1457,7 @@ export function StudioProvider({
                   height: asset.height || 1080,
                   presetId: null,
                 },
-                layers: [gen, layer],
+                layers: [backdrop, layer],
                 activeLayerId: layer.id,
                 createdAt: asset.createdAt || Date.now(),
                 updatedAt: Date.now(),
@@ -1468,7 +1467,7 @@ export function StudioProvider({
             updatedFrames = [firstFrame, ...otherFrames];
           } else {
             const newFrames = newlyCreated.map((asset) => {
-              const gen = createDefaultGenerativeLayer();
+              const backdrop = createDefaultBackdropLayer();
               const layer = createImageLayer(asset.id, asset.filename, [], "contain");
               return {
                 id: `frame-${asset.id}`,
@@ -1478,7 +1477,7 @@ export function StudioProvider({
                   height: asset.height || 1080,
                   presetId: null,
                 },
-                layers: [gen, layer],
+                layers: [backdrop, layer],
                 activeLayerId: layer.id,
                 createdAt: asset.createdAt || Date.now(),
                 updatedAt: Date.now(),
