@@ -478,9 +478,9 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       expect(genLayer.sublayers[0].id).toBe("s2");
       expect(genLayer.sublayers[1].id).toBe("s1");
 
-      // Verify Frame hierarchy invariant: frame.layers[0] is still the GenerativeLayer
+      // Verify Frame hierarchy invariant: frame.layers[0] is still the Procedural Backdrop Layer
       expect(frame.layers).toHaveLength(2);
-      expect(frame.layers[0].type).toBe("generative");
+      expect(frame.layers[0].type).toBe("procedural");
       expect(frame.layers[0].id).toBe(genLayer.id);
       expect(frame.layers[1].type).toBe("image");
       expect(frame.layers[1].id).toBe(imgLayer.id);
@@ -528,13 +528,14 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       expect(retrievedGenLayer.backgrounds[1].type).toBe("grid");
       expect(retrievedGenLayer.backgrounds[1].parameters.spacing).toBe(32);
 
-      // Verify full project hydration
+      // Verify full project hydration (Decision A: GenerativeLayer with 2 backgrounds splits into 2 canonical procedural layers)
       const hydrated = await loadHydratedProject();
       expect(hydrated.frames).toHaveLength(1);
-      const hydratedGenLayer = hydrated.frames[0].layers[0] as GenerativeLayer;
-      expect(hydratedGenLayer.backgrounds).toHaveLength(2);
-      expect(hydratedGenLayer.backgrounds[0].id).toBe("persist-sub-1");
-      expect(hydratedGenLayer.backgrounds[1].id).toBe("persist-sub-2");
+      expect(hydrated.frames[0].layers).toHaveLength(2);
+      expect(hydrated.frames[0].layers[0].source.type).toBe("procedural");
+      expect((hydrated.frames[0].layers[0].source as any).kind).toBe("solid");
+      expect(hydrated.frames[0].layers[1].source.type).toBe("procedural");
+      expect((hydrated.frames[0].layers[1].source as any).kind).toBe("grid");
 
       if (originalIDB) {
         globalThis.window.indexedDB = originalIDB;
@@ -599,7 +600,7 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
   });
 
   describe("8. State Actions & History Integration", () => {
-    it("executes addSublayer, updateSublayer, updateSublayerParameters, reorderSublayers, removeSublayer with undo/redo", async () => {
+    it("executes addProceduralLayer, updateLayer, updateLayerSource, reorderLayers, removeLayer with undo/redo", async () => {
       const { renderHook, act } = await import("@testing-library/react");
       const { StudioProvider, useStudioStore } = await import("../context/studio-context");
 
@@ -615,92 +616,93 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       });
 
       const store = result.current;
-      expect(store.activeSublayers).toBeDefined();
-      const initialCount = store.activeSublayers.length;
+      expect(store.activeFrame?.layers).toBeDefined();
+      const initialCount = store.activeFrame!.layers.length;
 
-      // 1. Add solid sublayer
+      // 1. Add solid procedural layer
       await act(async () => {
-        store.addSublayer("solid", { color: "#ff0000" });
+        store.addProceduralLayer("solid", { parameters: { color: "#ff0000" } });
       });
 
-      expect(result.current.activeSublayers).toHaveLength(initialCount + 1);
-      const addedSolid = result.current.activeSublayers[result.current.activeSublayers.length - 1];
-      expect(addedSolid.type).toBe("solid");
-      expect(addedSolid.parameters.color).toBe("#ff0000");
+      expect(result.current.activeFrame!.layers).toHaveLength(initialCount + 1);
+      const addedSolid = result.current.activeFrame!.layers[result.current.activeFrame!.layers.length - 1];
+      expect((addedSolid.source as any).kind).toBe("solid");
+      expect((addedSolid.source as any).parameters.color).toBe("#ff0000");
       expect(result.current.canUndo).toBe(true);
 
-      // 2. Add dots sublayer at index 0 (bottom)
+      // 2. Add dots procedural layer
       await act(async () => {
-        result.current.addSublayer("dots", { spacing: 30 }, 0);
+        result.current.addProceduralLayer("dots", { parameters: { spacing: 30 } });
       });
 
-      expect(result.current.activeSublayers).toHaveLength(initialCount + 2);
-      expect(result.current.activeSublayers[0].type).toBe("dots");
-      expect(result.current.activeSublayers[0].parameters.spacing).toBe(30);
+      expect(result.current.activeFrame!.layers).toHaveLength(initialCount + 2);
+      const addedDots = result.current.activeFrame!.layers[result.current.activeFrame!.layers.length - 1];
+      expect((addedDots.source as any).kind).toBe("dots");
+      expect((addedDots.source as any).parameters.spacing).toBe(30);
 
-      // 3. Update solid sublayer opacity and blendMode
+      // 3. Update solid layer opacity and blendMode
       await act(async () => {
-        result.current.updateSublayer(addedSolid.id, {
+        result.current.updateLayer(addedSolid.id, {
           opacity: 0.75,
           blendMode: "multiply",
         });
       });
 
-      const updatedSolid = result.current.activeSublayers.find((s) => s.id === addedSolid.id);
+      const updatedSolid = result.current.activeFrame!.layers.find((l) => l.id === addedSolid.id);
       expect(updatedSolid?.opacity).toBe(0.75);
       expect(updatedSolid?.blendMode).toBe("multiply");
 
-      // 4. Update sublayer parameters with continuous scrubbing (skipHistory: true)
+      // 4. Update procedural parameters with continuous scrubbing (skipHistory: true)
       await act(async () => {
-        result.current.updateSublayerParameters(
+        result.current.updateLayerSource(
           addedSolid.id,
-          { color: "#00ff00" },
+          { parameters: { color: "#00ff00" } },
           { skipHistory: true }
         );
       });
 
-      const scrubbedSolid = result.current.activeSublayers.find((s) => s.id === addedSolid.id);
-      expect(scrubbedSolid?.parameters.color).toBe("#00ff00");
+      const scrubbedSolid = result.current.activeFrame!.layers.find((l) => l.id === addedSolid.id);
+      expect((scrubbedSolid?.source as any).parameters.color).toBe("#00ff00");
 
-      // 5. Reorder sublayers
-      const firstId = result.current.activeSublayers[0].id;
-      const secondId = result.current.activeSublayers[1].id;
+      // 5. Reorder procedural layers (indices 1 and 2 above backdrop)
+      const firstId = result.current.activeFrame!.layers[1].id;
+      const secondId = result.current.activeFrame!.layers[2].id;
       await act(async () => {
-        result.current.reorderSublayers(0, 1);
+        result.current.reorderLayers(1, 2);
       });
 
-      expect(result.current.activeSublayers[0].id).toBe(secondId);
-      expect(result.current.activeSublayers[1].id).toBe(firstId);
+      expect(result.current.activeFrame!.layers[1].id).toBe(secondId);
+      expect(result.current.activeFrame!.layers[2].id).toBe(firstId);
 
       // 6. Undo restores previous order
       await act(async () => {
         result.current.undo();
       });
 
-      expect(result.current.activeSublayers[0].id).toBe(firstId);
-      expect(result.current.activeSublayers[1].id).toBe(secondId);
+      expect(result.current.activeFrame!.layers[1].id).toBe(firstId);
+      expect(result.current.activeFrame!.layers[2].id).toBe(secondId);
 
       // 7. Redo restores reordered state
       await act(async () => {
         result.current.redo();
       });
 
-      expect(result.current.activeSublayers[0].id).toBe(secondId);
-      expect(result.current.activeSublayers[1].id).toBe(firstId);
+      expect(result.current.activeFrame!.layers[1].id).toBe(secondId);
+      expect(result.current.activeFrame!.layers[2].id).toBe(firstId);
 
-      // 8. Remove sublayer
+      // 8. Remove procedural layer
       await act(async () => {
-        result.current.removeSublayer(addedSolid.id);
+        result.current.removeLayer(addedSolid.id);
       });
 
-      expect(result.current.activeSublayers.some((s) => s.id === addedSolid.id)).toBe(false);
+      expect(result.current.activeFrame!.layers.some((l) => l.id === addedSolid.id)).toBe(false);
 
-      // 9. Undo restores the removed sublayer
+      // 9. Undo restores the removed procedural layer
       await act(async () => {
         result.current.undo();
       });
 
-      expect(result.current.activeSublayers.some((s) => s.id === addedSolid.id)).toBe(true);
+      expect(result.current.activeFrame!.layers.some((l) => l.id === addedSolid.id)).toBe(true);
     });
   });
 });

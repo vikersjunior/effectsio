@@ -212,7 +212,7 @@ describe("Stage 1A Frame Storage & Migration Suite", () => {
     expect(defaultFrame.dimensions.height).toBe(1080);
     expect(defaultFrame.dimensions.presetId).toBe("1:1");
     expect(defaultFrame.layers).toHaveLength(1);
-    expect(defaultFrame.layers[0].type).toBe("generative");
+    expect(defaultFrame.layers[0].type).toBe("procedural");
     expect(defaultFrame.layers[0].name).toBe("Background");
     expect(project.activeFrameId).toBe(defaultFrame.id);
     expect(project.activeLayerId).toBe(defaultFrame.layers[0].id);
@@ -277,10 +277,9 @@ describe("Stage 1A Frame Storage & Migration Suite", () => {
     expect(frame.dimensions.height).toBe(1080);
     expect(frame.layers).toHaveLength(2);
 
-    // Layer 0: GenerativeLayer
-    expect(frame.layers[0].type).toBe("generative");
-    expect((frame.layers[0] as any).backgroundConfig.type).toBe("solid");
-    expect((frame.layers[0] as any).backgroundConfig.color).toBe("#112233");
+    // Layer 0: Procedural Backdrop
+    expect(frame.layers[0].type).toBe("procedural");
+    expect(frame.layers[0].source.type).toBe("procedural");
 
     // Layer 1: ImageLayer
     expect(frame.layers[1].type).toBe("image");
@@ -351,7 +350,7 @@ describe("Stage 1A Frame Storage & Migration Suite", () => {
     const project = await loadHydratedProject();
 
     expect(project.frames).toHaveLength(1);
-    expect(project.frames[0].layers[0].type).toBe("generative");
+    expect(project.frames[0].layers[0].type).toBe("procedural");
     expect(project.activeFrameId).toBe(project.frames[0].id);
     expect(project.activeLayerId).toBe(project.frames[0].layers[0].id);
     expect(project.assets).toEqual([]);

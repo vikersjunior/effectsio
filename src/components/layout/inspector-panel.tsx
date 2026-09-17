@@ -54,7 +54,6 @@ import { LooksBrowser } from "../looks/looks-browser";
 import { ExportModal } from "../export/export-modal";
 import type { EffectInstance } from "../../types/asset";
 import type { BackgroundType } from "../../types/look";
-import { SortableBackgroundRow } from "./sortable-background-row";
 import {
   BLEND_MODE_OPTIONS,
   DEFAULT_LAYER_TRANSFORM,
@@ -178,13 +177,8 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     activeEffectStack,
     activeBackground,
     hasActiveBackground,
-    activeBackgrounds,
-    selectedBackgroundId,
-    setSelectedBackgroundId,
-    addBackgroundItem,
-    removeBackgroundItem,
-    reorderBackgroundItems,
-    updateBackgroundItem,
+    isProceduralEditorOpen,
+    setIsProceduralEditorOpen,
     isBackgroundPanelOpen,
     setIsBackgroundPanelOpen,
     updateActiveBackground,
@@ -213,14 +207,11 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     activeLayerId,
     activeLayer,
     updateLayer,
-    openAddBackgroundPanel,
-    openEditBackgroundPanel,
   } = useStudioStore();
 
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
   const [isAccountPopoverOpen, setIsAccountPopoverOpen] = React.useState(false);
   const [isLooksPopoverOpen, setIsLooksPopoverOpen] = React.useState(false);
-  const [isAddBackgroundPopoverOpen, setIsAddBackgroundPopoverOpen] = React.useState(false);
   const [isLookVisible, setIsLookVisible] = React.useState(true);
 
   React.useEffect(() => {
@@ -247,18 +238,6 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
 
     if (oldIndex !== -1 && newIndex !== -1) {
       reorderEffectStack(activeLayer.id, oldIndex, newIndex);
-    }
-  };
-
-  const handleBackgroundDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = activeBackgrounds.findIndex((b) => b.id === active.id);
-    const newIndex = activeBackgrounds.findIndex((b) => b.id === over.id);
-
-    if (oldIndex !== -1 && newIndex !== -1) {
-      reorderBackgroundItems(oldIndex, newIndex);
     }
   };
 
@@ -481,155 +460,33 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                 )}
 
             {isProceduralLayer && (
-              <div className="flex flex-col border-b border-[color:var(--border)]">
-                <div
-                  className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0"
-                  data-slot="background-section-header"
-                  data-testid="background-section-header"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium text-[color:var(--foreground)]">Background</span>
-                    {activeBackgrounds.length > 0 && (
-                      <span className="text-xs text-[color:var(--muted-foreground)]">
-                        ({activeBackgrounds.length})
-                      </span>
-                    )}
-                  </div>
-                  <Popover open={isAddBackgroundPopoverOpen} onOpenChange={setIsAddBackgroundPopoverOpen}>
-                    <PopoverTrigger
-                      render={(triggerProps) => (
-                        <button
-                          {...triggerProps}
-                          type="button"
-                          aria-label="Add background"
-                          title="Add background"
-                          data-testid="add-background-button"
-                          className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
-                        >
-                          <PlusIcon size={ICON_SIZES.md} />
-                        </button>
-                      )}
-                    />
-                    <PopoverContent
-                      side="left"
-                      align="start"
-                      sideOffset={8}
-                      className="w-48 p-1.5 flex flex-col gap-0.5 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg"
-                    >
-                      <span className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
-                        Add Background
-                      </span>
-                      <button
-                        type="button"
-                        data-testid="add-bg-solid"
-                        onClick={() => {
-                          addBackgroundItem("solid");
-                          setIsBackgroundPanelOpen(true);
-                          setIsAddBackgroundPopoverOpen(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
-                      >
-                        <div className="size-4 rounded-xs bg-[#E20000] shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]" />
-                        Solid
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="add-bg-linear-gradient"
-                        onClick={() => {
-                          addBackgroundItem("linear-gradient");
-                          setIsBackgroundPanelOpen(true);
-                          setIsAddBackgroundPopoverOpen(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
-                      >
-                        <div className="size-4 rounded-xs bg-gradient-to-r from-black to-blue-500 shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]" />
-                        Linear Gradient
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="add-bg-radial-gradient"
-                        onClick={() => {
-                          addBackgroundItem("radial-gradient");
-                          setIsBackgroundPanelOpen(true);
-                          setIsAddBackgroundPopoverOpen(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
-                      >
-                        <div className="size-4 rounded-xs bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-black to-blue-500 shrink-0 border border-[color:color-mix(in_oklab,var(--border)_80%,transparent)]" />
-                        Radial Gradient
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="add-bg-dots"
-                        onClick={() => {
-                          addBackgroundItem("dots");
-                          setIsBackgroundPanelOpen(true);
-                          setIsAddBackgroundPopoverOpen(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
-                      >
-                        <DotsNineIcon size={ICON_SIZES.md} className="text-[color:var(--muted-foreground)] shrink-0" />
-                        Dots
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="add-bg-grid"
-                        onClick={() => {
-                          addBackgroundItem("grid");
-                          setIsBackgroundPanelOpen(true);
-                          setIsAddBackgroundPopoverOpen(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left text-xs font-medium text-[color:var(--foreground)] transition-colors cursor-pointer"
-                      >
-                        <GridFourIcon size={ICON_SIZES.md} className="text-[color:var(--muted-foreground)] shrink-0" />
-                        Grid
-                      </button>
-                    </PopoverContent>
-                  </Popover>
+              <div
+                className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3"
+                data-slot="background-section-header"
+                data-testid="background-section-header"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-[color:var(--foreground)]">
+                    Source
+                  </span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    onClick={() => setIsProceduralEditorOpen(true)}
+                    aria-label="Edit source parameters"
+                    data-testid="open-procedural-editor"
+                    className="text-xs h-7 px-2.5 cursor-pointer"
+                  >
+                    Edit Parameters
+                  </Button>
                 </div>
-
-                {activeBackgrounds.length === 0 ? (
-                  <div className="px-4 py-3 text-center text-xs text-[color:var(--muted-foreground)] select-none">
-                    No backgrounds
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-1 px-2 pb-2.5">
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleBackgroundDragEnd}
-                    >
-                      <SortableContext
-                        items={activeBackgrounds.map((b) => b.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {activeBackgrounds.map((item, index) => {
-                          const isSelected = selectedBackgroundId === item.id;
-                          return (
-                            <SortableBackgroundRow
-                              key={item.id}
-                              item={item}
-                              index={index}
-                              isSelected={isSelected}
-                              onSelect={() => {
-                                openEditBackgroundPanel(item.id);
-                              }}
-                              onToggleEnabled={() => {
-                                updateBackgroundItem(item.id, { enabled: !item.enabled });
-                              }}
-                              onRemove={() => {
-                                removeBackgroundItem(item.id);
-                              }}
-                              onOpacityChange={(opacity) => {
-                                updateBackgroundItem(item.id, { opacity });
-                              }}
-                            />
-                          );
-                        })}
-                      </SortableContext>
-                    </DndContext>
-                  </div>
-                )}
+                <div className="flex items-center justify-between text-xs text-[color:var(--muted-foreground)]">
+                  <span className="capitalize font-medium text-[color:var(--foreground)]">
+                    {(currentLayer.source as any)?.kind?.replace("-", " ") || "Procedural"}
+                  </span>
+                  <span className="font-mono text-2xs opacity-75">{currentLayer.name}</span>
+                </div>
               </div>
             )}
 

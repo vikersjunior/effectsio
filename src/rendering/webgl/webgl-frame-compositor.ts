@@ -7,6 +7,7 @@ import type {
   LayerSource,
   ImageSource,
   ProceduralSource,
+  BackgroundItem,
 } from "../../types/frame";
 import { DEFAULT_LAYER_TRANSFORM } from "../../types/frame";
 import type { EffectInstance, EffectStack } from "../../types/asset";
@@ -302,13 +303,14 @@ export class WebGL2FrameCompositor {
             parts.push(`eff:${eff.effectId}:${JSON.stringify(eff.parameters ?? {})}`);
           }
         }
-      } else if (layer.type === "generative" || layer.backgrounds || layer.sublayers) {
+      } else if (layer.type === "generative" || (layer as any).backgrounds || (layer as any).sublayers) {
+        const legacyLayer = layer as any;
         // Support legacy sublayers invalidation ONLY when canonical source is absent
-        if (layer.sublayers && layer.sublayers !== layer.backgrounds) {
-          (layer as any).backgrounds = layer.sublayers;
+        if (legacyLayer.sublayers && legacyLayer.sublayers !== legacyLayer.backgrounds) {
+          legacyLayer.backgrounds = legacyLayer.sublayers;
         }
         const normalized = normalizeGenerativeLayer(layer as GenerativeLayer);
-        const backgrounds = normalized.backgrounds ?? normalized.sublayers ?? [];
+        const backgrounds = (normalized as any).backgrounds ?? (normalized as any).sublayers ?? [];
         parts.push(`gen:${backgrounds.length}`);
         for (let s = 0; s < backgrounds.length; s++) {
           const bg = backgrounds[s]!;
@@ -436,9 +438,10 @@ export class WebGL2FrameCompositor {
     height: number,
     time = 0,
   ): WebGLTexture | null {
-    if (layer.type === "generative" || layer.backgrounds || layer.sublayers) {
-      if (layer.sublayers && layer.sublayers !== layer.backgrounds) {
-        (layer as any).backgrounds = layer.sublayers;
+    const legacyLayer = layer as any;
+    if (layer.type === "generative" || legacyLayer.backgrounds || legacyLayer.sublayers) {
+      if (legacyLayer.sublayers && legacyLayer.sublayers !== legacyLayer.backgrounds) {
+        legacyLayer.backgrounds = legacyLayer.sublayers;
       }
       return this.renderGenerativeLayer(layer as GenerativeLayer, width, height, time);
     }
@@ -474,9 +477,9 @@ export class WebGL2FrameCompositor {
 
     // 2. Normalize GenerativeLayer to canonical backgrounds representation
     const normalized = normalizeGenerativeLayer(layer);
-    const backgrounds = normalized.backgrounds ?? normalized.sublayers ?? [];
+    const backgrounds: BackgroundItem[] = (normalized as any).backgrounds ?? (normalized as any).sublayers ?? [];
     const activeBackgrounds = backgrounds.filter(
-      (bg) => bg.enabled !== false && bg.opacity > 0,
+      (bg: BackgroundItem) => bg.enabled !== false && bg.opacity > 0,
     );
 
     // 3. Fast path: Empty or entirely disabled stack produces clean transparent output
@@ -517,7 +520,7 @@ export class WebGL2FrameCompositor {
       setUniform(gl, this.blendProgram, "u_source", { type: "1i", value: 1 });
 
       // Background item blending and opacity
-      const blendModeInt = BLEND_MODE_MAP[bg.blendMode] ?? 0;
+      const blendModeInt = bg.blendMode ? (BLEND_MODE_MAP[bg.blendMode as BlendMode] ?? 0) : 0;
       setUniform(gl, this.blendProgram, "u_blendMode", { type: "1i", value: blendModeInt });
       setUniform(gl, this.blendProgram, "u_opacity", {
         type: "1f",

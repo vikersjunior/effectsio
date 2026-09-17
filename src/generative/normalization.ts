@@ -196,7 +196,7 @@ export function normalizeGenerativeLayer(
       : null;
 
   if (sourceItems) {
-    const sanitizedBackgrounds: BackgroundItem[] = sourceItems.map((s, idx) => {
+    const sanitizedBackgrounds: BackgroundItem[] = sourceItems.map((s: any, idx: number) => {
       const type = BACKGROUND_ITEM_TYPES.includes(s.type as BackgroundItemType)
         ? (s.type as BackgroundItemType)
         : "solid";

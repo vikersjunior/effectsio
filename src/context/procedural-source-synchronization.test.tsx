@@ -205,11 +205,11 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
     const backdropLayer = activeFrame.layers[0];
     expect(backdropLayer.source?.type).toBe("procedural");
 
-    const bgId = (backdropLayer as any).backgrounds[0].id;
-
-    // Mutate parameter via updateBackgroundItemParameters
+    // Mutate parameter via updateLayerSource
     await act(async () => {
-      hookResult.current.updateBackgroundItemParameters(bgId, { color: "#ff0055" });
+      hookResult.current.updateLayerSource(backdropLayer.id, {
+        parameters: { color: "#ff0055" },
+      });
     });
 
     const updatedFrame = hookResult.current.activeFrame!;
@@ -229,11 +229,12 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
 
     const activeFrame = hookResult.current.activeFrame!;
     const backdropLayer = activeFrame.layers[0];
-    const bgId = (backdropLayer as any).backgrounds[0].id;
 
-    // Update parameters in studio context
+    // Update parameters in studio context via updateLayerSource
     await act(async () => {
-      hookResult.current.updateBackgroundItemParameters(bgId, { color: "#00aaff" });
+      hookResult.current.updateLayerSource(backdropLayer.id, {
+        parameters: { color: "#00aaff" },
+      });
     });
 
     const currentLayer = hookResult.current.activeFrame!.layers[0];
@@ -276,13 +277,7 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
     expect(proc.parameters.gridSize).toBe(64);
     expect(proc.seed).toBe(42);
 
-    // Legacy compatibility mirror updated
-    const legacyBgs = (updatedLayer as any).backgrounds;
-    expect(Array.isArray(legacyBgs)).toBe(true);
-    expect(legacyBgs.length).toBeGreaterThanOrEqual(1);
-    expect(legacyBgs[0].type).toBe("grid");
-    expect(legacyBgs[0].parameters.gridSize).toBe(64);
-    expect(legacyBgs[0].seed).toBe(42);
+    expect((updatedLayer as any).backgrounds).toBeUndefined();
   });
 
   // ---------------------------------------------------------------------------

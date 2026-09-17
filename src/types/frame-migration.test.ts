@@ -549,10 +549,9 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
       expect(backdrop.visible).toBe(true);
       expect(backdrop.locked).toBe(true);
 
-      // Legacy compatibility fields populated
-      expect(backdrop.type).toBe("generative");
-      expect(Array.isArray(backdrop.backgrounds)).toBe(true);
-      expect(isGenerativeLayer(backdrop)).toBe(true);
+      // Canonical backdrop is a procedural layer
+      expect(backdrop.type).toBe("procedural");
+      expect((backdrop as any).backgrounds).toBeUndefined();
     });
 
     it("createLayer() factory produces a canonical Layer with required source while populating explicitly deprecated compatibility fields for unmigrated consumers", () => {
@@ -623,10 +622,10 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
 
       expect(layerBody).toMatch(/@deprecated[\s\S]*?\btype\?:/);
       expect(layerBody).toMatch(/@deprecated[\s\S]*?\bassetId\?:/);
-      expect(layerBody).toMatch(/@deprecated[\s\S]*?\bbackgrounds\?:/);
-      expect(layerBody).toMatch(/@deprecated[\s\S]*?\bsublayers\?:/);
-      expect(layerBody).toMatch(/@deprecated[\s\S]*?\bbackgroundMode\?:/);
-      expect(layerBody).toMatch(/@deprecated[\s\S]*?\bbackgroundConfig\?:/);
+      expect(layerBody).not.toMatch(/\bbackgrounds\?:/);
+      expect(layerBody).not.toMatch(/\bsublayers\?:/);
+      expect(layerBody).not.toMatch(/\bbackgroundMode\?:/);
+      expect(layerBody).not.toMatch(/\bbackgroundConfig\?:/);
     });
 
     it("verifies createLayer() does not require legacy fields as input and treats source as authoritative", () => {

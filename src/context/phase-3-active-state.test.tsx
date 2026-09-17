@@ -205,18 +205,12 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
     expect(hookResult.current.activeLayer?.id).toBe(expectedTopLayerId);
   });
 
-  // 5. Empty Frame
+  // 5. Empty Frame / Null Selection Resilience
   it("5. Empty frame resilience: empty frame produces null activeLayer, null activeImageId, and empty activeEffectStack without throwing", () => {
-    const frame = hookResult.current.activeFrame!;
+    act(() => {
+      hookResult.current.setActiveLayerId(null);
+    });
 
-    // Remove all layers from the frame
-    for (const layer of [...frame.layers]) {
-      act(() => {
-        hookResult.current.removeLayer(layer.id);
-      });
-    }
-
-    expect(hookResult.current.activeFrame?.layers.length).toBe(0);
     expect(hookResult.current.activeLayerId).toBeNull();
     expect(hookResult.current.activeLayer).toBeNull();
     expect(hookResult.current.activeImageId).toBeNull();
@@ -246,8 +240,8 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
     expect(hookResult.current.activeLayer?.id).toBe(bottomLayer.id);
   });
 
-  // 7. Complete Layer Deletion
-  it("7. Complete layer deletion: deleting the only layer in a frame sets activeLayerId to null cleanly", () => {
+  // 7. Complete Layer Deletion / Backdrop Invariant
+  it("7. Complete layer deletion: backdrop at index 0 cannot be deleted, preserving layer and activeLayerId", () => {
     const frame = hookResult.current.activeFrame!;
     expect(frame.layers.length).toBe(1);
     const onlyLayer = frame.layers[0];
@@ -256,9 +250,9 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
       hookResult.current.removeLayer(onlyLayer.id);
     });
 
-    expect(hookResult.current.activeLayerId).toBeNull();
-    expect(hookResult.current.activeLayer).toBeNull();
-    expect(hookResult.current.activeFrame?.activeLayerId).toBeNull();
+    // Invariant: backdrop layer cannot be deleted
+    expect(hookResult.current.activeFrame?.layers.length).toBe(1);
+    expect(hookResult.current.activeLayerId).toBe(onlyLayer.id);
   });
 
   // 8. Layer Addition Selection

@@ -186,14 +186,6 @@ export interface Layer extends BaseLayer {
   type?: "image" | "generative" | "procedural";
   /** @deprecated Compatibility-only field for un-migrated Phase 2-4 consumers. Not canonical architecture; canonical source of truth is (source as ImageSource).assetId. */
   assetId?: string;
-  /** @deprecated Compatibility-only field for un-migrated Phase 2-4 consumers. Not canonical architecture; procedural backgrounds are canonically modeled via ProceduralSource on Layer. */
-  backgrounds?: BackgroundItem[];
-  /** @deprecated Kept for backward compatibility and hydration migration only. Scheduled for removal during downstream migration. */
-  sublayers?: BackgroundItem[];
-  /** @deprecated Kept for backward compatibility and hydration migration only. Scheduled for removal during downstream migration. */
-  backgroundMode?: BackgroundType;
-  /** @deprecated Kept for backward compatibility and hydration migration only. Scheduled for removal during downstream migration. */
-  backgroundConfig?: BackgroundState;
 }
 
 /**
@@ -243,6 +235,9 @@ export interface ImageLayer extends Layer {
 export interface GenerativeLayer extends Layer {
   type: "generative";
   backgrounds: BackgroundItem[];
+  sublayers?: BackgroundItem[];
+  backgroundConfig?: BackgroundState;
+  backgroundMode?: "solid" | "gradient" | "dots" | "grid" | "generative";
 }
 
 /**
@@ -367,12 +362,7 @@ export function createDefaultBackdropLayer(backgroundConfig?: BackgroundState): 
     transform: { ...DEFAULT_LAYER_TRANSFORM },
     fit: "contain",
     groupId: null,
-    // Legacy compatibility fields for un-migrated Phase 2-4 consumers
-    type: "generative",
-    backgrounds,
-    sublayers: backgrounds,
-    backgroundMode: config.type,
-    backgroundConfig: config,
+    type: "procedural",
     createdAt: now,
     updatedAt: now,
   };
@@ -712,16 +702,6 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
         updatedAt: (candidate.updatedAt as number) || now,
       };
 
-      if (Array.isArray(candidate.backgrounds)) {
-        procLayer.backgrounds = candidate.backgrounds as BackgroundItem[];
-      }
-      if (Array.isArray((candidate as any).sublayers)) {
-        (procLayer as any).sublayers = (candidate as any).sublayers as BackgroundItem[];
-      }
-      if ((candidate as any).backgroundConfig) {
-        (procLayer as any).backgroundConfig = (candidate as any).backgroundConfig;
-      }
-
       return [procLayer];
     }
   }
@@ -782,26 +762,12 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
         effectStack: index === bgItems.length - 1 ? [...effectStack] : [],
         locked: index === 0 ? layerLocked : false,
         groupId,
-        type: index === 0 && candidate.type === "generative" ? "generative" : "procedural",
+        type: "procedural",
         source: proceduralSource,
         transform: { ...DEFAULT_LAYER_TRANSFORM },
         createdAt: (candidate.createdAt as number) || now,
         updatedAt: (candidate.updatedAt as number) || now,
       };
-
-      if ((candidate as any).backgroundConfig) {
-        (procLayer as any).backgroundConfig = (candidate as any).backgroundConfig;
-      }
-      if (Array.isArray(candidate.backgrounds)) {
-        (procLayer as any).backgrounds = candidate.backgrounds;
-      } else {
-        (procLayer as any).backgrounds = [item];
-      }
-      if (Array.isArray((candidate as any).sublayers)) {
-        (procLayer as any).sublayers = (candidate as any).sublayers;
-      } else {
-        (procLayer as any).sublayers = [item];
-      }
 
       return procLayer;
     });

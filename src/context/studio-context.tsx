@@ -237,54 +237,9 @@ export interface StudioContextType {
   updateActiveBackground: (updates: Partial<BackgroundState>) => void;
   resetActiveBackground: () => void;
 
-  // Stackable Background System
-  activeBackgrounds: BackgroundItem[];
-  selectedBackgroundId: string | null;
-  setSelectedBackgroundId: (id: string | null) => void;
-  backgroundPanelMode: "add" | "edit";
-  setBackgroundPanelMode: (mode: "add" | "edit") => void;
-  openAddBackgroundPanel: () => void;
-  openEditBackgroundPanel: (id: string) => void;
-  activeBackgroundItem: BackgroundItem | null;
-  addBackgroundLayer: () => void;
-  addBackgroundItem: (
-    type: BackgroundItemType,
-    initialParams?: Record<string, unknown>,
-    atIndex?: number
-  ) => void;
-  removeBackgroundItem: (backgroundId: string) => void;
-  reorderBackgroundItems: (fromIndex: number, toIndex: number) => void;
-  updateBackgroundItem: (
-    backgroundId: string,
-    updates: Partial<Omit<BackgroundItem, "id">>
-  ) => void;
-  updateBackgroundItemParameters: (
-    backgroundId: string,
-    paramUpdates: Record<string, unknown>,
-    options?: { skipHistory?: boolean }
-  ) => void;
-
-  // Deprecated Generative Sublayers compatibility aliases
-  activeSublayers: BackgroundItem[];
-  selectedSublayerId: string | null;
-  setSelectedSublayerId: (id: string | null) => void;
-  activeSublayer: BackgroundItem | null;
-  addSublayer: (
-    type: BackgroundItemType,
-    initialParams?: Record<string, unknown>,
-    atIndex?: number
-  ) => void;
-  removeSublayer: (sublayerId: string) => void;
-  reorderSublayers: (fromIndex: number, toIndex: number) => void;
-  updateSublayer: (
-    sublayerId: string,
-    updates: Partial<Omit<BackgroundItem, "id">>
-  ) => void;
-  updateSublayerParameters: (
-    sublayerId: string,
-    paramUpdates: Record<string, unknown>,
-    options?: { skipHistory?: boolean }
-  ) => void;
+  // Procedural Layer Editor State
+  isProceduralEditorOpen: boolean;
+  setIsProceduralEditorOpen: (open: boolean) => void;
 
   // Viewport
   setViewport: (
@@ -346,23 +301,9 @@ export function StudioProvider({
   );
   const [editorMode, setEditorMode] = React.useState<"design" | "animate">("design");
   const [isEffectBrowserOpen, setIsEffectBrowserOpen] = React.useState(false);
-  const [isBackgroundPanelOpen, setIsBackgroundPanelOpen] = React.useState(false);
-  const [backgroundPanelMode, setBackgroundPanelMode] = React.useState<"add" | "edit">("edit");
-  const [selectedBackgroundId, setSelectedBackgroundId] = React.useState<string | null>(null);
-  const selectedSublayerId = selectedBackgroundId;
-  const setSelectedSublayerId = setSelectedBackgroundId;
-
-  const openAddBackgroundPanel = React.useCallback(() => {
-    setBackgroundPanelMode("add");
-    setSelectedBackgroundId(null);
-    setIsBackgroundPanelOpen(true);
-  }, []);
-
-  const openEditBackgroundPanel = React.useCallback((id: string) => {
-    setBackgroundPanelMode("edit");
-    setSelectedBackgroundId(id);
-    setIsBackgroundPanelOpen(true);
-  }, []);
+  const [isProceduralEditorOpen, setIsProceduralEditorOpen] = React.useState(false);
+  const isBackgroundPanelOpen = isProceduralEditorOpen;
+  const setIsBackgroundPanelOpen = setIsProceduralEditorOpen;
   const [appliedLook, setAppliedLook] = React.useState<Look | null>(null);
 
   const clearAppliedLook = React.useCallback(() => {
@@ -458,122 +399,46 @@ export function StudioProvider({
     return activeLayer?.effectStack ?? [];
   }, [activeLayer]);
 
-  const activeBackgrounds = React.useMemo((): BackgroundItem[] => {
-    if (!activeFrame) return [];
-    const procLayers = activeFrame.layers.filter(
-      (l) => l.source?.type === "procedural"
-    );
-
-    if (procLayers.length > 0) {
-      // Filter out base backdrop only if it has no configured background items (initial unconfigured placeholder)
-      const validLayers = procLayers.filter((l, idx) => {
-        if (idx === 0 && procLayers.length === 1) {
-          const bgs = (l as any).backgrounds;
-          if (Array.isArray(bgs) && bgs.length === 0) return false;
-          const bgConfig = (l as any).backgroundConfig;
-          if (bgConfig && bgConfig.type === "transparent" && (!bgs || bgs.length === 0)) return false;
-          if (!bgs && !l.visible) return false;
-        }
-        return true;
-      });
-
-      return validLayers.map((l) => {
-        const proc = l.source as ProceduralSource;
-        const mirrored = (l as any).backgrounds?.[0];
-        const enabled = mirrored?.enabled !== undefined ? mirrored.enabled : l.visible !== false;
-        return {
-          id: l.id,
-          type: proc.kind,
-          enabled,
-          opacity: typeof l.opacity === "number" ? l.opacity : 1.0,
-          blendMode: l.blendMode,
-          parameters: { ...proc.parameters },
-          seed: proc.seed,
-          name: mirrored?.name || undefined,
-        };
-      });
-    }
-
-    const genLayer = activeFrame.layers.find((l): l is GenerativeLayer => l.type === "generative");
-    return genLayer?.backgrounds || genLayer?.sublayers || [];
-  }, [activeFrame]);
-
-  const activeBackgroundItem = React.useMemo((): BackgroundItem | null => {
-    if (!activeBackgrounds || activeBackgrounds.length === 0) return null;
-    if (selectedBackgroundId) {
-      const found = activeBackgrounds.find((s) => s.id === selectedBackgroundId);
-      if (found) return found;
-    }
-    if (activeLayerId) {
-      const found = activeBackgrounds.find((s) => s.id === activeLayerId);
-      if (found) return found;
-    }
-    return activeBackgrounds[activeBackgrounds.length - 1] || null;
-  }, [activeBackgrounds, selectedBackgroundId, activeLayerId]);
-
-  // Backward compatibility aliases
-  const activeSublayers = activeBackgrounds;
-  const activeSublayer = activeBackgroundItem;
-
   const activeBackground = React.useMemo((): BackgroundState => {
     if (!activeFrame) return DEFAULT_BACKGROUND_STATE;
     const currentLayer =
       (activeLayer?.source?.type === "procedural" ? activeLayer : null) ||
-      activeFrame.layers.find((l) => l.source?.type === "procedural" || l.type === "generative");
-    if (!currentLayer) return DEFAULT_BACKGROUND_STATE;
-
-    if (currentLayer.source && currentLayer.source.type === "procedural") {
-      const proc = currentLayer.source as ProceduralSource;
-      return {
-        ...DEFAULT_BACKGROUND_STATE,
-        type: (proc.kind as any) || "solid",
-        color: (proc.parameters?.color as string) || "#000000",
-        gradientEndColor:
-          (proc.parameters?.gradientEndColor as string) ||
-          (proc.parameters?.endColor as string) ||
-          "#E20000",
-        gradientAngle:
-          (proc.parameters?.gradientAngle as number) ||
-          (proc.parameters?.angle as number) ||
-          90,
-        gradientStops: (proc.parameters?.gradientStops as any) || undefined,
-        patternSpacing:
-          (proc.parameters?.spacing as number) ||
-          (proc.parameters?.patternSpacing as number) ||
-          (proc.parameters?.gridSize as number) ||
-          undefined,
-        patternBackgroundColor:
-          (proc.parameters?.backgroundColor as string) ||
-          (proc.parameters?.patternBackgroundColor as string) ||
-          undefined,
-        visible: currentLayer.visible !== false,
-      };
+      activeFrame.layers.find((l) => l.source?.type === "procedural");
+    if (!currentLayer || !currentLayer.source || currentLayer.source.type !== "procedural") {
+      return DEFAULT_BACKGROUND_STATE;
     }
 
-    const genLayer = currentLayer as GenerativeLayer;
-    const base = genLayer.backgroundConfig || DEFAULT_BACKGROUND_STATE;
-    const bgItems = genLayer.backgrounds || genLayer.sublayers;
-    if (bgItems && bgItems.length > 0) {
-      const derived = deriveLegacyBackgroundFromBackgrounds(bgItems);
-      return {
-        ...base,
-        ...derived,
-        visible: base.visible !== undefined ? base.visible : derived.visible,
-      };
-    }
+    const proc = currentLayer.source as ProceduralSource;
     return {
-      ...base,
-      type: base.type || "transparent",
-      visible: base.visible !== undefined ? base.visible : false,
+      ...DEFAULT_BACKGROUND_STATE,
+      type: (proc.kind as any) || "solid",
+      color: (proc.parameters?.color as string) || "#000000",
+      gradientEndColor:
+        (proc.parameters?.gradientEndColor as string) ||
+        (proc.parameters?.endColor as string) ||
+        "#E20000",
+      gradientAngle:
+        (proc.parameters?.gradientAngle as number) ||
+        (proc.parameters?.angle as number) ||
+        90,
+      gradientStops: (proc.parameters?.gradientStops as any) || undefined,
+      patternSpacing:
+        (proc.parameters?.spacing as number) ||
+        (proc.parameters?.patternSpacing as number) ||
+        (proc.parameters?.gridSize as number) ||
+        undefined,
+      patternBackgroundColor:
+        (proc.parameters?.backgroundColor as string) ||
+        (proc.parameters?.patternBackgroundColor as string) ||
+        undefined,
+      visible: currentLayer.visible !== false,
     };
   }, [activeFrame, activeLayer]);
 
   const hasActiveBackground = React.useMemo((): boolean => {
     if (!activeFrame) return false;
     return activeFrame.layers.some(
-      (l) =>
-        (l.source?.type === "procedural" || l.type === "generative") &&
-        l.visible !== false
+      (l) => l.source?.type === "procedural" && l.visible !== false
     );
   }, [activeFrame]);
 
@@ -606,7 +471,7 @@ export function StudioProvider({
             visible: true,
           };
         } else {
-          const gen = baseProc as GenerativeLayer;
+          const gen = baseProc as any;
           bg =
             gen.sublayers && gen.sublayers.length > 0
               ? deriveLegacyBackgroundFromSublayers(gen.sublayers)
@@ -1093,7 +958,11 @@ export function StudioProvider({
       name?: string
     ): Layer => {
       recordDiscreteSnapshot();
-      const resolvedParams = resolveBackgroundItemParameters(kind, parameters || {});
+      const incomingParams =
+        parameters && "parameters" in parameters && typeof (parameters as any).parameters === "object"
+          ? (parameters as any).parameters
+          : parameters;
+      const resolvedParams = resolveBackgroundItemParameters(kind, incomingParams || {});
       const newLayer = createProceduralLayer(
         {
           type: "procedural",
@@ -1195,20 +1064,6 @@ export function StudioProvider({
             updatedAt: Date.now(),
           };
 
-          // Maintain legacy sublayers / backgrounds mirror on layer for test backward compatibility if present
-          const mirroredBg: BackgroundItem = {
-            id: updatedLayer.id,
-            type: nextKind,
-            enabled: updatedLayer.visible !== false,
-            opacity: updatedLayer.opacity,
-            blendMode: updatedLayer.blendMode,
-            parameters: { ...resolvedParams },
-            seed: nextSource.seed,
-            name: updatedLayer.name,
-          };
-          (updatedLayer as any).backgrounds = [mirroredBg];
-          (updatedLayer as any).sublayers = [mirroredBg];
-
           const nextLayers = [...frame.layers];
           nextLayers[layerIdx] = updatedLayer;
 
@@ -1255,30 +1110,20 @@ export function StudioProvider({
             } as LayerSource;
           }
 
+          // Hard invariant: backdrop at index 0 cannot be unlocked
+          let nextLocked = updates.locked !== undefined ? updates.locked : current.locked;
+          if (layerIdx === 0 && current.locked && updates.locked === false) {
+            nextLocked = true;
+          }
+
           const updatedLayer: Layer = {
             ...current,
             ...updates,
+            locked: nextLocked,
             ...(nextTransform ? { transform: nextTransform } : {}),
             ...(nextSource ? { source: nextSource } : {}),
             updatedAt: Date.now(),
           };
-
-          // Maintain legacy sublayers / backgrounds mirror on layer for test backward compatibility if present
-          if (updatedLayer.source?.type === "procedural") {
-            const proc = updatedLayer.source as ProceduralSource;
-            const mirroredBg: BackgroundItem = {
-              id: updatedLayer.id,
-              type: proc.kind,
-              enabled: updatedLayer.visible !== false,
-              opacity: updatedLayer.opacity,
-              blendMode: updatedLayer.blendMode,
-              parameters: { ...proc.parameters },
-              seed: proc.seed,
-              name: updatedLayer.name,
-            };
-            (updatedLayer as any).backgrounds = [mirroredBg];
-            (updatedLayer as any).sublayers = [mirroredBg];
-          }
 
           const newLayers = [...frame.layers];
           newLayers[layerIdx] = updatedLayer;
@@ -1364,6 +1209,12 @@ export function StudioProvider({
           const layerIdx = frame.layers.findIndex((l) => l.id === layerId);
           if (layerIdx === -1) return frame;
 
+          // Hard invariant: backdrop at index 0 is locked and cannot be removed
+          if (layerIdx === 0 && (frame.layers[0]?.locked || frame.layers[0]?.name === "Background")) {
+            console.warn("Cannot remove locked backdrop layer at index 0");
+            return frame;
+          }
+
           const isGenerative =
             frame.layers[layerIdx].source?.type === "procedural" ||
             frame.layers[layerIdx].type === "generative";
@@ -1383,7 +1234,7 @@ export function StudioProvider({
           }
 
           if (isGenerative) {
-            setIsBackgroundPanelOpen(false);
+            setIsProceduralEditorOpen(false);
           }
 
           const updatedFrame: Frame = {
@@ -1419,60 +1270,6 @@ export function StudioProvider({
     },
     [recordDiscreteSnapshot]
   );
-
-  const addBackgroundLayer = React.useCallback(() => {
-    recordDiscreteSnapshot();
-    setFrames((prev) => {
-      const activeFId = activeFrameIdRef.current;
-      return prev.map((frame) => {
-        if (frame.id !== activeFId) return frame;
-        const existingGen = frame.layers.find(
-          (l) => l.type === "generative" || l.source?.type === "procedural"
-        );
-        if (existingGen) {
-          setActiveLayerIdState(existingGen.id);
-          return frame;
-        }
-
-        const now = Date.now();
-        const newGenLayer: GenerativeLayer = {
-          id: `layer-bg-${now}`,
-          type: "generative",
-          name: "Background",
-          visible: true,
-          opacity: 1.0,
-          blendMode: "normal",
-          effectStack: [],
-          locked: true,
-          source: {
-            type: "procedural" as const,
-            kind: "solid" as const,
-            parameters: { color: "#000000" },
-          },
-          backgrounds: [],
-          sublayers: [],
-          createdAt: now,
-          updatedAt: now,
-        };
-
-        const nextLayers = [newGenLayer, ...frame.layers];
-        setActiveLayerIdState(newGenLayer.id);
-
-        const updatedFrame: Frame = {
-          ...frame,
-          layers: nextLayers,
-          activeLayerId: newGenLayer.id,
-          updatedAt: Date.now(),
-        };
-
-        if (typeof dbSaveFrame === "function") {
-          Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
-        }
-
-        return updatedFrame;
-      });
-    });
-  }, [recordDiscreteSnapshot]);
 
   const setFrameDimensions = React.useCallback(
     (dimensions: FrameDimensions) => {
@@ -2237,54 +2034,38 @@ export function StudioProvider({
         if (frameIndex === -1) return prev;
         const targetFrame = prev[frameIndex];
 
-        // Find target procedural layer: prefer activeLayer if procedural, or selectedBackgroundId, or first procedural layer
         let procIdx = targetFrame.layers.findIndex(
-          (l) => l.id === targetFrame.activeLayerId && (l.source?.type === "procedural" || l.type === "generative")
+          (l) => l.id === targetFrame.activeLayerId && l.source?.type === "procedural"
         );
-        if (procIdx === -1 && selectedBackgroundId) {
-          procIdx = targetFrame.layers.findIndex((l) => l.id === selectedBackgroundId);
-        }
         if (procIdx === -1) {
-          procIdx = targetFrame.layers.findIndex(
-            (l) => l.source?.type === "procedural" || l.type === "generative"
-          );
+          procIdx = targetFrame.layers.findIndex((l) => l.source?.type === "procedural");
         }
         if (procIdx === -1) return prev;
 
         const currentLayer = targetFrame.layers[procIdx];
-        const currentBg = (currentLayer as any).backgroundConfig || DEFAULT_BACKGROUND_STATE;
-        const nextBg: BackgroundState = {
-          ...currentBg,
-          ...updates,
-          type: updates.type || currentBg.type,
+        const currentSource = currentLayer.source as ProceduralSource;
+        const nextKind = updates.type && updates.type !== "transparent" ? updates.type : currentSource.kind;
+        const nextParams: Record<string, unknown> = {
+          ...currentSource.parameters,
+          ...(updates.color ? { color: updates.color } : {}),
+          ...(updates.gradientEndColor ? { gradientEndColor: updates.gradientEndColor } : {}),
+          ...(updates.gradientAngle !== undefined ? { gradientAngle: updates.gradientAngle, angle: updates.gradientAngle } : {}),
+          ...(updates.patternSpacing !== undefined ? { spacing: updates.patternSpacing } : {}),
         };
 
-        const nextBackgrounds = normalizeLegacyBackgroundToBackgrounds(nextBg);
-        const nextSource = deriveProceduralSourceFromBackgrounds(nextBackgrounds, currentLayer.source);
-
-        const isVisible = nextBg.type !== "transparent";
+        const isVisible = updates.visible !== undefined ? updates.visible : updates.type !== "transparent";
 
         const updatedLayer: Layer = {
           ...currentLayer,
           visible: isVisible,
-          source: nextSource,
+          source: {
+            type: "procedural",
+            kind: nextKind as any,
+            parameters: nextParams,
+            seed: currentSource.seed,
+          },
           updatedAt: Date.now(),
         };
-
-        const mirroredBg: BackgroundItem = {
-          id: updatedLayer.id,
-          type: nextSource.kind,
-          enabled: isVisible,
-          opacity: updatedLayer.opacity,
-          blendMode: updatedLayer.blendMode,
-          parameters: { ...nextSource.parameters },
-          seed: nextSource.seed,
-          name: updatedLayer.name,
-        };
-        (updatedLayer as any).backgrounds = [mirroredBg];
-        (updatedLayer as any).sublayers = [mirroredBg];
-        (updatedLayer as any).backgroundMode = nextBg.type;
-        (updatedLayer as any).backgroundConfig = nextBg;
 
         const nextLayers = [...targetFrame.layers];
         nextLayers[procIdx] = updatedLayer;
@@ -2307,22 +2088,18 @@ export function StudioProvider({
           if (typeof dbSaveFrame === "function") {
             Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
           }
-          const activeImg = targetFrame.layers.find((l): l is ImageLayer => l.type === "image");
-          if (activeImg && typeof dbSaveBackground === "function") {
-            Promise.resolve(dbSaveBackground(activeImg.assetId, nextBg)).catch(console.error);
-          }
         }, 500);
 
         return nextFrames;
       });
     },
-    [activeFrame, selectedBackgroundId, startOrContinueParamInteraction]
+    [activeFrame, startOrContinueParamInteraction]
   );
 
   const resetActiveBackground = React.useCallback(() => {
     if (!activeFrame) return;
     recordDiscreteSnapshot();
-    setIsBackgroundPanelOpen(false);
+    setIsProceduralEditorOpen(false);
 
     setFrames((prev) => {
       const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
@@ -2343,10 +2120,6 @@ export function StudioProvider({
             },
             updatedAt: Date.now(),
           };
-          (resetBackdrop as any).backgrounds = [];
-          (resetBackdrop as any).sublayers = [];
-          (resetBackdrop as any).backgroundMode = "transparent";
-          (resetBackdrop as any).backgroundConfig = { ...DEFAULT_BACKGROUND_STATE, type: "transparent" };
           nextLayers.push(resetBackdrop);
         } else if (l.source?.type === "procedural" || l.type === "generative") {
           // Exclude upper procedural layers
@@ -2354,8 +2127,6 @@ export function StudioProvider({
           nextLayers.push(l);
         }
       });
-
-      setSelectedBackgroundId(null);
 
       const updatedFrame: Frame = {
         ...targetFrame,
@@ -2369,397 +2140,12 @@ export function StudioProvider({
       if (typeof dbSaveFrame === "function") {
         dbSaveFrame(updatedFrame).catch(console.error);
       }
-      const activeImg = targetFrame.layers.find((l): l is ImageLayer => l.type === "image");
-      if (activeImg && typeof dbDeleteBackground === "function") {
-        dbDeleteBackground(activeImg.assetId).catch(console.error);
-      }
 
       return nextFrames;
     });
   }, [activeFrame, recordDiscreteSnapshot]);
 
-  // ---------------------------------------------------------------------------
-  // Stackable Background System Actions (Canonical Layer Projections)
-  // ---------------------------------------------------------------------------
 
-  const addBackgroundItem = React.useCallback(
-    (
-      type: BackgroundItemType,
-      initialParams?: Record<string, unknown>,
-      atIndex?: number
-    ) => {
-      if (!activeFrame) return;
-      recordDiscreteSnapshot();
-
-      setFrames((prev) => {
-        const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
-        if (frameIndex === -1) return prev;
-        const targetFrame = prev[frameIndex];
-
-        const resolvedParams = resolveBackgroundItemParameters(type, initialParams || {});
-
-        const baseBackdrop = targetFrame.layers[0];
-        const isBaseHidden =
-          baseBackdrop &&
-          (baseBackdrop.source?.type === "procedural" || baseBackdrop.type === "generative") &&
-          !baseBackdrop.visible;
-
-        const procCount = targetFrame.layers.filter(
-          (l) => l.source?.type === "procedural" || l.type === "generative"
-        ).length;
-
-        let nextLayers = [...targetFrame.layers];
-        let targetLayerId: string;
-
-        if (isBaseHidden && procCount === 1) {
-          targetLayerId = baseBackdrop.id;
-          const updatedBackdrop: Layer = {
-            ...baseBackdrop,
-            name: "Background",
-            visible: true,
-            source: {
-              type: "procedural",
-              kind: type,
-              parameters: resolvedParams,
-            },
-            updatedAt: Date.now(),
-          };
-          const mirroredBg: BackgroundItem = {
-            id: updatedBackdrop.id,
-            type,
-            enabled: true,
-            opacity: updatedBackdrop.opacity,
-            blendMode: updatedBackdrop.blendMode,
-            parameters: { ...resolvedParams },
-          };
-          (updatedBackdrop as any).backgrounds = [mirroredBg];
-          (updatedBackdrop as any).sublayers = [mirroredBg];
-          nextLayers[0] = updatedBackdrop;
-        } else {
-          const typeLabel =
-            type === "solid"
-              ? "Solid"
-              : type === "linear-gradient"
-              ? "Linear Gradient"
-              : type === "radial-gradient"
-              ? "Radial Gradient"
-              : type === "dots"
-              ? "Dots"
-              : "Grid";
-
-          const newLayer = createProceduralLayer(
-            type,
-            typeLabel,
-            {
-              visible: true,
-              opacity: 1.0,
-              blendMode: "normal",
-              parameters: resolvedParams,
-            }
-          );
-          targetLayerId = newLayer.id;
-
-          const mirroredBg: BackgroundItem = {
-            id: newLayer.id,
-            type,
-            enabled: true,
-            opacity: newLayer.opacity,
-            blendMode: newLayer.blendMode,
-            parameters: { ...resolvedParams },
-          };
-          (newLayer as any).backgrounds = [mirroredBg];
-          (newLayer as any).sublayers = [mirroredBg];
-
-          const procIndices = targetFrame.layers
-            .map((l, idx) => ({ isProc: l.source?.type === "procedural" || l.type === "generative", idx }))
-            .filter((x) => x.isProc)
-            .map((x) => x.idx);
-
-          if (typeof atIndex === "number" && Number.isFinite(atIndex) && atIndex < procIndices.length) {
-            nextLayers.splice(procIndices[atIndex], 0, newLayer);
-          } else {
-            const lastProcIdx = procIndices.length > 0 ? procIndices[procIndices.length - 1] : 0;
-            nextLayers.splice(lastProcIdx + 1, 0, newLayer);
-          }
-        }
-
-        setSelectedBackgroundId(targetLayerId);
-        setActiveLayerIdState(targetLayerId);
-
-        const updatedFrame: Frame = {
-          ...targetFrame,
-          layers: nextLayers,
-          activeLayerId: targetLayerId,
-          updatedAt: Date.now(),
-        };
-
-        const nextFrames = [...prev];
-        nextFrames[frameIndex] = updatedFrame;
-
-        if (typeof dbSaveFrame === "function") {
-          Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
-        }
-
-        return nextFrames;
-      });
-    },
-    [activeFrame, recordDiscreteSnapshot]
-  );
-
-  const removeBackgroundItem = React.useCallback(
-    (backgroundId: string) => {
-      if (!activeFrame) return;
-      recordDiscreteSnapshot();
-
-      setFrames((prev) => {
-        const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
-        if (frameIndex === -1) return prev;
-        const targetFrame = prev[frameIndex];
-
-        const layerIdx = targetFrame.layers.findIndex(
-          (l) =>
-            l.id === backgroundId ||
-            (l as any).backgrounds?.some((b: any) => b.id === backgroundId) ||
-            (l as any).sublayers?.some((b: any) => b.id === backgroundId)
-        );
-        if (layerIdx === -1) return prev;
-
-        const procLayers = targetFrame.layers.filter(
-          (l) => l.source?.type === "procedural" || l.type === "generative"
-        );
-
-        let nextLayers = [...targetFrame.layers];
-        let nextSelectedBgId: string | null = null;
-
-        if (layerIdx === 0) {
-          if (procLayers.length <= 1) {
-            const hiddenBackdrop: Layer = {
-              ...nextLayers[0],
-              visible: false,
-              updatedAt: Date.now(),
-            };
-            (hiddenBackdrop as any).backgrounds = [];
-            (hiddenBackdrop as any).sublayers = [];
-            nextLayers[0] = hiddenBackdrop;
-            nextSelectedBgId = null;
-          } else {
-            const nextProcIdx = nextLayers.findIndex(
-              (l, idx) => idx > 0 && (l.source?.type === "procedural" || l.type === "generative")
-            );
-            if (nextProcIdx !== -1) {
-              const promotedLayer: Layer = {
-                ...nextLayers[nextProcIdx],
-                locked: true,
-                updatedAt: Date.now(),
-              };
-              nextLayers.splice(nextProcIdx, 1);
-              nextLayers[0] = promotedLayer;
-              nextSelectedBgId = promotedLayer.id;
-            }
-          }
-        } else {
-          nextLayers.splice(layerIdx, 1);
-          const remainingProcs = nextLayers.filter(
-            (l) => (l.source?.type === "procedural" || l.type === "generative") && l.visible !== false
-          );
-          nextSelectedBgId = remainingProcs[remainingProcs.length - 1]?.id ?? null;
-        }
-
-        setSelectedBackgroundId(nextSelectedBgId);
-        if (targetFrame.activeLayerId === backgroundId) {
-          setActiveLayerIdState(nextSelectedBgId ?? nextLayers[0]?.id ?? null);
-        }
-
-        const updatedFrame: Frame = {
-          ...targetFrame,
-          layers: nextLayers,
-          activeLayerId:
-            targetFrame.activeLayerId === backgroundId
-              ? (nextSelectedBgId ?? nextLayers[0]?.id ?? null)
-              : targetFrame.activeLayerId,
-          updatedAt: Date.now(),
-        };
-
-        const nextFrames = [...prev];
-        nextFrames[frameIndex] = updatedFrame;
-
-        if (typeof dbSaveFrame === "function") {
-          Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
-        }
-
-        return nextFrames;
-      });
-    },
-    [activeFrame, recordDiscreteSnapshot]
-  );
-
-  const reorderBackgroundItems = React.useCallback(
-    (fromIndex: number, toIndex: number) => {
-      if (!activeFrame) return;
-
-      setFrames((prev) => {
-        const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
-        if (frameIndex === -1) return prev;
-        const targetFrame = prev[frameIndex];
-
-        const procLayerIndices = targetFrame.layers
-          .map((l, idx) => ({ l, idx }))
-          .filter(({ l }) => (l.source?.type === "procedural" || l.type === "generative") && l.visible !== false)
-          .map((x) => x.idx);
-
-        if (
-          fromIndex < 0 ||
-          fromIndex >= procLayerIndices.length ||
-          toIndex < 0 ||
-          toIndex >= procLayerIndices.length ||
-          fromIndex === toIndex
-        ) {
-          return prev;
-        }
-
-        recordDiscreteSnapshot();
-
-        const fromLayerIdx = procLayerIndices[fromIndex];
-        const toLayerIdx = procLayerIndices[toIndex];
-
-        const nextLayers = [...targetFrame.layers];
-        const [moved] = nextLayers.splice(fromLayerIdx, 1);
-        nextLayers.splice(toLayerIdx, 0, moved);
-
-        nextLayers[0] = { ...nextLayers[0], locked: true };
-        for (let i = 1; i < nextLayers.length; i++) {
-          if (nextLayers[i].source?.type === "procedural") {
-            nextLayers[i] = { ...nextLayers[i], locked: false };
-          }
-        }
-
-        const updatedFrame: Frame = {
-          ...targetFrame,
-          layers: nextLayers,
-          updatedAt: Date.now(),
-        };
-
-        const nextFrames = [...prev];
-        nextFrames[frameIndex] = updatedFrame;
-
-        if (typeof dbSaveFrame === "function") {
-          Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
-        }
-
-        return nextFrames;
-      });
-    },
-    [activeFrame, recordDiscreteSnapshot]
-  );
-
-  const updateBackgroundItem = React.useCallback(
-    (
-      backgroundId: string,
-      updates: Partial<Omit<BackgroundItem, "id">>
-    ) => {
-      if (!activeFrame) return;
-      recordDiscreteSnapshot();
-
-      setFrames((prev) => {
-        const frameIndex = prev.findIndex((f) => f.id === activeFrame.id);
-        if (frameIndex === -1) return prev;
-        const targetFrame = prev[frameIndex];
-
-        const layerIdx = targetFrame.layers.findIndex(
-          (l) =>
-            l.id === backgroundId ||
-            (l as any).backgrounds?.some((b: any) => b.id === backgroundId) ||
-            (l as any).sublayers?.some((b: any) => b.id === backgroundId)
-        );
-        if (layerIdx === -1) return prev;
-
-        const current = targetFrame.layers[layerIdx];
-        const currentProc = current.source?.type === "procedural"
-          ? (current.source as ProceduralSource)
-          : null;
-        const kind = currentProc?.kind || "solid";
-
-        let nextParams = currentProc?.parameters || {};
-        if (updates.parameters) {
-          nextParams = resolveBackgroundItemParameters(kind, {
-            ...nextParams,
-            ...updates.parameters,
-          });
-        }
-
-        const nextSource: ProceduralSource = {
-          type: "procedural",
-          kind,
-          parameters: nextParams,
-          seed: updates.seed !== undefined ? updates.seed : currentProc?.seed,
-        };
-
-        const updatedLayer: Layer = {
-          ...current,
-          visible: updates.enabled !== undefined ? Boolean(updates.enabled) : current.visible,
-          opacity:
-            typeof updates.opacity === "number" && Number.isFinite(updates.opacity)
-              ? Math.max(0, Math.min(1, updates.opacity))
-              : current.opacity,
-          blendMode: updates.blendMode || current.blendMode,
-          name: updates.name ? updates.name.trim() : current.name,
-          source: nextSource,
-          updatedAt: Date.now(),
-        };
-
-        const existingMirrored = (current as any).backgrounds?.[0];
-        const mirroredBg: BackgroundItem = {
-          id: updatedLayer.id,
-          type: kind,
-          enabled: updatedLayer.visible !== false,
-          opacity: updatedLayer.opacity,
-          blendMode: updatedLayer.blendMode,
-          parameters: { ...nextParams },
-          seed: nextSource.seed,
-          name: updates.name ? updates.name.trim() : existingMirrored?.name,
-        };
-        (updatedLayer as any).backgrounds = [mirroredBg];
-        (updatedLayer as any).sublayers = [mirroredBg];
-
-        const nextLayers = [...targetFrame.layers];
-        nextLayers[layerIdx] = updatedLayer;
-
-        const updatedFrame: Frame = {
-          ...targetFrame,
-          layers: nextLayers,
-          updatedAt: Date.now(),
-        };
-
-        const nextFrames = [...prev];
-        nextFrames[frameIndex] = updatedFrame;
-
-        if (typeof dbSaveFrame === "function") {
-          Promise.resolve(dbSaveFrame(updatedFrame)).catch(console.error);
-        }
-
-        return nextFrames;
-      });
-    },
-    [activeFrame, recordDiscreteSnapshot]
-  );
-
-  const updateBackgroundItemParameters = React.useCallback(
-    (
-      backgroundId: string,
-      paramUpdates: Record<string, unknown>,
-      options?: { skipHistory?: boolean }
-    ) => {
-      updateLayerSource(backgroundId, { parameters: paramUpdates }, options);
-    },
-    [updateLayerSource]
-  );
-
-  // Backward-compatibility sublayer action aliases
-  const addSublayer = addBackgroundItem;
-  const removeSublayer = removeBackgroundItem;
-  const reorderSublayers = reorderBackgroundItems;
-  const updateSublayer = updateBackgroundItem;
-  const updateSublayerParameters = updateBackgroundItemParameters;
 
   // ---------------------------------------------------------------------------
   // Global Undo / Redo
@@ -3262,37 +2648,14 @@ export function StudioProvider({
     saveCurrentStackAsLook,
     deleteUserLook,
 
-    // Stackable Background System
+    // Procedural Layer Editor & Background
     hasActiveBackground,
+    isProceduralEditorOpen,
+    setIsProceduralEditorOpen,
     isBackgroundPanelOpen,
     setIsBackgroundPanelOpen,
-    backgroundPanelMode,
-    setBackgroundPanelMode,
-    openAddBackgroundPanel,
-    openEditBackgroundPanel,
     updateActiveBackground,
     resetActiveBackground,
-    activeBackgrounds,
-    selectedBackgroundId,
-    setSelectedBackgroundId,
-    activeBackgroundItem,
-    addBackgroundLayer,
-    addBackgroundItem,
-    removeBackgroundItem,
-    reorderBackgroundItems,
-    updateBackgroundItem,
-    updateBackgroundItemParameters,
-
-    // Deprecated Generative Sublayers compatibility aliases
-    activeSublayers,
-    selectedSublayerId,
-    setSelectedSublayerId,
-    activeSublayer,
-    addSublayer,
-    removeSublayer,
-    reorderSublayers,
-    updateSublayer,
-    updateSublayerParameters,
 
     // Viewport
     setViewport,

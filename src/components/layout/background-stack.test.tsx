@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import React from "react";
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { StudioProvider, useStudioStore } from "../../context/studio-context";
 import { InspectorPanel } from "./inspector-panel";
 import { FloatingBackgroundPanel } from "./floating-background-panel";
 import { LayersPanel } from "./layers-panel";
-import type { GenerativeLayer } from "../../types/frame";
+import type { ProceduralSource } from "../../types/frame";
 
 function TestHost({ onStore }: { onStore?: (store: ReturnType<typeof useStudioStore>) => void }) {
   const store = useStudioStore();
@@ -17,11 +17,11 @@ function TestHost({ onStore }: { onStore?: (store: ReturnType<typeof useStudioSt
   return (
     <div className="relative w-full h-full">
       <span data-testid="is-hydrated">{String(store.isHydrated)}</span>
-      <span data-testid="selected-bg-id">{store.selectedBackgroundId || "none"}</span>
-      <span data-testid="bg-count">{store.activeBackgrounds.length}</span>
+      <span data-testid="active-layer-id">{store.activeLayerId || "none"}</span>
+      <span data-testid="layer-count">{store.activeFrame?.layers.length ?? 0}</span>
       <button
         data-testid="open-bg-panel"
-        onClick={() => store.setIsBackgroundPanelOpen(true)}
+        onClick={() => store.setIsProceduralEditorOpen(true)}
       >
         Open BG Panel
       </button>
@@ -44,13 +44,13 @@ function TestHost({ onStore }: { onStore?: (store: ReturnType<typeof useStudioSt
   );
 }
 
-describe("EffectsIO — Stackable Background System Suite", () => {
+describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () => {
   afterEach(() => {
     cleanup();
   });
 
-  describe("1. Background Creation & Stack Management", () => {
-    it("adds multiple independent backgrounds via + popover and automatically selects each new item", async () => {
+  describe("1. Procedural Layer Creation & Single Active Selection", () => {
+    it("adds multiple independent procedural layers and automatically selects each new layer", async () => {
       let storeRef!: ReturnType<typeof useStudioStore>;
       render(
         <StudioProvider>
@@ -62,97 +62,41 @@ describe("EffectsIO — Stackable Background System Suite", () => {
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      // Select Background Layer to show Background Stack in InspectorPanel
-      fireEvent.click(screen.getByTestId("locked-background-row"));
+      const initialLayers = storeRef.activeFrame?.layers.length ?? 0;
+      expect(initialLayers).toBeGreaterThanOrEqual(1);
 
+      // 1. Add Solid layer
+      storeRef.addProceduralLayer("solid");
       await waitFor(() => {
-        expect(screen.getByTestId("add-background-button")).toBeDefined();
+        expect(storeRef.activeFrame?.layers.length).toBe(initialLayers + 1);
+        const added = storeRef.activeFrame?.layers[storeRef.activeFrame.layers.length - 1];
+        expect(added?.source.type).toBe("procedural");
+        expect((added?.source as ProceduralSource).kind).toBe("solid");
+        expect(storeRef.activeLayerId).toBe(added?.id);
       });
 
-      // 1. Add Solid Color via + popover
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-
+      // 2. Add Dots layer
+      storeRef.addProceduralLayer("dots");
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(1);
-        expect(storeRef.activeBackgrounds[0].type).toBe("solid");
-        expect(storeRef.selectedBackgroundId).toBe(storeRef.activeBackgrounds[0].id);
+        expect(storeRef.activeFrame?.layers.length).toBe(initialLayers + 2);
+        const added = storeRef.activeFrame?.layers[storeRef.activeFrame.layers.length - 1];
+        expect(added?.source.type).toBe("procedural");
+        expect((added?.source as ProceduralSource).kind).toBe("dots");
+        expect(storeRef.activeLayerId).toBe(added?.id);
       });
 
-      // 2. Add Linear Gradient
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-linear-gradient"));
-
+      // 3. Add Grid layer
+      storeRef.addProceduralLayer("grid");
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(2);
-        expect(storeRef.activeBackgrounds[1].type).toBe("linear-gradient");
-        expect(storeRef.selectedBackgroundId).toBe(storeRef.activeBackgrounds[1].id);
-      });
-
-      // 3. Add Grid Pattern
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-grid"));
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(3);
-        expect(storeRef.activeBackgrounds[2].type).toBe("grid");
-        expect(storeRef.selectedBackgroundId).toBe(storeRef.activeBackgrounds[2].id);
-      });
-
-      // Verify all 3 appear in the background stack list as independent rows
-      const rows = screen.getAllByTestId(/^background-row-/);
-      expect(rows).toHaveLength(3);
-
-      // Verify FloatingBackgroundPanel is active for editing parameters
-      expect(screen.getByLabelText("Background Parameters")).toBeDefined();
-    });
-
-    it("supports selection between background stack items", async () => {
-      let storeRef!: ReturnType<typeof useStudioStore>;
-      render(
-        <StudioProvider>
-          <TestHost onStore={(s) => { storeRef = s; }} />
-        </StudioProvider>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-      });
-
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
-
-      // Add two items
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-dots"));
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(2);
-      });
-
-      const solidId = storeRef.activeBackgrounds[0].id;
-      const dotsId = storeRef.activeBackgrounds[1].id;
-
-      // Click solid row to select it
-      const solidRow = screen.getByTestId(`background-row-${solidId}`);
-      fireEvent.click(solidRow);
-
-      await waitFor(() => {
-        expect(storeRef.selectedBackgroundId).toBe(solidId);
-      });
-
-      // Click dots row to select it
-      const dotsRow = screen.getByTestId(`background-row-${dotsId}`);
-      fireEvent.click(dotsRow);
-
-      await waitFor(() => {
-        expect(storeRef.selectedBackgroundId).toBe(dotsId);
+        expect(storeRef.activeFrame?.layers.length).toBe(initialLayers + 3);
+        const added = storeRef.activeFrame?.layers[storeRef.activeFrame.layers.length - 1];
+        expect(added?.source.type).toBe("procedural");
+        expect((added?.source as ProceduralSource).kind).toBe("grid");
+        expect(storeRef.activeLayerId).toBe(added?.id);
       });
     });
 
-    it("toggles visibility independently per background item", async () => {
+    it("activeLayerId is the single authoritative source of truth for selection", async () => {
       let storeRef!: ReturnType<typeof useStudioStore>;
       render(
         <StudioProvider>
@@ -164,72 +108,34 @@ describe("EffectsIO — Stackable Background System Suite", () => {
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
-
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-
+      storeRef.addProceduralLayer("solid");
+      let solidLayerId = "";
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(1);
-        expect(storeRef.activeBackgrounds[0].enabled).toBe(true);
+        expect(storeRef.activeFrame?.layers.length).toBe(2);
+        solidLayerId = storeRef.activeLayerId!;
       });
 
-      const solidId = storeRef.activeBackgrounds[0].id;
-      const toggleBtn = screen.getByTestId(`visibility-toggle-${solidId}`);
-      fireEvent.click(toggleBtn);
-
+      storeRef.addProceduralLayer("dots");
+      let dotsLayerId = "";
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].enabled).toBe(false);
+        expect(storeRef.activeFrame?.layers.length).toBe(3);
+        dotsLayerId = storeRef.activeLayerId!;
       });
 
-      fireEvent.click(toggleBtn);
+      expect(solidLayerId).not.toBe(dotsLayerId);
+      expect(storeRef.activeLayerId).toBe(dotsLayerId);
 
+      // Select solid layer
+      storeRef.setActiveLayerId(solidLayerId);
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].enabled).toBe(true);
-      });
-    });
-
-    it("reorders background items and updates canonical array", async () => {
-      let storeRef!: ReturnType<typeof useStudioStore>;
-      render(
-        <StudioProvider>
-          <TestHost onStore={(s) => { storeRef = s; }} />
-        </StudioProvider>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-      });
-
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
-
-      // Add Solid then Grid
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-grid"));
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(2);
-      });
-
-      const id0 = storeRef.activeBackgrounds[0].id;
-      const id1 = storeRef.activeBackgrounds[1].id;
-
-      // Reorder 0 to 1
-      storeRef.reorderBackgroundItems(0, 1);
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].id).toBe(id1);
-        expect(storeRef.activeBackgrounds[1].id).toBe(id0);
+        expect(storeRef.activeLayerId).toBe(solidLayerId);
+        expect(storeRef.activeLayer?.id).toBe(solidLayerId);
       });
     });
   });
 
-  describe("2. Selection Recovery on Item Deletion", () => {
-    it("handles selection recovery when deleting top, middle, and bottom items", async () => {
+  describe("2. Layer Independence & Parameter Updates", () => {
+    it("updating parameters on one procedural layer does NOT mutate other layers", async () => {
       let storeRef!: ReturnType<typeof useStudioStore>;
       render(
         <StudioProvider>
@@ -241,52 +147,37 @@ describe("EffectsIO — Stackable Background System Suite", () => {
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
-
-      // Add 3 items: Solid, Linear Gradient, Grid
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-linear-gradient"));
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-grid"));
-
+      storeRef.addProceduralLayer("solid");
+      let solidLayerId = "";
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(3);
+        expect(storeRef.activeFrame?.layers.length).toBe(2);
+        solidLayerId = storeRef.activeLayerId!;
       });
 
-      const [item0, item1, item2] = storeRef.activeBackgrounds;
-
-      // Case A: Select middle item (item1) and remove it -> neighbor selected
-      storeRef.setSelectedBackgroundId(item1.id);
-      storeRef.removeBackgroundItem(item1.id);
-
+      storeRef.addProceduralLayer("dots");
+      let dotsLayerId = "";
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds).toHaveLength(2);
-        expect(storeRef.selectedBackgroundId).toBe(item2.id);
+        expect(storeRef.activeFrame?.layers.length).toBe(3);
+        dotsLayerId = storeRef.activeLayerId!;
       });
 
-      // Case B: Select bottom/last item (item2) and remove it -> preceding neighbor (item0) selected
-      storeRef.removeBackgroundItem(item2.id);
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds).toHaveLength(1);
-        expect(storeRef.selectedBackgroundId).toBe(item0.id);
+      // Update solid layer parameter
+      storeRef.updateLayerSource(solidLayerId, {
+        parameters: { color: "#336699" },
       });
 
-      // Case C: Remove only remaining item -> selection becomes null
-      storeRef.removeBackgroundItem(item0.id);
-
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds).toHaveLength(0);
-        expect(storeRef.selectedBackgroundId).toBeNull();
+        const currentSolid = storeRef.activeFrame?.layers.find((l) => l.id === solidLayerId);
+        const currentDots = storeRef.activeFrame?.layers.find((l) => l.id === dotsLayerId);
+
+        expect((currentSolid?.source as ProceduralSource).parameters.color).toBe("#336699");
+        expect((currentDots?.source as ProceduralSource).parameters.color).toBeUndefined();
       });
     });
   });
 
-  describe("3. Independent Opacity & Blend Mode", () => {
-    it("adjusts opacity independently per background item without affecting others", async () => {
+  describe("3. Backdrop Protection Invariants", () => {
+    it("backdrop at index 0 cannot be removed", async () => {
       let storeRef!: ReturnType<typeof useStudioStore>;
       render(
         <StudioProvider>
@@ -298,39 +189,20 @@ describe("EffectsIO — Stackable Background System Suite", () => {
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
+      const backdrop = storeRef.activeFrame?.layers[0]!;
+      expect(backdrop).toBeDefined();
+      expect(backdrop.locked).toBe(true);
 
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-grid"));
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(2);
-      });
-
-      const [solidItem, gridItem] = storeRef.activeBackgrounds;
-
-      // Update gridItem opacity to 0.7
-      storeRef.updateBackgroundItem(gridItem.id, { opacity: 0.7 });
+      const countBefore = storeRef.activeFrame?.layers.length ?? 0;
+      storeRef.removeLayer(backdrop.id);
 
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds[1].opacity).toBe(0.7);
-        // Solid remains unchanged at 1.0
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(1.0);
-      });
-
-      // Update solidItem opacity to 0.35
-      storeRef.updateBackgroundItem(solidItem.id, { opacity: 0.35 });
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.35);
-        expect(storeRef.activeBackgrounds[1].opacity).toBe(0.7);
+        expect(storeRef.activeFrame?.layers.length).toBe(countBefore);
+        expect(storeRef.activeFrame?.layers[0].id).toBe(backdrop.id);
       });
     });
 
-    it("adjusts blend mode independently per background item", async () => {
+    it("backdrop at index 0 cannot be unlocked", async () => {
       let storeRef!: ReturnType<typeof useStudioStore>;
       render(
         <StudioProvider>
@@ -342,31 +214,15 @@ describe("EffectsIO — Stackable Background System Suite", () => {
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
-
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-grid"));
+      const backdrop = storeRef.activeFrame?.layers[0]!;
+      storeRef.updateLayer(backdrop.id, { locked: false });
 
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(2);
-      });
-
-      const [solidItem, gridItem] = storeRef.activeBackgrounds;
-
-      // Set grid blend mode to overlay
-      storeRef.updateBackgroundItem(gridItem.id, { blendMode: "overlay" });
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[1].blendMode).toBe("overlay");
-        // Solid remains normal
-        expect(storeRef.activeBackgrounds[0].blendMode).toBe("normal");
+        expect(storeRef.activeFrame?.layers[0].locked).toBe(true);
       });
     });
 
-    it("renders editable opacity input in background row, updating item opacity with clamping and undo/redo", async () => {
+    it("backdrop at index 0 cannot be reordered away from index 0", async () => {
       let storeRef!: ReturnType<typeof useStudioStore>;
       render(
         <StudioProvider>
@@ -378,146 +234,22 @@ describe("EffectsIO — Stackable Background System Suite", () => {
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
+      const backdrop = storeRef.activeFrame?.layers[0]!;
+      storeRef.addProceduralLayer("dots");
+      const dotsLayer = storeRef.activeLayer!;
 
-      // Add Radial Gradient
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-radial-gradient"));
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(1);
-      });
-
-      const radial = storeRef.activeBackgrounds[0];
-      const opacityInput = screen.getByTestId(`background-opacity-input-${radial.id}`) as HTMLInputElement;
-      expect(opacityInput).toBeDefined();
-      expect(opacityInput.tagName).toBe("INPUT");
-      expect(opacityInput.value).toBe("100%");
-
-      // Focus and change opacity to 65%
-      fireEvent.focus(opacityInput);
-      fireEvent.change(opacityInput, { target: { value: "65%" } });
-      fireEvent.blur(opacityInput);
+      // Attempt to move backdrop from index 0 to index 1
+      storeRef.reorderLayers(0, 1);
 
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.65);
-        expect(opacityInput.value).toBe("65%");
-      });
-
-      // Clamp high values: 150 -> 100%
-      fireEvent.focus(opacityInput);
-      fireEvent.change(opacityInput, { target: { value: "150" } });
-      fireEvent.keyDown(opacityInput, { key: "Enter" });
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(1.0);
-        expect(opacityInput.value).toBe("100%");
-      });
-
-      // Clamp negative values: -10 -> 0%
-      fireEvent.focus(opacityInput);
-      fireEvent.change(opacityInput, { target: { value: "-10" } });
-      fireEvent.keyDown(opacityInput, { key: "Enter" });
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.0);
-        expect(opacityInput.value).toBe("0%");
-      });
-
-      // Revert on Escape
-      fireEvent.focus(opacityInput);
-      fireEvent.change(opacityInput, { target: { value: "50" } });
-      fireEvent.keyDown(opacityInput, { key: "Escape" });
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.0);
-        expect(opacityInput.value).toBe("0%");
-      });
-
-      // Arrow stepping: ArrowUp -> 1%
-      fireEvent.keyDown(opacityInput, { key: "ArrowUp" });
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.01);
-        expect(opacityInput.value).toBe("1%");
-      });
-
-      // Arrow stepping with Shift: Shift+ArrowUp -> +10% -> 11%
-      fireEvent.keyDown(opacityInput, { key: "ArrowUp", shiftKey: true });
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.11);
-        expect(opacityInput.value).toBe("11%");
-      });
-
-      // Undo reverts to previous discrete state
-      fireEvent.focus(opacityInput);
-      fireEvent.change(opacityInput, { target: { value: "75%" } });
-      fireEvent.blur(opacityInput);
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.75);
-      });
-
-      fireEvent.click(screen.getByTestId("undo-btn"));
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.11);
-        expect(opacityInput.value).toBe("11%");
-      });
-
-      // Redo restores 75%
-      fireEvent.click(screen.getByTestId("redo-btn"));
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.75);
-        expect(opacityInput.value).toBe("75%");
-      });
-    });
-
-    it("synchronizes opacity bidirectionally between row input and FloatingBackgroundPanel", async () => {
-      let storeRef!: ReturnType<typeof useStudioStore>;
-      render(
-        <StudioProvider>
-          <TestHost onStore={(s) => { storeRef = s; }} />
-        </StudioProvider>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-      });
-
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
-
-      // Add Dots
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-dots"));
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(1);
-      });
-
-      const dots = storeRef.activeBackgrounds[0];
-      const opacityInput = screen.getByTestId(`background-opacity-input-${dots.id}`) as HTMLInputElement;
-
-      // 1. Change opacity via row input -> verify FloatingBackgroundPanel updates
-      fireEvent.focus(opacityInput);
-      fireEvent.change(opacityInput, { target: { value: "50%" } });
-      fireEvent.blur(opacityInput);
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[0].opacity).toBe(0.5);
-      });
-
-      // 2. Change opacity via store/FloatingBackgroundPanel update -> verify row input updates
-      storeRef.updateBackgroundItem(dots.id, { opacity: 0.82 });
-
-      await waitFor(() => {
-        expect(opacityInput.value).toBe("82%");
+        // Invariant: backdrop must remain at index 0
+        expect(storeRef.activeFrame?.layers[0].id).toBe(backdrop.id);
       });
     });
   });
 
-  describe("4. Floor Primitive Parameter Editing", () => {
-    it("updates parameters for all 5 primitive types", async () => {
+  describe("4. Undo / Redo Workflow", () => {
+    it("adding a procedural layer and undoing removes it; redoing restores it", async () => {
       let storeRef!: ReturnType<typeof useStudioStore>;
       render(
         <StudioProvider>
@@ -529,145 +261,30 @@ describe("EffectsIO — Stackable Background System Suite", () => {
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
+      const countBefore = storeRef.activeFrame?.layers.length ?? 0;
 
-      // 1. Solid
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-      await waitFor(() => expect(storeRef.activeBackgrounds.length).toBe(1));
-      const solidId = storeRef.activeBackgrounds[0].id;
-      storeRef.updateBackgroundItemParameters(solidId, { color: "#abcdef" });
-      await waitFor(() => expect(storeRef.activeBackgrounds[0].parameters.color).toBe("#abcdef"));
-
-      // 2. Linear Gradient
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-linear-gradient"));
-      await waitFor(() => expect(storeRef.activeBackgrounds.length).toBe(2));
-      const linId = storeRef.activeBackgrounds[1].id;
-      storeRef.updateBackgroundItemParameters(linId, { angle: 180 });
-      await waitFor(() => expect(storeRef.activeBackgrounds[1].parameters.angle).toBe(180));
-
-      // 3. Radial Gradient
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-radial-gradient"));
-      await waitFor(() => expect(storeRef.activeBackgrounds.length).toBe(3));
-      const radId = storeRef.activeBackgrounds[2].id;
-      storeRef.updateBackgroundItemParameters(radId, { startColor: "#333333" });
-      await waitFor(() => expect(storeRef.activeBackgrounds[2].parameters.startColor).toBe("#333333"));
-
-      // 4. Dots
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-dots"));
-      await waitFor(() => expect(storeRef.activeBackgrounds.length).toBe(4));
-      const dotsId = storeRef.activeBackgrounds[3].id;
-      storeRef.updateBackgroundItemParameters(dotsId, { spacing: 32, dotSize: 4 });
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds[3].parameters.spacing).toBe(32);
-        expect(storeRef.activeBackgrounds[3].parameters.dotSize).toBe(4);
-      });
-
-      // 5. Grid
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-grid"));
-      await waitFor(() => expect(storeRef.activeBackgrounds.length).toBe(5));
-      const gridId = storeRef.activeBackgrounds[4].id;
-      storeRef.updateBackgroundItemParameters(gridId, { lineWidth: 3 });
-      await waitFor(() => expect(storeRef.activeBackgrounds[4].parameters.lineWidth).toBe(3));
-    });
-  });
-
-  describe("5. History (Undo / Redo) Integration", () => {
-    it("undoes and redoes adding a background item", async () => {
-      let storeRef!: ReturnType<typeof useStudioStore>;
-      render(
-        <StudioProvider>
-          <TestHost onStore={(s) => { storeRef = s; }} />
-        </StudioProvider>
-      );
+      // Add layer
+      storeRef.addProceduralLayer("solid");
 
       await waitFor(() => {
-        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-      });
-
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
-
-      const initialCount = storeRef.activeBackgrounds.length;
-
-      fireEvent.click(screen.getByTestId("add-background-button"));
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(initialCount + 1);
+        expect(storeRef.activeFrame?.layers.length).toBe(countBefore + 1);
+        expect(storeRef.canUndo).toBe(true);
       });
 
       // Undo
       fireEvent.click(screen.getByTestId("undo-btn"));
 
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(initialCount);
+        expect(storeRef.activeFrame?.layers.length).toBe(countBefore);
+        expect(storeRef.canRedo).toBe(true);
       });
 
       // Redo
       fireEvent.click(screen.getByTestId("redo-btn"));
 
       await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(initialCount + 1);
+        expect(storeRef.activeFrame?.layers.length).toBe(countBefore + 1);
       });
-    });
-  });
-
-  describe("6. Terminology & LayersPanel Boundary", () => {
-    it("verifies zero user-facing 'Sublayer' terminology exists in the Background UI", async () => {
-      render(
-        <StudioProvider>
-          <TestHost />
-        </StudioProvider>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-      });
-
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
-
-      // Confirm no element mentions "Sublayer", "Sublayers", or "Generative Sublayer"
-      expect(screen.queryByText(/sublayer/i)).toBeNull();
-      expect(screen.queryByText(/generative sublayer/i)).toBeNull();
-    });
-
-    it("verifies LayersPanel shows clean Background row with count badge and no nested sublayer tree", async () => {
-      let storeRef!: ReturnType<typeof useStudioStore>;
-      render(
-        <StudioProvider>
-          <TestHost onStore={(s) => { storeRef = s; }} />
-        </StudioProvider>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
-      });
-
-      // Select Background Layer
-      fireEvent.click(screen.getByTestId("locked-background-row"));
-
-      // Add two backgrounds
-      storeRef.addBackgroundItem("solid");
-      storeRef.addBackgroundItem("grid");
-
-      await waitFor(() => {
-        expect(storeRef.activeBackgrounds.length).toBe(2);
-      });
-
-      // Locked background row in LayersPanel
-      const bgRow = screen.getByTestId("locked-background-row");
-      expect(within(bgRow).getByText("Background")).toBeDefined();
-      expect(within(bgRow).getByTestId("background-count-badge").textContent).toBe("2");
-
-      // Verify no nested sublayer rows exist in LayersPanel
-      expect(screen.queryByTestId("sublayer-row")).toBeNull();
     });
   });
 });

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as React from "react";
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor, within } from "@testing-library/react";
 import { InspectorPanel } from "./inspector-panel";
 import { StudioProvider, useStudioStore } from "../../context/studio-context";
 import type { Asset } from "../../types/asset";
@@ -54,19 +54,18 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       expect(animateTab).toBeDefined();
     });
 
-    it("contains NO Page section, NO canvas ColorControl, and empty body space when background layer is removed", () => {
+    it("contains NO Page section, NO canvas ColorControl, and empty body space when no layer is active", () => {
       function NoLayerHost() {
         const store = useStudioStore();
         return (
           <div>
             <button
-              data-testid="delete-bg-layer"
+              data-testid="deselect-layer"
               onClick={() => {
-                const bg = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
-                if (bg) store.removeLayer(bg.id);
+                store.setActiveLayerId(null);
               }}
             >
-              Delete BG
+              Deselect Layer
             </button>
             <InspectorPanel />
           </div>
@@ -79,7 +78,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
         </StudioProvider>
       );
 
-      fireEvent.click(screen.getByTestId("delete-bg-layer"));
+      fireEvent.click(screen.getByTestId("deselect-layer"));
 
       // Verify NO Page or canvas background color controls
       expect(screen.queryByText("Page")).toBeNull();
@@ -453,7 +452,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       });
     });
 
-    it("renders permanent + button in Background header and adds BackgroundItem via popover", async () => {
+    it("renders Source section with Edit Parameters button when procedural layer is selected", async () => {
       render(
         <StudioProvider>
           <BgTestHost />
@@ -468,32 +467,35 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       fireEvent.click(screen.getByTestId("select-bg-layer"));
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
-      });
-
-      // Click Add background (+)
-      fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-
-      // Popover opens
-      await waitFor(() => {
-        expect(screen.getByTestId("add-bg-solid")).toBeDefined();
-      });
-
-      // Click Solid
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-
-      // Header STILL has Add background (+), NEVER switches to Remove background (-)
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
-        expect(screen.queryByRole("button", { name: /Remove background/i })).toBeNull();
-        expect(screen.getByText("Solid")).toBeDefined();
+        expect(screen.getByTestId("open-procedural-editor")).toBeDefined();
+        expect(screen.getByText("Source")).toBeDefined();
       });
     });
 
-    it("removes background item via its own remove button and keeps + in header", async () => {
+    it("opens procedural editor when Edit Parameters is clicked", async () => {
+      function BgHostWithStore() {
+        const store = useStudioStore();
+        return (
+          <div>
+            <span data-testid="is-hydrated">{String(store.isHydrated)}</span>
+            <span data-testid="editor-open">{String(store.isProceduralEditorOpen)}</span>
+            <button
+              data-testid="select-bg-layer"
+              onClick={() => {
+                const bg = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
+                if (bg) store.setActiveLayerId(bg.id);
+              }}
+            >
+              Select Background Layer
+            </button>
+            <InspectorPanel />
+          </div>
+        );
+      }
+
       render(
         <StudioProvider>
-          <BgTestHost />
+          <BgHostWithStore />
         </StudioProvider>
       );
 
@@ -504,26 +506,13 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       fireEvent.click(screen.getByTestId("select-bg-layer"));
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
+        expect(screen.getByTestId("open-procedural-editor")).toBeDefined();
       });
 
-      // Add Solid
-      fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-      await waitFor(() => expect(screen.getByTestId("add-bg-solid")).toBeDefined());
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-
-      // Find item remove button
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Remove Solid/i })).toBeDefined();
-      });
-
-      // Click item remove button
-      fireEvent.click(screen.getByRole("button", { name: /Remove Solid/i }));
+      fireEvent.click(screen.getByTestId("open-procedural-editor"));
 
       await waitFor(() => {
-        expect(screen.queryByRole("button", { name: /Remove Solid/i })).toBeNull();
-        expect(screen.getByText("No backgrounds")).toBeDefined();
-        expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
+        expect(screen.getByTestId("editor-open").textContent).toBe("true");
       });
     });
   });
@@ -840,7 +829,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       });
     });
 
-    it("9-10. Selecting Background layer shows permanent + and empty state", async () => {
+    it("9-10. Selecting procedural layer displays Source section with Edit Parameters button", async () => {
       render(
         <StudioProvider>
           <CorrectionTestHost />
@@ -850,13 +839,12 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       fireEvent.click(screen.getByTestId("select-bg-layer"));
 
       await waitFor(() => {
-        expect(screen.getByText("Background")).toBeDefined();
-        expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
-        expect(screen.getByText("No backgrounds")).toBeDefined();
+        expect(screen.getByText("Source")).toBeDefined();
+        expect(screen.getByTestId("open-procedural-editor")).toBeDefined();
       });
     });
 
-    it("11. Adding Solid background displays compact row with preview, opacity and permanent +", async () => {
+    it("11. Procedural layer Source section displays primitive kind and Edit Parameters trigger", async () => {
       render(
         <StudioProvider>
           <CorrectionTestHost />
@@ -865,21 +853,14 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       await waitFor(() => expect(screen.getByTestId("is-hydrated").textContent).toBe("true"));
       fireEvent.click(screen.getByTestId("select-bg-layer"));
 
-      await waitFor(() => expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined());
-      fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-      await waitFor(() => expect(screen.getByTestId("add-bg-solid")).toBeDefined());
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-
       await waitFor(() => {
-        expect(screen.getByText("Solid")).toBeDefined();
-        expect(screen.getAllByText("100%").length).toBeGreaterThanOrEqual(1);
-        // Header + stays permanently
-        expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
-        expect(screen.queryByRole("button", { name: /Remove background$/i })).toBeNull();
+        const header = screen.getByTestId("background-section-header");
+        expect(within(header).getByTestId("open-procedural-editor")).toBeDefined();
+        expect(within(header).getByText(/Solid/i)).toBeDefined();
       });
     });
 
-    it("12. Background item visibility toggles independently", async () => {
+    it("12. Procedural layer opacity is adjustable via Layer Properties", async () => {
       render(
         <StudioProvider>
           <CorrectionTestHost />
@@ -888,26 +869,13 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       await waitFor(() => expect(screen.getByTestId("is-hydrated").textContent).toBe("true"));
       fireEvent.click(screen.getByTestId("select-bg-layer"));
 
-      fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-      await waitFor(() => expect(screen.getByTestId("add-bg-solid")).toBeDefined());
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-
-      await waitFor(() => expect(screen.getByRole("button", { name: /Hide Solid/i })).toBeDefined());
-
-      // Click to hide
-      fireEvent.click(screen.getByRole("button", { name: /Hide Solid/i }));
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Show Solid/i })).toBeDefined();
-      });
-
-      // Click to show
-      fireEvent.click(screen.getByRole("button", { name: /Show Solid/i }));
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Hide Solid/i })).toBeDefined();
+        expect(screen.getByText("Layer Properties")).toBeDefined();
+        expect(screen.getByText("Opacity")).toBeDefined();
       });
     });
 
-    it("13-14. Removing background item removes only that item and leaves + intact", async () => {
+    it("13-14. Procedural layer blend mode is adjustable via Layer Properties", async () => {
       render(
         <StudioProvider>
           <CorrectionTestHost />
@@ -916,23 +884,12 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       await waitFor(() => expect(screen.getByTestId("is-hydrated").textContent).toBe("true"));
       fireEvent.click(screen.getByTestId("select-bg-layer"));
 
-      fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-      await waitFor(() => expect(screen.getByTestId("add-bg-solid")).toBeDefined());
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-
-      await waitFor(() => expect(screen.getByRole("button", { name: /Remove Solid/i })).toBeDefined());
-
-      // Click item remove button
-      fireEvent.click(screen.getByRole("button", { name: /Remove Solid/i }));
-
       await waitFor(() => {
-        expect(screen.queryByRole("button", { name: /Remove Solid/i })).toBeNull();
-        expect(screen.getByText("No backgrounds")).toBeDefined();
-        expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined();
+        expect(screen.getByText("Blend Mode")).toBeDefined();
       });
     });
 
-    it("15-16. Visual structure: Background rows have proper alignment and independent action buttons", async () => {
+    it("15-16. Procedural layer provides universal access to Effects and Looks", async () => {
       render(
         <StudioProvider>
           <CorrectionTestHost />
@@ -941,19 +898,13 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       await waitFor(() => expect(screen.getByTestId("is-hydrated").textContent).toBe("true"));
       fireEvent.click(screen.getByTestId("select-bg-layer"));
 
-      fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-      await waitFor(() => expect(screen.getByTestId("add-bg-solid")).toBeDefined());
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-
       await waitFor(() => {
-        const eye = screen.getByRole("button", { name: /Hide Solid/i });
-        const remove = screen.getByRole("button", { name: /Remove Solid/i });
-        expect(eye).toBeDefined();
-        expect(remove).toBeDefined();
+        expect(screen.getByText("Effects")).toBeDefined();
+        expect(screen.getByText("Looks")).toBeDefined();
       });
     });
 
-    it("17. Handles adding multiple background items to the stack (Solid, Linear Gradient, Dots, Grid)", async () => {
+    it("17. Handles multiple procedural kinds (Solid, Linear Gradient, Dots, Grid)", async () => {
       render(
         <StudioProvider>
           <CorrectionTestHost />
@@ -962,34 +913,29 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       await waitFor(() => expect(screen.getByTestId("is-hydrated").textContent).toBe("true"));
       fireEvent.click(screen.getByTestId("select-bg-layer"));
 
-      // Add Solid
-      fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-      await waitFor(() => expect(screen.getByTestId("add-bg-solid")).toBeDefined());
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
-
-      // Add Linear Gradient
-      await waitFor(() => expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined());
-      fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-      await waitFor(() => expect(screen.getByTestId("add-bg-linear-gradient")).toBeDefined());
-      fireEvent.click(screen.getByTestId("add-bg-linear-gradient"));
-
-      // Add Dots
-      await waitFor(() => expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined());
-      fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-      await waitFor(() => expect(screen.getByTestId("add-bg-dots")).toBeDefined());
-      fireEvent.click(screen.getByTestId("add-bg-dots"));
-
-      // Add Grid
-      await waitFor(() => expect(screen.getByRole("button", { name: /Add background/i })).toBeDefined());
-      fireEvent.click(screen.getByRole("button", { name: /Add background/i }));
-      await waitFor(() => expect(screen.getByTestId("add-bg-grid")).toBeDefined());
-      fireEvent.click(screen.getByTestId("add-bg-grid"));
-
       await waitFor(() => {
-        expect(screen.getByText("Solid")).toBeDefined();
-        expect(screen.getByText("Linear Gradient")).toBeDefined();
-        expect(screen.getByText("Dots")).toBeDefined();
-        expect(screen.getByText("Grid")).toBeDefined();
+        expect(screen.getByTestId("open-procedural-editor")).toBeDefined();
+      });
+
+      // Switch to linear gradient
+      fireEvent.click(screen.getByTestId("set-gradient-bg"));
+      await waitFor(() => {
+        const header = screen.getByTestId("background-section-header");
+        expect(within(header).getByText(/Linear gradient/i)).toBeDefined();
+      });
+
+      // Switch to dots
+      fireEvent.click(screen.getByTestId("set-dots-bg"));
+      await waitFor(() => {
+        const header = screen.getByTestId("background-section-header");
+        expect(within(header).getByText(/Dots/i)).toBeDefined();
+      });
+
+      // Switch to grid
+      fireEvent.click(screen.getByTestId("set-grid-bg"));
+      await waitFor(() => {
+        const header = screen.getByTestId("background-section-header");
+        expect(within(header).getByText(/Grid/i)).toBeDefined();
       });
     });
   });
@@ -1127,7 +1073,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       });
     });
 
-    it("procedural background item operations mutate activeLayer.source canonically", async () => {
+    it("procedural layer source mutations reflect canonically in inspector and store", async () => {
       let storeRef!: ReturnType<typeof useStudioStore>;
       function ProcMutationHost() {
         const store = useStudioStore();
@@ -1143,6 +1089,23 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
               }}
             >
               Select Procedural
+            </button>
+            <button
+              data-testid="mutate-source"
+              onClick={() => {
+                const proc = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
+                if (proc) {
+                  store.updateLayerSource(proc.id, {
+                    kind: "grid",
+                    parameters: {
+                      color: "#FFFFFF",
+                      size: 20,
+                    },
+                  });
+                }
+              }}
+            >
+              Mutate Source
             </button>
             <InspectorPanel />
           </div>
@@ -1162,23 +1125,16 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       fireEvent.click(screen.getByTestId("select-procedural"));
 
       await waitFor(() => {
-        expect(screen.getByTestId("add-background-button")).toBeDefined();
+        expect(screen.getByTestId("open-procedural-editor")).toBeDefined();
       });
 
-      // Click Add Background (+)
-      fireEvent.click(screen.getByTestId("add-background-button"));
-
-      await waitFor(() => {
-        expect(screen.getByTestId("add-bg-solid")).toBeDefined();
-      });
-
-      // Click Solid
-      fireEvent.click(screen.getByTestId("add-bg-solid"));
+      fireEvent.click(screen.getByTestId("mutate-source"));
 
       await waitFor(() => {
         const procLayer = storeRef.activeFrame?.layers.find((l) => l.id === storeRef.activeLayerId);
         expect(procLayer?.source?.type).toBe("procedural");
-        expect((procLayer?.source as any)?.kind).toBe("solid");
+        expect((procLayer?.source as any)?.kind).toBe("grid");
+        expect(screen.getByText(/Grid/i)).toBeDefined();
       });
     });
   });

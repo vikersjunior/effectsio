@@ -1252,8 +1252,8 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       // Confirm canonical layer has type "procedural" and NO legacy sublayers/backgrounds
       expect(proceduralLayer.source.type).toBe("procedural");
       expect(proceduralLayer.type).toBe("procedural");
-      expect(proceduralLayer.sublayers).toBeUndefined();
-      expect(proceduralLayer.backgrounds).toBeUndefined();
+      expect((proceduralLayer as any).sublayers).toBeUndefined();
+      expect((proceduralLayer as any).backgrounds).toBeUndefined();
 
       const bgRenderer = compositor.getBackgroundRenderer();
       const renderProcSpy = vi.spyOn(bgRenderer, "renderProceduralSourceToTexture");

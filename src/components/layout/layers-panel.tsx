@@ -34,7 +34,6 @@ import { useStudioStore } from "../../context/studio-context";
 import type { Layer, ProceduralSource } from "../../types/frame";
 import type { Asset } from "../../types/asset";
 import { DEFAULT_BACKGROUND_STATE } from "../../types/look";
-import { deriveLegacyBackgroundFromBackgrounds } from "../../generative/normalization";
 
 interface SortableLayerRowProps {
   layer: Layer;
@@ -44,7 +43,6 @@ interface SortableLayerRowProps {
   onToggleVisibility: (e: React.MouseEvent) => void;
   onRemove?: (e: React.MouseEvent) => void;
   isLocked?: boolean;
-  backgroundCount?: number;
 }
 
 function SortableLayerRow({
@@ -55,7 +53,6 @@ function SortableLayerRow({
   onToggleVisibility,
   onRemove,
   isLocked: isLockedProp,
-  backgroundCount,
 }: SortableLayerRowProps): React.JSX.Element {
   const isLocked = isLockedProp ?? Boolean(layer.locked);
   const {
@@ -71,29 +68,20 @@ function SortableLayerRow({
   const isProcedural = layer.source?.type === "procedural";
   const procSource = isProcedural ? (layer.source as ProceduralSource) : undefined;
 
-  const backgrounds = layer.backgrounds ?? layer.sublayers ?? [];
-  const bgConfig =
-    (procSource
-      ? {
-          type:
-            (procSource.kind as any) ??
-            (procSource.parameters?.type as any) ??
-            "solid",
-          color: (procSource.parameters?.color as string) || "#000000",
-          gradientEndColor:
-            (procSource.parameters?.gradientEndColor as string) ||
-            (procSource.parameters?.endColor as string) ||
-            "#E20000",
-          gradientAngle:
-            (procSource.parameters?.gradientAngle as number) ||
-            (procSource.parameters?.angle as number) ||
-            90,
-        }
-      : undefined) ??
-    layer.backgroundConfig ??
-    (backgrounds.length > 0
-      ? deriveLegacyBackgroundFromBackgrounds(backgrounds)
-      : DEFAULT_BACKGROUND_STATE);
+  const bgConfig = procSource
+    ? {
+        type: (procSource.kind as any) || "solid",
+        color: (procSource.parameters?.color as string) || "#000000",
+        gradientEndColor:
+          (procSource.parameters?.gradientEndColor as string) ||
+          (procSource.parameters?.endColor as string) ||
+          "#E20000",
+        gradientAngle:
+          (procSource.parameters?.gradientAngle as number) ||
+          (procSource.parameters?.angle as number) ||
+          90,
+      }
+    : DEFAULT_BACKGROUND_STATE;
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -174,19 +162,11 @@ function SortableLayerRow({
         )}
       </div>
 
-      {/* 3. Layer Name & Sub-item Count */}
+      {/* 3. Layer Name */}
       <div className="flex-1 min-w-0 flex items-center gap-1.5">
         <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
           {layer.name || (isProcedural ? "Background" : "Layer")}
         </span>
-        {isProcedural && (backgroundCount !== undefined ? backgroundCount : backgrounds.length) > 0 && (
-          <span
-            data-testid="background-count-badge"
-            className="text-3xs font-mono px-1.5 py-0.5 rounded-full bg-[color:var(--secondary)] text-[color:var(--muted-foreground)] shrink-0"
-          >
-            {backgroundCount !== undefined ? backgroundCount : backgrounds.length}
-          </span>
-        )}
       </div>
 
       {/* 4. Action Buttons (Remove on hover if not locked, Visibility toggle) */}
@@ -238,10 +218,8 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
     reorderLayers,
     removeLayer,
     addLayerFromAsset,
+    addProceduralLayer,
     assets,
-    setIsBackgroundPanelOpen,
-    addBackgroundLayer,
-    activeBackgrounds,
   } = useStudioStore();
 
   const [isAddPopoverOpen, setIsAddPopoverOpen] = React.useState(false);
@@ -258,9 +236,6 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
   );
 
   const layers = activeFrame?.layers || [];
-  const hasBaseBackground = layers.some(
-    (l) => l.source?.type === "procedural"
-  );
 
   // Visual stack: all layers displayed in reverse array order (top layer at top of UI list, backdrop at bottom)
   const visualLayers = React.useMemo(() => {
@@ -326,31 +301,72 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
             sideOffset={8}
             className="w-56 p-2 flex flex-col gap-1 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg"
           >
-            {!hasBaseBackground && (
-              <div className="flex flex-col gap-1 pb-1 mb-1 border-b border-[color:var(--border)]">
-                <button
-                  type="button"
-                  data-testid="add-background-layer-button"
-                  onClick={() => {
-                    addBackgroundLayer();
-                    setIsAddPopoverOpen(false);
-                  }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
-                >
-                  <div className="size-5 rounded-xs bg-[color:color-mix(in_oklab,var(--primary)_15%,transparent)] text-[color:var(--primary)] flex items-center justify-center shrink-0 border border-[color:color-mix(in_oklab,var(--primary)_30%,transparent)]">
-                    <SquareIcon size={ICON_SIZES.xs} weight="bold" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-[color:var(--foreground)]">
-                      Background Layer
-                    </span>
-                    <span className="text-2xs text-[color:var(--muted-foreground)]">
-                      Base canvas background
-                    </span>
-                  </div>
-                </button>
-              </div>
-            )}
+            <span className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
+              Add Procedural Layer
+            </span>
+            <div className="flex flex-col gap-0.5 pb-1 mb-1 border-b border-[color:var(--border)]">
+              <button
+                type="button"
+                data-testid="add-procedural-solid-button"
+                onClick={() => {
+                  addProceduralLayer("solid");
+                  setIsAddPopoverOpen(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+              >
+                <SquareIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
+                <span className="text-xs font-medium text-[color:var(--foreground)]">Solid</span>
+              </button>
+              <button
+                type="button"
+                data-testid="add-procedural-linear-gradient-button"
+                onClick={() => {
+                  addProceduralLayer("linear-gradient");
+                  setIsAddPopoverOpen(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+              >
+                <CircleHalfIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
+                <span className="text-xs font-medium text-[color:var(--foreground)]">Linear Gradient</span>
+              </button>
+              <button
+                type="button"
+                data-testid="add-procedural-radial-gradient-button"
+                onClick={() => {
+                  addProceduralLayer("radial-gradient");
+                  setIsAddPopoverOpen(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+              >
+                <CircleHalfIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
+                <span className="text-xs font-medium text-[color:var(--foreground)]">Radial Gradient</span>
+              </button>
+              <button
+                type="button"
+                data-testid="add-procedural-dots-button"
+                onClick={() => {
+                  addProceduralLayer("dots");
+                  setIsAddPopoverOpen(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+              >
+                <DotsNineIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
+                <span className="text-xs font-medium text-[color:var(--foreground)]">Dots</span>
+              </button>
+              <button
+                type="button"
+                data-testid="add-procedural-grid-button"
+                onClick={() => {
+                  addProceduralLayer("grid");
+                  setIsAddPopoverOpen(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+              >
+                <GridFourIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
+                <span className="text-xs font-medium text-[color:var(--foreground)]">Grid</span>
+              </button>
+            </div>
+
             <span className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
               Add Layer from Assets
             </span>
@@ -403,19 +419,14 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
               {visualLayers.map((layer) => {
                 const assetId =
                   layer.source?.type === "image" ? layer.source.assetId : layer.assetId;
-                const isProcedural = layer.source?.type === "procedural";
                 return (
                   <SortableLayerRow
                     key={layer.id}
                     layer={layer}
                     asset={assetId ? assetMap.get(assetId) : undefined}
                     isSelected={activeLayerId === layer.id}
-                    backgroundCount={layer.id === layers[0]?.id && isProcedural ? activeBackgrounds.length : undefined}
                     onSelect={() => {
                       setActiveLayerId(layer.id);
-                      if (isProcedural) {
-                        setIsBackgroundPanelOpen(true);
-                      }
                     }}
                     onToggleVisibility={(e) => {
                       e.stopPropagation();

@@ -2,6 +2,7 @@ import type { Asset, EffectStack } from "../types/asset";
 import type { Look, BackgroundState } from "../types/look";
 import type { Frame, ImageLayer, GenerativeLayer } from "../types/frame";
 import {
+  createDefaultBackdropLayer,
   createDefaultFrame,
   createDefaultGenerativeLayer,
   createImageLayer,
@@ -463,7 +464,7 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
         // Legacy migration: 1 Asset -> 1 Frame -> GenerativeLayer (index 0) + ImageLayer (index 1)
         frames = validAssets.map((asset) => {
           const assetBg = backgrounds[asset.id] ? { ...backgrounds[asset.id] } : undefined;
-          const baseGenerative = createDefaultGenerativeLayer(assetBg);
+          const baseBackdrop = createDefaultBackdropLayer(assetBg);
           const assetStack = effectStacks[asset.id] ? [...effectStacks[asset.id]] : [];
           const imageLayer = createImageLayer(asset.id, asset.filename, assetStack, "contain");
 
@@ -475,7 +476,7 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
               height: asset.height || 1080,
               presetId: null,
             },
-            layers: [baseGenerative, imageLayer],
+            layers: [baseBackdrop, imageLayer],
             activeLayerId: imageLayer.id,
             createdAt: asset.createdAt || Date.now(),
             updatedAt: Date.now(),
@@ -565,13 +566,23 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
           if (!mergedEffectStacks[img.assetId]) {
             mergedEffectStacks[img.assetId] = img.effectStack;
           }
-          if (baseGen && baseGen.type === "generative" && !mergedBackgrounds[img.assetId]) {
-            const bgItems = baseGen.backgrounds || baseGen.sublayers;
-            const derivedBg =
-              baseGen.backgroundConfig ??
-              (bgItems ? deriveLegacyBackgroundFromBackgrounds(bgItems) : undefined);
-            if (derivedBg) {
-              mergedBackgrounds[img.assetId] = derivedBg;
+          if (baseGen && !mergedBackgrounds[img.assetId]) {
+            if (baseGen.source?.type === "procedural") {
+              const proc = baseGen.source;
+              mergedBackgrounds[img.assetId] = {
+                type: (proc.kind as any) || "solid",
+                color: (proc.parameters?.color as string) || "#000000",
+                visible: baseGen.visible !== false,
+              };
+            } else {
+              const legacy = baseGen as any;
+              const bgItems = legacy.backgrounds || legacy.sublayers;
+              const derivedBg =
+                legacy.backgroundConfig ??
+                (bgItems ? deriveLegacyBackgroundFromBackgrounds(bgItems) : undefined);
+              if (derivedBg) {
+                mergedBackgrounds[img.assetId] = derivedBg;
+              }
             }
           }
         }

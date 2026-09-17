@@ -72,7 +72,7 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
 
       // Initial state has only the base GenerativeLayer (1 layer)
       expect(currentStore.activeFrame?.layers.length).toBe(1);
-      expect(currentStore.activeFrame?.layers[0].type).toBe("generative");
+      expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
 
       // Set activeImageId directly (asset library selection)
       currentStore.setActiveImageId("some-asset-id");
@@ -80,7 +80,7 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
       await waitFor(() => {
         // Must NOT have created an ImageLayer
         expect(currentStore.activeFrame?.layers.length).toBe(1);
-        expect(currentStore.activeFrame?.layers[0].type).toBe("generative");
+        expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
       });
     });
 
@@ -112,7 +112,7 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
       await waitFor(() => {
         const frame = currentStore.activeFrame!;
         expect(frame.layers.length).toBe(3);
-        expect(frame.layers[0].type).toBe("generative");
+        expect(frame.layers[0].type).toBe("procedural");
         expect(frame.layers[2].id).toBe(layer?.id);
         expect(currentStore.activeLayerId).toBe(layer?.id);
       });
@@ -143,22 +143,22 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
       });
 
       // Layers: [0: Generative, 1: initialLayer (mockAsset1), 2: l2 (mockAsset2)]
-      expect(currentStore.activeFrame?.layers[0].type).toBe("generative");
+      expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
       expect(currentStore.activeFrame?.layers[1].id).toBe(initialLayerId);
       expect(currentStore.activeFrame?.layers[2].id).toBe(l2.id);
 
       // Attempt invalid reorder to move GenerativeLayer (fromIndex 0)
       currentStore.reorderLayers(0, 2);
-      expect(currentStore.activeFrame?.layers[0].type).toBe("generative");
+      expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
 
       // Attempt invalid reorder to move an ImageLayer into index 0 (toIndex 0)
       currentStore.reorderLayers(2, 0);
-      expect(currentStore.activeFrame?.layers[0].type).toBe("generative");
+      expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
 
       // Valid reorder among ImageLayers (1 <-> 2)
       currentStore.reorderLayers(1, 2);
       await waitFor(() => {
-        expect(currentStore.activeFrame?.layers[0].type).toBe("generative");
+        expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
         expect(currentStore.activeFrame?.layers[1].id).toBe(l2.id);
         expect(currentStore.activeFrame?.layers[2].id).toBe(initialLayerId);
       });

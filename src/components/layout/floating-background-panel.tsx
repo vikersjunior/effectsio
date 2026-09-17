@@ -14,7 +14,6 @@ import {
 } from "@phosphor-icons/react";
 import {
   Button,
-  ColorControl,
   ColorValueControl,
   ColorOpacityInput,
   SliderControl,
@@ -32,15 +31,25 @@ import {
   ICON_SIZES,
 } from "../ui";
 import { useStudioStore } from "../../context/studio-context";
-import type { BackgroundType, BackgroundState } from "../../types/look";
-import { BLEND_MODE_OPTIONS, type BlendMode, type BackgroundItemType } from "../../types/frame";
+import type { BackgroundState } from "../../types/look";
+import {
+  BLEND_MODE_OPTIONS,
+  type BlendMode,
+  type BackgroundItemType,
+  type ProceduralSource,
+  type Frame,
+  type Layer,
+} from "../../types/frame";
 import type { GradientStop, GradientType } from "../ui/controls/control-types";
 import {
   gradientTypeOptions,
   parseStopPosition,
 } from "../ui/controls/gradient/gradient-control-utils";
 import { GradientStopsTrack } from "../ui/controls/gradient/gradient-stops-track";
-import { BACKGROUND_ITEM_REGISTRY } from "../../generative/registry";
+import {
+  BACKGROUND_ITEM_REGISTRY,
+  resolveBackgroundItemParameters,
+} from "../../generative/registry";
 
 function hexToRgba(hex: string, alpha = 1): string {
   const cleanHex = (hex || "#000000").replace(/^#/, "");
@@ -56,27 +65,33 @@ function hexToRgba(hex: string, alpha = 1): string {
     g = (num >> 8) & 0xff;
     b = num & 0xff;
   }
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  return `rgba(${r}, ${b}, ${alpha})`;
 }
 
-export function FloatingBackgroundPanel(): React.JSX.Element | null {
+interface PanelContentProps {
+  activeFrame: Frame;
+  activeLayer: Layer;
+}
+
+function FloatingBackgroundPanelContent({ activeFrame, activeLayer }: PanelContentProps): React.JSX.Element {
   const {
-    activeFrame,
-    activeLayer,
-    isBackgroundPanelOpen,
-    setIsBackgroundPanelOpen,
-    backgroundPanelMode,
+    setIsProceduralEditorOpen,
+    updateLayer,
+    updateLayerSource,
+    removeLayer,
     activeBackground,
     updateActiveBackground,
-    activeBackgrounds,
-    selectedBackgroundId,
-    setSelectedBackgroundId,
-    activeBackgroundItem,
-    addBackgroundItem,
-    removeBackgroundItem,
-    updateBackgroundItem,
-    updateBackgroundItemParameters,
   } = useStudioStore();
+
+  const proceduralSource = activeLayer.source as ProceduralSource;
+  const itemParams = proceduralSource.parameters ?? {};
+  const currentDef = BACKGROUND_ITEM_REGISTRY[proceduralSource.kind];
+  const effectiveType = proceduralSource.kind;
+
+  const isSolidActive = effectiveType === "solid";
+  const isGradientActive = effectiveType === "linear-gradient" || effectiveType === "radial-gradient";
+  const isDotsActive = effectiveType === "dots";
+  const isGridActive = effectiveType === "grid";
 
   const [position, setPosition] = React.useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -118,18 +133,18 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
   }, []);
 
   React.useEffect(() => {
-    if (isBackgroundPanelOpen && !hasUserDraggedRef.current) {
+    if (!hasUserDraggedRef.current) {
       setPosition(getDefaultPosition());
     }
-  }, [isBackgroundPanelOpen, getDefaultPosition]);
+  }, [getDefaultPosition]);
 
   // Gradient state management
   const defaultStops: GradientStop[] = React.useMemo(
     () => [
-      { color: activeBackground.color || "#000000", position: "0%", opacity: 100 },
-      { color: activeBackground.gradientEndColor || "#E20000", position: "100%", opacity: 100 },
+      { color: (itemParams.startColor as string) || activeBackground.color || "#000000", position: "0%", opacity: 100 },
+      { color: (itemParams.endColor as string) || activeBackground.gradientEndColor || "#E20000", position: "100%", opacity: 100 },
     ],
-    [activeBackground.color, activeBackground.gradientEndColor]
+    [itemParams.startColor, itemParams.endColor, activeBackground.color, activeBackground.gradientEndColor]
   );
 
   const stops: GradientStop[] = React.useMemo(() => {
@@ -140,7 +155,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
   }, [activeBackground.gradientStops, defaultStops]);
 
   const gradientType: GradientType = activeBackground.gradientType ?? (
-    activeBackground.type === "radial-gradient" ? "radial" : "linear"
+    effectiveType === "radial-gradient" ? "radial" : "linear"
   );
 
   const gradientCssString = React.useMemo(() => {
@@ -152,17 +167,11 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     return `linear-gradient(90deg, ${stopStrs.join(", ")})`;
   }, [stops]);
 
-  const isProceduralLayer = activeLayer?.source?.type === "procedural";
-
-  if (!activeFrame || !isBackgroundPanelOpen || !isProceduralLayer) {
-    return null;
-  }
-
   const currentX = position?.x ?? 16;
   const currentY = position?.y ?? 280;
 
   const handleClose = () => {
-    setIsBackgroundPanelOpen(false);
+    setIsProceduralEditorOpen(false);
   };
 
   const handleHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -232,12 +241,13 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
       gradientStops: reversed,
     });
 
-    if (activeBackgroundItem) {
-      updateBackgroundItemParameters(activeBackgroundItem.id, {
+    updateLayerSource(activeLayer.id, {
+      parameters: {
+        ...itemParams,
         startColor: newStart,
         endColor: newEnd,
-      });
-    }
+      },
+    });
   };
 
   const handleResetGradient = () => {
@@ -252,25 +262,30 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
       gradientAngle: 90,
     });
 
-    if (activeBackgroundItem) {
-      updateBackgroundItemParameters(activeBackgroundItem.id, {
+    updateLayerSource(activeLayer.id, {
+      parameters: {
+        ...itemParams,
         startColor: "#000000",
         endColor: "#E20000",
         angle: 90,
-      });
-    }
+      },
+    });
   };
 
   const handleGradientTypeChange = (newType: GradientType) => {
+    const bgType: BackgroundItemType = newType === "radial" ? "radial-gradient" : "linear-gradient";
+    const defaultParams = resolveBackgroundItemParameters(bgType, itemParams);
+    updateLayerSource(activeLayer.id, {
+      kind: bgType,
+      parameters: defaultParams,
+    });
+    updateLayer(activeLayer.id, {
+      name: BACKGROUND_ITEM_REGISTRY[bgType]?.name ?? bgType,
+    });
     updateActiveBackground({
       gradientType: newType,
-      type: newType === "radial" ? "radial-gradient" : "linear-gradient",
+      type: bgType,
     });
-
-    if (activeBackgroundItem) {
-      const bgType: BackgroundItemType = newType === "radial" ? "radial-gradient" : "linear-gradient";
-      updateBackgroundItem(activeBackgroundItem.id, { type: bgType });
-    }
   };
 
   const handleAddStop = () => {
@@ -309,12 +324,13 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
       gradientEndColor: newEnd,
       gradientStops: nextStops,
     });
-    if (activeBackgroundItem) {
-      updateBackgroundItemParameters(activeBackgroundItem.id, {
+    updateLayerSource(activeLayer.id, {
+      parameters: {
+        ...itemParams,
         startColor: newStart,
         endColor: newEnd,
-      });
-    }
+      },
+    });
   };
 
   const handleUpdateStopColor = (index: number, newColor: string) => {
@@ -324,13 +340,15 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     if (index === stops.length - 1) updates.gradientEndColor = newColor;
     updateActiveBackground(updates);
 
-    if (activeBackgroundItem) {
-      if (index === 0) {
-        updateBackgroundItemParameters(activeBackgroundItem.id, { startColor: newColor });
-      } else if (index === stops.length - 1) {
-        updateBackgroundItemParameters(activeBackgroundItem.id, { endColor: newColor });
-      }
-    }
+    const paramUpdates: Record<string, unknown> = {};
+    if (index === 0) paramUpdates.startColor = newColor;
+    if (index === stops.length - 1) paramUpdates.endColor = newColor;
+    updateLayerSource(activeLayer.id, {
+      parameters: {
+        ...itemParams,
+        ...paramUpdates,
+      },
+    });
   };
 
   const handleUpdateStopPosition = (index: number, newPosition: string) => {
@@ -396,38 +414,33 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
     handleUpdateStopPosition(nearestIdx, `${clickedPercent}%`);
   };
 
-  const isAddMode = backgroundPanelMode === "add";
-  const effectiveType = activeBackgroundItem?.type;
-  const isAlphaActive = (effectiveType as string) === "transparent" || (!effectiveType && activeBackgrounds.length === 0);
-  const isSolidActive = effectiveType === "solid";
-  const isGradientActive = effectiveType === "linear-gradient" || effectiveType === "radial-gradient";
-  const isDotsActive = effectiveType === "dots";
-  const isGridActive = effectiveType === "grid";
-
   const handleSelectPrimitive = (newType: BackgroundItemType | "transparent") => {
     if (newType === "transparent") {
-      if (activeBackgroundItem) {
-        removeBackgroundItem(activeBackgroundItem.id);
+      // Backdrop layer at index 0 is locked and cannot be removed
+      if (activeFrame.layers[0]?.id !== activeLayer.id) {
+        removeLayer(activeLayer.id);
+        setIsProceduralEditorOpen(false);
       }
       return;
     }
-    if (!activeBackgroundItem) {
-      addBackgroundItem(newType);
-    } else {
-      updateBackgroundItem(activeBackgroundItem.id, {
-        type: newType,
-      });
-    }
+    const defaultParams = resolveBackgroundItemParameters(newType, {});
+    updateLayerSource(activeLayer.id, {
+      kind: newType,
+      parameters: defaultParams,
+    });
+    updateLayer(activeLayer.id, {
+      name: BACKGROUND_ITEM_REGISTRY[newType]?.name ?? newType,
+    });
+    updateActiveBackground({
+      type: newType,
+    });
   };
-
-  const itemParams = activeBackgroundItem?.parameters ?? {};
-  const currentDef = activeBackgroundItem ? BACKGROUND_ITEM_REGISTRY[activeBackgroundItem.type] : undefined;
 
   return (
     <div
       ref={panelRef}
       role="dialog"
-      aria-label={isAddMode ? "Add Background" : "Background Parameters"}
+      aria-label="Background Parameters"
       data-floating-surface=""
       data-testid="floating-background-panel"
       className="app-no-drag absolute z-30 flex flex-col w-[304px] rounded-[16px] border border-[color:var(--border)] bg-[color:var(--sidebar)]/95 backdrop-blur-2xl shadow-xl select-none overflow-hidden"
@@ -445,7 +458,7 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
       >
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-xs font-semibold text-[color:var(--foreground)] tracking-tight truncate">
-            {isAddMode ? "Add Background" : (activeBackgroundItem?.name || currentDef?.name || "Background Parameters")}
+            {activeLayer.name || currentDef?.name || "Background Parameters"}
           </span>
         </div>
 
@@ -465,160 +478,135 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
       </div>
 
       {/* 5 Background Type Toolbar (Figma 131:4984 / 113:4657) */}
-      {isAddMode && (
-        <div
-          className="flex items-center justify-between px-3.5 py-2 border-b border-[color:var(--border)] bg-[color:color-mix(in_oklab,var(--background)_40%,transparent)] shrink-0"
-          data-testid="add-background-primitives-toolbar"
-        >
-          {/* 1. Alpha */}
-          <Tooltip>
-            <TooltipTrigger
-              type="button"
-              aria-label="Alpha"
-              data-testid="primitive-transparent"
-              onClick={() => handleSelectPrimitive("transparent")}
-              className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
-                isAlphaActive
-                  ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
-              }`}
-            >
-              <CircleHalfIcon size={ICON_SIZES.lg} />
-            </TooltipTrigger>
-            <TooltipContent side="top">Alpha</TooltipContent>
-          </Tooltip>
+      <div
+        className="flex items-center justify-between px-3.5 py-2 border-b border-[color:var(--border)] bg-[color:color-mix(in_oklab,var(--background)_40%,transparent)] shrink-0"
+        data-testid="add-background-primitives-toolbar"
+      >
+        {/* 1. Alpha */}
+        <Tooltip>
+          <TooltipTrigger
+            type="button"
+            aria-label="Alpha"
+            data-testid="primitive-transparent"
+            onClick={() => handleSelectPrimitive("transparent")}
+            className="size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
+          >
+            <CircleHalfIcon size={ICON_SIZES.lg} />
+          </TooltipTrigger>
+          <TooltipContent side="top">Alpha</TooltipContent>
+        </Tooltip>
 
-          {/* 2. Solid */}
-          <Tooltip>
-            <TooltipTrigger
-              type="button"
-              aria-label="Solid"
-              data-testid="primitive-solid"
-              onClick={() => handleSelectPrimitive("solid")}
-              className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
-                isSolidActive
-                  ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
-              }`}
-            >
-              <CircleIcon size={ICON_SIZES.lg} />
-            </TooltipTrigger>
-            <TooltipContent side="top">Solid</TooltipContent>
-          </Tooltip>
+        {/* 2. Solid */}
+        <Tooltip>
+          <TooltipTrigger
+            type="button"
+            aria-label="Solid"
+            data-testid="primitive-solid"
+            onClick={() => handleSelectPrimitive("solid")}
+            className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
+              isSolidActive
+                ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
+            }`}
+          >
+            <CircleIcon size={ICON_SIZES.lg} />
+          </TooltipTrigger>
+          <TooltipContent side="top">Solid</TooltipContent>
+        </Tooltip>
 
-          {/* 3. Gradient */}
-          <Tooltip>
-            <TooltipTrigger
-              type="button"
-              aria-label="Gradient"
-              data-testid="primitive-gradient"
-              onClick={() => handleSelectPrimitive("linear-gradient")}
-              className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
-                isGradientActive
-                  ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
-              }`}
-            >
-              <GradientIcon size={ICON_SIZES.lg} />
-            </TooltipTrigger>
-            <TooltipContent side="top">Gradient</TooltipContent>
-          </Tooltip>
+        {/* 3. Gradient */}
+        <Tooltip>
+          <TooltipTrigger
+            type="button"
+            aria-label="Gradient"
+            data-testid="primitive-gradient"
+            onClick={() => handleSelectPrimitive("linear-gradient")}
+            className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
+              isGradientActive
+                ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
+            }`}
+          >
+            <GradientIcon size={ICON_SIZES.lg} />
+          </TooltipTrigger>
+          <TooltipContent side="top">Gradient</TooltipContent>
+        </Tooltip>
 
-          {/* 4. Dot Pattern */}
-          <Tooltip>
-            <TooltipTrigger
-              type="button"
-              aria-label="Dot Pattern"
-              data-testid="primitive-dots"
-              onClick={() => handleSelectPrimitive("dots")}
-              className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
-                isDotsActive
-                  ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
-              }`}
-            >
-              <DotsNineIcon size={ICON_SIZES.lg} />
-            </TooltipTrigger>
-            <TooltipContent side="top">Dot Pattern</TooltipContent>
-          </Tooltip>
+        {/* 4. Dot Pattern */}
+        <Tooltip>
+          <TooltipTrigger
+            type="button"
+            aria-label="Dot Pattern"
+            data-testid="primitive-dots"
+            onClick={() => handleSelectPrimitive("dots")}
+            className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
+              isDotsActive
+                ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
+            }`}
+          >
+            <DotsNineIcon size={ICON_SIZES.lg} />
+          </TooltipTrigger>
+          <TooltipContent side="top">Dot Pattern</TooltipContent>
+        </Tooltip>
 
-          {/* 5. Grid Pattern */}
-          <Tooltip>
-            <TooltipTrigger
-              type="button"
-              aria-label="Grid Pattern"
-              data-testid="primitive-grid"
-              onClick={() => handleSelectPrimitive("grid")}
-              className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
-                isGridActive
-                  ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
-                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
-              }`}
-            >
-              <GridFourIcon size={ICON_SIZES.lg} />
-            </TooltipTrigger>
-            <TooltipContent side="top">Grid Pattern</TooltipContent>
-          </Tooltip>
-        </div>
-      )}
+        {/* 5. Grid Pattern */}
+        <Tooltip>
+          <TooltipTrigger
+            type="button"
+            aria-label="Grid Pattern"
+            data-testid="primitive-grid"
+            onClick={() => handleSelectPrimitive("grid")}
+            className={`size-8 flex items-center justify-center rounded-[8px] transition-colors cursor-pointer ${
+              isGridActive
+                ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)]"
+            }`}
+          >
+            <GridFourIcon size={ICON_SIZES.lg} />
+          </TooltipTrigger>
+          <TooltipContent side="top">Grid Pattern</TooltipContent>
+        </Tooltip>
+      </div>
 
       {/* Contextual Parameter Controls List */}
       <ScrollFade className="flex-1 overflow-y-auto px-3.5 py-3" containerClassName="flex-1 min-h-0">
         <div className="flex flex-col gap-3.5">
-          {!activeBackgroundItem ? (
-            <div className="py-8 px-4 text-center text-xs text-[color:var(--muted-foreground)] select-none">
-              Choose a background type above to begin.
+          {/* Layer Blending & Opacity Section */}
+          <div className="flex flex-col gap-2.5 p-2 rounded-lg bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)] border border-[color:color-mix(in_oklab,var(--border)_50%,transparent)]">
+            <div className="flex items-center justify-between">
+              <span className="text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
+                Blending
+              </span>
+              <span className="text-3xs text-[color:var(--muted-foreground)] truncate max-w-[130px]">
+                {activeLayer.name || currentDef?.name || effectiveType}
+              </span>
             </div>
-          ) : (
-            <>
-              {/* Background Blending & Opacity Section (Edit mode only) */}
-              {!isAddMode && (
-                <div className="flex flex-col gap-2.5 p-2 rounded-lg bg-[color:color-mix(in_oklab,var(--foreground)_3%,transparent)] border border-[color:color-mix(in_oklab,var(--border)_50%,transparent)]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
-                      Blending
-                    </span>
-                    <span className="text-3xs text-[color:var(--muted-foreground)] truncate max-w-[130px]">
-                      {activeBackgroundItem.name || currentDef?.name || activeBackgroundItem.type}
-                    </span>
-                  </div>
-                  <div data-testid="background-item-opacity-slider">
-                    <SliderControl
-                      name="Opacity"
-                      value={Math.round((activeBackgroundItem.opacity ?? 1) * 100)}
-                      min={0}
-                      max={100}
-                      step={1}
-                      unit="%"
-                      onValueChange={(val) =>
-                        updateBackgroundItem(activeBackgroundItem.id, { opacity: val / 100 })
-                      }
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1" data-testid="background-item-blend-mode-select">
-                    <span className="text-2xs text-[color:var(--muted-foreground)]">Blend Mode</span>
-                    <StaticSelect
-                      size="sm"
-                      value={activeBackgroundItem.blendMode || "normal"}
-                      options={BLEND_MODE_OPTIONS}
-                      onValueChange={(val) =>
-                        updateBackgroundItem(activeBackgroundItem.id, { blendMode: val as BlendMode })
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Alpha Parameters */}
-              {isAlphaActive && (
-                <div className="flex flex-col gap-3">
-                  <div className="py-1">
-                    <span className="text-xs text-[color:var(--muted-foreground)] leading-relaxed">
-                      Transparent alpha background active. Canvas background is preserved.
-                    </span>
-                  </div>
-                </div>
-              )}
+            <div data-testid="background-item-opacity-slider">
+              <SliderControl
+                name="Opacity"
+                value={Math.round((activeLayer.opacity ?? 1) * 100)}
+                min={0}
+                max={100}
+                step={1}
+                unit="%"
+                onValueChange={(val) =>
+                  updateLayer(activeLayer.id, { opacity: val / 100 })
+                }
+              />
+            </div>
+            <div className="flex flex-col gap-1" data-testid="background-item-blend-mode-select">
+              <span className="text-2xs text-[color:var(--muted-foreground)]">Blend Mode</span>
+              <StaticSelect
+                size="sm"
+                value={activeLayer.blendMode || "normal"}
+                options={BLEND_MODE_OPTIONS}
+                onValueChange={(val) =>
+                  updateLayer(activeLayer.id, { blendMode: val as BlendMode })
+                }
+              />
+            </div>
+          </div>
 
           {/* Solid Parameters */}
           {isSolidActive && (
@@ -629,9 +617,9 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                     color={(itemParams.color as string) || activeBackground.color || "#E20000"}
                     label="Color"
                     onColorChange={(val) => {
-                      if (activeBackgroundItem) {
-                        updateBackgroundItemParameters(activeBackgroundItem.id, { color: val });
-                      }
+                      updateLayerSource(activeLayer.id, {
+                        parameters: { ...itemParams, color: val },
+                      });
                       updateActiveBackground({ color: val });
                     }}
                   />
@@ -734,9 +722,9 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   step={1}
                   unit="°"
                   onValueChange={(val) => {
-                    if (activeBackgroundItem) {
-                      updateBackgroundItemParameters(activeBackgroundItem.id, { angle: val }, { skipHistory: true });
-                    }
+                    updateLayerSource(activeLayer.id, {
+                      parameters: { ...itemParams, angle: val },
+                    }, { skipHistory: true });
                     updateActiveBackground({ gradientAngle: val });
                   }}
                 />
@@ -853,9 +841,9 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                       color={(itemParams.dotColor as string) || activeBackground.color || "#A1A1AA"}
                       label="Pattern Color"
                       onColorChange={(val) => {
-                        if (activeBackgroundItem) {
-                          updateBackgroundItemParameters(activeBackgroundItem.id, { dotColor: val });
-                        }
+                        updateLayerSource(activeLayer.id, {
+                          parameters: { ...itemParams, dotColor: val },
+                        });
                         updateActiveBackground({ color: val });
                       }}
                     />
@@ -877,9 +865,9 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                       color={(itemParams.backgroundColor as string) || activeBackground.patternBackgroundColor || "#000000"}
                       label="Background Color"
                       onColorChange={(val) => {
-                        if (activeBackgroundItem) {
-                          updateBackgroundItemParameters(activeBackgroundItem.id, { backgroundColor: val });
-                        }
+                        updateLayerSource(activeLayer.id, {
+                          parameters: { ...itemParams, backgroundColor: val },
+                        });
                         updateActiveBackground({ patternBackgroundColor: val });
                       }}
                     />
@@ -901,9 +889,9 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 step={1}
                 unit="px"
                 onValueChange={(val) => {
-                  if (activeBackgroundItem) {
-                    updateBackgroundItemParameters(activeBackgroundItem.id, { dotSize: val }, { skipHistory: true });
-                  }
+                  updateLayerSource(activeLayer.id, {
+                    parameters: { ...itemParams, dotSize: val },
+                  }, { skipHistory: true });
                 }}
               />
 
@@ -918,9 +906,9 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   step={2}
                   unit="px"
                   onValueChange={(val) => {
-                    if (activeBackgroundItem) {
-                      updateBackgroundItemParameters(activeBackgroundItem.id, { spacing: val }, { skipHistory: true });
-                    }
+                    updateLayerSource(activeLayer.id, {
+                      parameters: { ...itemParams, spacing: val },
+                    }, { skipHistory: true });
                     updateActiveBackground({ patternSpacing: val });
                   }}
                 />
@@ -957,9 +945,9 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                       color={(itemParams.lineColor as string) || activeBackground.color || "#A1A1AA"}
                       label="Grid Color"
                       onColorChange={(val) => {
-                        if (activeBackgroundItem) {
-                          updateBackgroundItemParameters(activeBackgroundItem.id, { lineColor: val });
-                        }
+                        updateLayerSource(activeLayer.id, {
+                          parameters: { ...itemParams, lineColor: val },
+                        });
                         updateActiveBackground({ color: val });
                       }}
                     />
@@ -981,9 +969,9 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                       color={(itemParams.backgroundColor as string) || activeBackground.patternBackgroundColor || "#000000"}
                       label="Background Color"
                       onColorChange={(val) => {
-                        if (activeBackgroundItem) {
-                          updateBackgroundItemParameters(activeBackgroundItem.id, { backgroundColor: val });
-                        }
+                        updateLayerSource(activeLayer.id, {
+                          parameters: { ...itemParams, backgroundColor: val },
+                        });
                         updateActiveBackground({ patternBackgroundColor: val });
                       }}
                     />
@@ -1005,9 +993,9 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                 step={1}
                 unit="px"
                 onValueChange={(val) => {
-                  if (activeBackgroundItem) {
-                    updateBackgroundItemParameters(activeBackgroundItem.id, { lineWidth: val }, { skipHistory: true });
-                  }
+                  updateLayerSource(activeLayer.id, {
+                    parameters: { ...itemParams, lineWidth: val },
+                  }, { skipHistory: true });
                 }}
               />
 
@@ -1022,9 +1010,9 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
                   step={2}
                   unit="px"
                   onValueChange={(val) => {
-                    if (activeBackgroundItem) {
-                      updateBackgroundItemParameters(activeBackgroundItem.id, { spacing: val }, { skipHistory: true });
-                    }
+                    updateLayerSource(activeLayer.id, {
+                      parameters: { ...itemParams, spacing: val },
+                    }, { skipHistory: true });
                     updateActiveBackground({ patternSpacing: val });
                   }}
                 />
@@ -1049,10 +1037,24 @@ export function FloatingBackgroundPanel(): React.JSX.Element | null {
               </div>
             </div>
           )}
-            </>
-          )}
         </div>
       </ScrollFade>
     </div>
   );
+}
+
+export function FloatingBackgroundPanel(): React.JSX.Element | null {
+  const {
+    activeFrame,
+    activeLayer,
+    isProceduralEditorOpen,
+  } = useStudioStore();
+
+  const isProceduralLayer = activeLayer?.source?.type === "procedural";
+
+  if (!activeFrame || !isProceduralEditorOpen || !activeLayer || !isProceduralLayer) {
+    return null;
+  }
+
+  return <FloatingBackgroundPanelContent activeFrame={activeFrame} activeLayer={activeLayer} />;
 }
