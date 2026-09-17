@@ -44,6 +44,7 @@ interface SortableLayerRowProps {
   onToggleVisibility: (e: React.MouseEvent) => void;
   onRemove?: (e: React.MouseEvent) => void;
   isLocked?: boolean;
+  backgroundCount?: number;
 }
 
 function SortableLayerRow({
@@ -54,6 +55,7 @@ function SortableLayerRow({
   onToggleVisibility,
   onRemove,
   isLocked: isLockedProp,
+  backgroundCount,
 }: SortableLayerRowProps): React.JSX.Element {
   const isLocked = isLockedProp ?? Boolean(layer.locked);
   const {
@@ -177,12 +179,12 @@ function SortableLayerRow({
         <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
           {layer.name || (isProcedural ? "Background" : "Layer")}
         </span>
-        {isProcedural && backgrounds.length > 0 && (
+        {isProcedural && (backgroundCount !== undefined ? backgroundCount : backgrounds.length) > 0 && (
           <span
             data-testid="background-count-badge"
             className="text-3xs font-mono px-1.5 py-0.5 rounded-full bg-[color:var(--secondary)] text-[color:var(--muted-foreground)] shrink-0"
           >
-            {backgrounds.length}
+            {backgroundCount !== undefined ? backgroundCount : backgrounds.length}
           </span>
         )}
       </div>
@@ -239,6 +241,7 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
     assets,
     setIsBackgroundPanelOpen,
     addBackgroundLayer,
+    activeBackgrounds,
   } = useStudioStore();
 
   const [isAddPopoverOpen, setIsAddPopoverOpen] = React.useState(false);
@@ -407,6 +410,7 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
                     layer={layer}
                     asset={assetId ? assetMap.get(assetId) : undefined}
                     isSelected={activeLayerId === layer.id}
+                    backgroundCount={layer.id === layers[0]?.id && isProcedural ? activeBackgrounds.length : undefined}
                     onSelect={() => {
                       setActiveLayerId(layer.id);
                       if (isProcedural) {

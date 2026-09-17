@@ -347,8 +347,16 @@ export function createDefaultBackdropLayer(backgroundConfig?: BackgroundState): 
         parameters: { color: "#000000" },
       };
 
+  const backdropId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `bg-${Date.now()}`;
+  if (primaryBg) {
+    primaryBg.id = backdropId;
+  }
+
   return {
-    id: typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `bg-${Date.now()}`,
+    id: backdropId,
     name: "Background",
     visible: hasExplicitConfig ? (config.visible ?? true) : false,
     opacity: 1.0,
@@ -491,10 +499,26 @@ export function createLayer(params: {
 /** @deprecated Legacy migration adapter. Use createLayer instead. */
 export const createUniversalLayer = createLayer;
 
-/** @deprecated Legacy migration adapter for un-migrated Phase 2-4 consumers. Use createLayer with ProceduralSource instead. */
+/**
+ * Creates a canonical Layer with a ProceduralSource.
+ */
 export function createProceduralLayer(
-  source: ProceduralSource,
-  name?: string,
+  sourceOrKind: ProceduralSource | BackgroundItemType,
+  nameOrOptions?:
+    | string
+    | {
+        id?: string;
+        visible?: boolean;
+        opacity?: number;
+        blendMode?: BlendMode;
+        effectStack?: EffectStack;
+        transform?: Partial<LayerTransform>;
+        fit?: "contain" | "cover";
+        locked?: boolean;
+        groupId?: string | null;
+        parameters?: Record<string, unknown>;
+        seed?: number;
+      },
   options?: {
     id?: string;
     visible?: boolean;
@@ -505,20 +529,46 @@ export function createProceduralLayer(
     fit?: "contain" | "cover";
     locked?: boolean;
     groupId?: string | null;
+    parameters?: Record<string, unknown>;
+    seed?: number;
   }
 ): Layer {
+  const isSourceObj =
+    typeof sourceOrKind === "object" &&
+    sourceOrKind !== null &&
+    (sourceOrKind as ProceduralSource).type === "procedural";
+  const kind: BackgroundItemType = isSourceObj
+    ? (sourceOrKind as ProceduralSource).kind
+    : (sourceOrKind as BackgroundItemType);
+  const resolvedName = typeof nameOrOptions === "string" ? nameOrOptions : undefined;
+  const resolvedOpts =
+    typeof nameOrOptions === "object" && nameOrOptions !== null
+      ? nameOrOptions
+      : options || {};
+  const parameters = isSourceObj
+    ? (sourceOrKind as ProceduralSource).parameters
+    : resolvedOpts.parameters || {};
+  const seed = isSourceObj ? (sourceOrKind as ProceduralSource).seed : resolvedOpts.seed;
+
+  const source: ProceduralSource = {
+    type: "procedural",
+    kind,
+    parameters: parameters ? { ...parameters } : {},
+    seed,
+  };
+
   return createLayer({
-    id: options?.id,
-    name: name || `${source.kind.charAt(0).toUpperCase() + source.kind.slice(1)} Layer`,
+    id: resolvedOpts.id,
+    name: resolvedName || `${kind.charAt(0).toUpperCase() + kind.slice(1)} Layer`,
     source,
-    visible: options?.visible,
-    opacity: options?.opacity,
-    blendMode: options?.blendMode,
-    effectStack: options?.effectStack,
-    transform: options?.transform,
-    fit: options?.fit,
-    locked: options?.locked,
-    groupId: options?.groupId,
+    visible: resolvedOpts.visible,
+    opacity: resolvedOpts.opacity,
+    blendMode: resolvedOpts.blendMode,
+    effectStack: resolvedOpts.effectStack,
+    transform: resolvedOpts.transform,
+    fit: resolvedOpts.fit,
+    locked: resolvedOpts.locked,
+    groupId: resolvedOpts.groupId,
   });
 }
 
@@ -665,6 +715,12 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
       if (Array.isArray(candidate.backgrounds)) {
         procLayer.backgrounds = candidate.backgrounds as BackgroundItem[];
       }
+      if (Array.isArray((candidate as any).sublayers)) {
+        (procLayer as any).sublayers = (candidate as any).sublayers as BackgroundItem[];
+      }
+      if ((candidate as any).backgroundConfig) {
+        (procLayer as any).backgroundConfig = (candidate as any).backgroundConfig;
+      }
 
       return [procLayer];
     }
@@ -686,13 +742,15 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
       bgItems = normalizeLegacyBackgroundToBackgrounds(candidate.backgroundConfig as BackgroundState);
     }
 
-    // If no background items were found, synthesize a default solid background preserving candidate.id
+    // If no background items were found, synthesize a default solid background preserving candidate.id and transparent visibility
     if (bgItems.length === 0) {
+      const bgConfig = candidate.backgroundConfig as Partial<BackgroundState> | undefined;
+      const isExplicitlyVisible = candidate.visible !== false && Boolean(bgConfig && bgConfig.visible !== false);
       bgItems = [
         {
           id: (candidate.id as string) || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `bg-${Date.now()}`),
           type: "solid",
-          enabled: candidate.visible !== false,
+          enabled: isExplicitlyVisible,
           opacity: typeof candidate.opacity === "number" ? (candidate.opacity as number) : 1.0,
           blendMode: (candidate.blendMode as BlendMode) || "normal",
           parameters: { color: "#000000" },
@@ -722,14 +780,28 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
         blendMode: item.blendMode || "normal",
         // The top procedural layer inherits any effectStack on the legacy GenerativeLayer
         effectStack: index === bgItems.length - 1 ? [...effectStack] : [],
-        locked: layerLocked,
+        locked: index === 0 ? layerLocked : false,
         groupId,
-        type: "procedural",
+        type: index === 0 && candidate.type === "generative" ? "generative" : "procedural",
         source: proceduralSource,
         transform: { ...DEFAULT_LAYER_TRANSFORM },
         createdAt: (candidate.createdAt as number) || now,
         updatedAt: (candidate.updatedAt as number) || now,
       };
+
+      if ((candidate as any).backgroundConfig) {
+        (procLayer as any).backgroundConfig = (candidate as any).backgroundConfig;
+      }
+      if (Array.isArray(candidate.backgrounds)) {
+        (procLayer as any).backgrounds = candidate.backgrounds;
+      } else {
+        (procLayer as any).backgrounds = [item];
+      }
+      if (Array.isArray((candidate as any).sublayers)) {
+        (procLayer as any).sublayers = (candidate as any).sublayers;
+      } else {
+        (procLayer as any).sublayers = [item];
+      }
 
       return procLayer;
     });

@@ -578,54 +578,26 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
       }
     }
 
-    // Ensure all ImageLayers across all frames have sanitized, valid LayerTransform
-    // and all GenerativeLayers have normalized, valid sublayers and sources,
-    // and all frames have groups initialized
-    const sanitizedFrames = frames.map((frame) => ({
-      ...frame,
-      groups: frame.groups || [],
-      layers: frame.layers.map((layer) => {
-        if (layer.type === "image") {
-          const img = layer as ImageLayer;
-          return {
-            ...layer,
-            source: layer.source || {
-              type: "image" as const,
-              assetId: img.assetId,
-            },
-            transform: sanitizeTransform(layer.transform),
-          };
-        }
-        if (layer.type === "generative") {
-          const normGen = normalizeGenerativeLayer(layer as GenerativeLayer);
-          const primaryBg = normGen.backgrounds?.[0];
-          return {
-            ...normGen,
-            source:
-              normGen.source ||
-              (primaryBg
-                ? {
-                    type: "procedural" as const,
-                    kind: primaryBg.type,
-                    parameters: { ...primaryBg.parameters },
-                    seed: primaryBg.seed,
-                  }
-                : {
-                    type: "procedural" as const,
-                    kind: "solid" as const,
-                    parameters: { color: "#000000" },
-                  }),
-          };
-        }
-        if (layer.source && layer.source.type === "procedural") {
-          return {
-            ...layer,
-            transform: sanitizeTransform(layer.transform),
-          };
-        }
-        return layer;
-      }),
-    }));
+    // Normalize all frames to canonical Universal Composition Model
+    const sanitizedFrames = frames.map((frame) => normalizeFrameToUniversalModel(frame));
+
+    const hadLegacyStructures = frames.some((f) =>
+      f.layers.some(
+        (l) =>
+          l.type === "generative" ||
+          Array.isArray((l as any).backgrounds) ||
+          Array.isArray((l as any).sublayers) ||
+          !(l.source?.type === "image" || l.source?.type === "procedural")
+      )
+    );
+
+    if (hadLegacyStructures) {
+      try {
+        await dbSaveFrames(sanitizedFrames);
+      } catch (err) {
+        console.warn("Non-fatal: failed to persist canonical normalized frames to IndexedDB:", err);
+      }
+    }
 
     return {
       assets: validAssets,
