@@ -8,7 +8,9 @@ import {
   createImageLayer,
   normalizeFrameToUniversalModel,
   normalizeLayerToUniversal,
+  flattenItemsToLayers,
 } from "../types/frame";
+import { findLayerInItems } from "../utils/tree-operations";
 import { sanitizeTransform } from "../utils/transform-math";
 import {
   deriveLegacyBackgroundFromBackgrounds,
@@ -190,49 +192,9 @@ export async function dbGetAllFrames(): Promise<Frame[]> {
     return store.getAll();
   });
   if (!Array.isArray(records)) return [];
-  return records.map((frame) => ({
+  return records.map((frame: any) => ({
     ...frame,
-    groups: frame.groups || [],
-    layers: frame.layers.map((layer) => {
-      if (layer.type === "generative") {
-        const normGen = normalizeGenerativeLayer(layer as GenerativeLayer);
-        const primaryBg = normGen.backgrounds?.[0];
-        return {
-          ...normGen,
-          source:
-            normGen.source ||
-            (primaryBg
-              ? {
-                  type: "procedural" as const,
-                  kind: primaryBg.type,
-                  parameters: { ...primaryBg.parameters },
-                  seed: primaryBg.seed,
-                }
-              : {
-                  type: "procedural" as const,
-                  kind: "solid" as const,
-                  parameters: { color: "#000000" },
-                }),
-        };
-      }
-      if (layer.type === "image") {
-        return {
-          ...layer,
-          source: layer.source || {
-            type: "image" as const,
-            assetId: layer.assetId,
-          },
-          transform: sanitizeTransform(layer.transform),
-        };
-      }
-      if (layer.source && layer.source.type === "procedural") {
-        return {
-          ...layer,
-          transform: sanitizeTransform(layer.transform),
-        };
-      }
-      return layer;
-    }),
+    items: frame.items || frame.layers || [],
   }));
 }
 
@@ -476,7 +438,7 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
               height: asset.height || 1080,
               presetId: null,
             },
-            layers: [baseBackdrop, imageLayer],
+            items: [baseBackdrop, imageLayer],
             activeLayerId: imageLayer.id,
             createdAt: asset.createdAt || Date.now(),
             updatedAt: Date.now(),
@@ -491,13 +453,15 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
 
         const matchingFrame = frames.find((f) => f.id === `frame-${targetAssetId}`) || frames[0];
         activeFrameId = matchingFrame.id;
-        activeLayerId = matchingFrame.activeLayerId || matchingFrame.layers[1]?.id || matchingFrame.layers[0].id;
+        activeLayerId =
+          matchingFrame.activeLayerId ||
+          (matchingFrame.items[1] && "id" in matchingFrame.items[1] ? matchingFrame.items[1].id : matchingFrame.items[0].id);
       } else {
         // Fresh project: synthesize default 1080x1080 1:1 Frame with GenerativeLayer at index 0
         const defaultFrame = createDefaultFrame();
         frames = [defaultFrame];
         activeFrameId = defaultFrame.id;
-        activeLayerId = defaultFrame.layers[0].id;
+        activeLayerId = defaultFrame.items[0].id;
       }
 
       // Persist synthesized frames to IndexedDB frames store
@@ -518,23 +482,24 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
 
       // 2. Resolve activeLayerId according to approved precedence
       if (activeFrame) {
-        if (session?.activeLayerId && activeFrame.layers.some((l) => l.id === session.activeLayerId)) {
+        const frameLayers = flattenItemsToLayers(activeFrame.items || (activeFrame as any).layers || []);
+        if (session?.activeLayerId && frameLayers.some((l) => l.id === session.activeLayerId)) {
           activeLayerId = session.activeLayerId;
-        } else if (activeFrame.activeLayerId && activeFrame.layers.some((l) => l.id === activeFrame.activeLayerId)) {
+        } else if (activeFrame.activeLayerId && frameLayers.some((l) => l.id === activeFrame.activeLayerId)) {
           activeLayerId = activeFrame.activeLayerId;
         } else if (session?.activeImageId) {
           // Migration bridge: only consulted if canonical activeLayerId was absent/invalid
-          const matchingImg = activeFrame.layers.find(
+          const matchingImg = frameLayers.find(
             (l) =>
               (l.source?.type === "image" && l.source.assetId === session.activeImageId) ||
               (l.type === "image" && l.assetId === session.activeImageId)
           );
           activeLayerId = matchingImg
             ? matchingImg.id
-            : (activeFrame.layers[activeFrame.layers.length - 1]?.id ?? null);
-        } else if (activeFrame.layers.length > 0) {
+            : (frameLayers[frameLayers.length - 1]?.id ?? null);
+        } else if (frameLayers.length > 0) {
           // Top-most layer (ordered bottom-to-top)
-          activeLayerId = activeFrame.layers[activeFrame.layers.length - 1].id;
+          activeLayerId = frameLayers[frameLayers.length - 1].id;
         } else {
           activeLayerId = null;
         }
@@ -545,7 +510,9 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
 
     // Derive activeImageId strictly from activeLayer for legacy compatibility (null for procedural/empty)
     const currentActiveFrame = frames.find((f) => f.id === activeFrameId);
-    const currentActiveLayer = currentActiveFrame?.layers.find((l) => l.id === activeLayerId);
+    const currentActiveLayer = currentActiveFrame
+      ? findLayerInItems(currentActiveFrame.items || (currentActiveFrame as any).layers || [], activeLayerId)
+      : null;
     let resolvedActiveImageId: string | null = null;
     if (currentActiveLayer) {
       if (currentActiveLayer.source?.type === "image") {
@@ -559,8 +526,9 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
     const mergedEffectStacks = { ...effectStacks };
     const mergedBackgrounds = { ...backgrounds };
     for (const frame of frames) {
-      const baseGen = frame.layers[0];
-      for (const layer of frame.layers) {
+      const frameLayers = flattenItemsToLayers(frame.items || (frame as any).layers || []);
+      const baseGen = frameLayers[0];
+      for (const layer of frameLayers) {
         if (layer.type === "image") {
           const img = layer as ImageLayer;
           if (!mergedEffectStacks[img.assetId]) {
@@ -592,15 +560,18 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
     // Normalize all frames to canonical Universal Composition Model
     const sanitizedFrames = frames.map((frame) => normalizeFrameToUniversalModel(frame));
 
-    const hadLegacyStructures = frames.some((f) =>
-      f.layers.some(
+    const hadLegacyStructures = frames.some((f) => {
+      const legacy = f as any;
+      if (legacy.layers || legacy.groups) return true;
+      const flat = flattenItemsToLayers(f.items || []);
+      return flat.some(
         (l) =>
           l.type === "generative" ||
           Array.isArray((l as any).backgrounds) ||
           Array.isArray((l as any).sublayers) ||
           !(l.source?.type === "image" || l.source?.type === "procedural")
-      )
-    );
+      );
+    });
 
     if (hadLegacyStructures) {
       try {
@@ -628,7 +599,7 @@ export async function loadHydratedProject(): Promise<HydratedProjectState> {
       assets: [],
       frames: [defaultFrame],
       activeFrameId: defaultFrame.id,
-      activeLayerId: defaultFrame.layers[0].id,
+      activeLayerId: defaultFrame.items[0].id,
       activeImageId: null,
       effectStacks: {},
       backgrounds: {},

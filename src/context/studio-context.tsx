@@ -4,11 +4,12 @@ import type {
   ViewportState,
   EffectInstance,
   EffectStack,
-  StudioHistorySnapshot,
 } from "../types/asset";
+import type { StudioHistorySnapshot } from "../types/history";
 import type {
   Frame,
   Layer,
+  Group,
   ImageLayer,
   BlendMode,
   FrameDimensions,
@@ -21,7 +22,31 @@ import {
   createDefaultFrame,
   createImageLayer,
   createProceduralLayer,
+  flattenItemsToLayers,
+  isGroup,
+  isLayer,
 } from "../types/frame";
+import {
+  findLayerInItems,
+  findLayerLocation,
+  findGroupContainingLayer,
+  findGroupById,
+  getEffectiveLayerVisibility,
+  getEffectiveLayerLocked,
+  createGroupFromSelection,
+  ungroup as ungroupItems,
+  deleteGroup as deleteGroupItems,
+  moveRootItem as moveRootItemInItems,
+  reorderGroupChild as reorderGroupChildInItems,
+  moveLayerToGroup as moveLayerToGroupInItems,
+  ejectLayerFromGroup as ejectLayerFromGroupInItems,
+  renameGroup as renameGroupInItems,
+  setGroupVisibility as setGroupVisibilityInItems,
+  setGroupLocked as setGroupLockedInItems,
+  setGroupCollapsed as setGroupCollapsedInItems,
+  updateLayerInItems,
+  removeLayerFromItems,
+} from "../utils/tree-operations";
 import type { Look, LookCategory, BackgroundState } from "../types/look";
 import { DEFAULT_BACKGROUND_STATE } from "../types/look";
 import type {
@@ -134,6 +159,23 @@ export interface StudioContextType {
   reorderLayers: (fromIndex: number, toIndex: number) => void;
   removeLayer: (layerId: string) => void;
   setFrameDimensions: (dimensions: FrameDimensions) => void;
+
+  // Phase 5 Group & Multi-Selection Operations
+  selectedLayerIds: Set<string>;
+  toggleLayerSelection: (layerId: string) => void;
+  selectLayers: (layerIds: string[]) => void;
+  clearLayerSelection: () => void;
+  createGroup: (name?: string) => void;
+  ungroup: (groupId: string) => void;
+  deleteGroup: (groupId: string) => void;
+  renameGroup: (groupId: string, newName: string) => void;
+  toggleGroupVisibility: (groupId: string) => void;
+  toggleGroupLock: (groupId: string) => void;
+  toggleGroupCollapse: (groupId: string) => void;
+  moveRootItem: (fromIndex: number, toIndex: number) => void;
+  reorderGroupChild: (groupId: string, fromIndex: number, toIndex: number) => void;
+  moveLayerToGroup: (layerId: string, targetGroupId: string, targetIndex?: number) => void;
+  ejectLayerFromGroup: (layerId: string, targetRootIndex?: number) => void;
 
   // Transitional Compatibility Adapters (Stage 1A)
   assets: Asset[];
@@ -279,12 +321,15 @@ export function StudioProvider({
     () => frames[0]?.id ?? null
   );
   const [activeLayerId, setActiveLayerIdState] = React.useState<string | null>(
-    () => frames[0]?.layers[0]?.id ?? null
+    () => (frames[0]?.items[0] as Layer)?.id ?? null
   );
   const [selectedEffectInstanceId, setSelectedEffectInstanceId] =
     React.useState<string | null>(null);
 
   const [selectedAssetIds, setSelectedAssetIds] = React.useState<Set<string>>(
+    () => new Set()
+  );
+  const [selectedLayerIds, setSelectedLayerIds] = React.useState<Set<string>>(
     () => new Set()
   );
   const [userLooks, setUserLooks] = React.useState<Look[]>([]);
@@ -307,6 +352,26 @@ export function StudioProvider({
 
   const clearAppliedLook = React.useCallback(() => {
     setAppliedLook(null);
+  }, []);
+
+  const toggleLayerSelection = React.useCallback((layerId: string) => {
+    setSelectedLayerIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(layerId)) {
+        next.delete(layerId);
+      } else {
+        next.add(layerId);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectLayers = React.useCallback((layerIds: string[]) => {
+    setSelectedLayerIds(new Set(layerIds));
+  }, []);
+
+  const clearLayerSelection = React.useCallback(() => {
+    setSelectedLayerIds(new Set());
   }, []);
 
   const [theme, setThemeState] = React.useState<"system" | "light" | "dark">(() => {
@@ -373,7 +438,7 @@ export function StudioProvider({
   // Derived active layer (strict lookup within activeFrame, zero fallback)
   const activeLayer = React.useMemo((): Layer | null => {
     if (!activeFrame || !activeLayerId) return null;
-    return activeFrame.layers.find((l) => l.id === activeLayerId) ?? null;
+    return findLayerInItems(activeFrame.items, activeLayerId);
   }, [activeFrame, activeLayerId]);
 
   // Transitional Compatibility Getters (strictly derived from activeLayer.source, null for procedural/backdrop/empty)
@@ -402,7 +467,7 @@ export function StudioProvider({
     if (!activeFrame) return DEFAULT_BACKGROUND_STATE;
     const currentLayer =
       (activeLayer?.source?.type === "procedural" ? activeLayer : null) ||
-      activeFrame.layers.find((l) => l.source?.type === "procedural");
+      flattenItemsToLayers(activeFrame.items).find((l) => l.source?.type === "procedural");
     if (!currentLayer || !currentLayer.source || currentLayer.source.type !== "procedural") {
       return DEFAULT_BACKGROUND_STATE;
     }
@@ -436,7 +501,7 @@ export function StudioProvider({
 
   const hasActiveBackground = React.useMemo((): boolean => {
     if (!activeFrame) return false;
-    return activeFrame.layers.some(
+    return flattenItemsToLayers(activeFrame.items).some(
       (l) => l.source?.type === "procedural" && l.visible !== false
     );
   }, [activeFrame]);
@@ -444,7 +509,7 @@ export function StudioProvider({
   const effectStacks = React.useMemo((): Record<string, EffectStack> => {
     const map: Record<string, EffectStack> = {};
     for (const frame of frames) {
-      for (const layer of frame.layers) {
+      for (const layer of flattenItemsToLayers(frame.items)) {
         if (layer.type === "image" && layer.assetId && layer.effectStack && layer.effectStack.length > 0) {
           map[layer.assetId] = layer.effectStack;
         }
@@ -456,7 +521,8 @@ export function StudioProvider({
   const backgrounds = React.useMemo((): Record<string, BackgroundState> => {
     const map: Record<string, BackgroundState> = {};
     for (const frame of frames) {
-      const baseProc = frame.layers.find(
+      const frameLayers = flattenItemsToLayers(frame.items);
+      const baseProc = frameLayers.find(
         (l) => (l.source?.type === "procedural" || l.type === "generative") && l.visible !== false
       );
       if (baseProc) {
@@ -477,7 +543,7 @@ export function StudioProvider({
               : gen.backgroundConfig;
         }
         if (bg) {
-          for (const layer of frame.layers) {
+          for (const layer of frameLayers) {
             if (layer.type === "image" && layer.assetId) {
               map[layer.assetId] = bg;
             }
@@ -679,23 +745,24 @@ export function StudioProvider({
 
             // 2. Resolve activeLayerId according to approved precedence
             let resolvedLayerId: string | null = null;
-            if (state.activeLayerId && targetFrame.layers.some((l) => l.id === state.activeLayerId)) {
+            const targetLayers = flattenItemsToLayers(targetFrame.items);
+            if (state.activeLayerId && targetLayers.some((l) => l.id === state.activeLayerId)) {
               resolvedLayerId = state.activeLayerId;
-            } else if (targetFrame.activeLayerId && targetFrame.layers.some((l) => l.id === targetFrame.activeLayerId)) {
+            } else if (targetFrame.activeLayerId && targetLayers.some((l) => l.id === targetFrame.activeLayerId)) {
               resolvedLayerId = targetFrame.activeLayerId;
             } else if (state.activeImageId) {
               // Migration bridge: only consulted if canonical activeLayerId was absent/invalid
-              const matchingImg = targetFrame.layers.find(
+              const matchingImg = targetLayers.find(
                 (l) =>
                   (l.source?.type === "image" && l.source.assetId === state.activeImageId) ||
                   (l.type === "image" && l.assetId === state.activeImageId)
               );
               resolvedLayerId = matchingImg
                 ? matchingImg.id
-                : (targetFrame.layers[targetFrame.layers.length - 1]?.id ?? null);
-            } else if (targetFrame.layers.length > 0) {
+                : (targetLayers[targetLayers.length - 1]?.id ?? null);
+            } else if (targetLayers.length > 0) {
               // Top-most layer (ordered bottom-to-top)
-              resolvedLayerId = targetFrame.layers[targetFrame.layers.length - 1].id;
+              resolvedLayerId = targetLayers[targetLayers.length - 1].id;
             } else {
               resolvedLayerId = null;
             }
@@ -723,7 +790,7 @@ export function StudioProvider({
                   height: asset.height || 1080,
                   presetId: null,
                 },
-                layers: [baseBackdrop, imgLayer],
+                items: [baseBackdrop, imgLayer],
                 activeLayerId: imgLayer.id,
                 createdAt: asset.createdAt || Date.now(),
                 updatedAt: Date.now(),
@@ -733,7 +800,8 @@ export function StudioProvider({
             const targetAssetId = state.activeImageId || state.assets[0].id;
             const initialFrame = synthesizedFrames.find((f) => f.id === `frame-${targetAssetId}`) || synthesizedFrames[0];
             setActiveFrameIdState(initialFrame.id);
-            const initialLayerId = initialFrame.activeLayerId || initialFrame.layers[initialFrame.layers.length - 1]?.id || null;
+            const initialLayers = flattenItemsToLayers(initialFrame.items);
+            const initialLayerId = initialFrame.activeLayerId || initialLayers[initialLayers.length - 1]?.id || null;
             setActiveLayerIdState(initialLayerId);
           }
 
@@ -777,13 +845,14 @@ export function StudioProvider({
 
     const frame = framesRef.current.find((f) => f.id === id);
     if (frame) {
-      // Validate frame.activeLayerId against frame.layers
+      // Validate frame.activeLayerId against frame items
+      const frameLayers = flattenItemsToLayers(frame.items);
       let resolvedLayerId: string | null = null;
-      if (frame.activeLayerId && frame.layers.some((l) => l.id === frame.activeLayerId)) {
+      if (frame.activeLayerId && frameLayers.some((l) => l.id === frame.activeLayerId)) {
         resolvedLayerId = frame.activeLayerId;
-      } else if (frame.layers.length > 0) {
+      } else if (frameLayers.length > 0) {
         // Top-most layer (ordered bottom-to-top)
-        resolvedLayerId = frame.layers[frame.layers.length - 1].id;
+        resolvedLayerId = frameLayers[frameLayers.length - 1].id;
       } else {
         resolvedLayerId = null;
       }
@@ -797,7 +866,7 @@ export function StudioProvider({
       }
       setActiveLayerIdState(resolvedLayerId);
 
-      const targetLayer = frame.layers.find((l) => l.id === resolvedLayerId);
+      const targetLayer = findLayerInItems(frame.items, resolvedLayerId);
       const assetId =
         targetLayer?.source?.type === "image"
           ? targetLayer.source.assetId
@@ -828,7 +897,7 @@ export function StudioProvider({
         )
       );
       const frame = framesRef.current.find((f) => f.id === activeFId);
-      const targetLayer = frame?.layers.find((l) => l.id === id);
+      const targetLayer = frame ? findLayerInItems(frame.items, id) : null;
       const assetId =
         targetLayer?.source?.type === "image"
           ? targetLayer.source.assetId
@@ -857,7 +926,7 @@ export function StudioProvider({
     if (!currentFrame) return;
 
     // Resolve matching ImageSource layer in CURRENT activeFrame only
-    const targetLayer = currentFrame.layers.find(
+    const targetLayer = flattenItemsToLayers(currentFrame.items).find(
       (l) =>
         (l.source?.type === "image" && l.source.assetId === id) ||
         (l.type === "image" && l.assetId === id)
@@ -889,10 +958,10 @@ export function StudioProvider({
         return prev.map((frame) => {
           if (frame.id !== activeFId) return frame;
 
-          const newLayers = [...frame.layers, newLayer];
+          const newItems = [...frame.items, newLayer];
           const updatedFrame: Frame = {
             ...frame,
-            layers: newLayers,
+            items: newItems,
             activeLayerId: newLayer.id,
             updatedAt: Date.now(),
           };
@@ -930,10 +999,10 @@ export function StudioProvider({
         return prev.map((frame) => {
           if (frame.id !== activeFId) return frame;
 
-          const newLayers = [...frame.layers, layer];
+          const newItems = [...frame.items, layer];
           const updatedFrame: Frame = {
             ...frame,
-            layers: newLayers,
+            items: newItems,
             activeLayerId: layer.id,
             updatedAt: Date.now(),
           };
@@ -978,10 +1047,10 @@ export function StudioProvider({
         return prev.map((frame) => {
           if (frame.id !== activeFId) return frame;
 
-          const newLayers = [...frame.layers, newLayer];
+          const newItems = [...frame.items, newLayer];
           const updatedFrame: Frame = {
             ...frame,
-            layers: newLayers,
+            items: newItems,
             activeLayerId: newLayer.id,
             updatedAt: Date.now(),
           };
@@ -1016,18 +1085,13 @@ export function StudioProvider({
         const activeFId = activeFrameIdRef.current || prev[0]?.id;
         return prev.map((frame) => {
           if (frame.id !== activeFId) return frame;
-          const layerIdx = frame.layers.findIndex(
-            (l) =>
-              l.id === layerId ||
-              (l as any).backgrounds?.some((b: any) => b.id === layerId) ||
-              (l as any).sublayers?.some((b: any) => b.id === layerId)
-          );
-          if (layerIdx === -1) return frame;
 
-          const current = frame.layers[layerIdx];
-          if (!current.source || current.source.type !== "procedural") return frame;
+          const currentLayer = findLayerInItems(frame.items, layerId);
+          if (!currentLayer || !currentLayer.source || currentLayer.source.type !== "procedural") {
+            return frame;
+          }
 
-          const currentSource = current.source as ProceduralSource;
+          const currentSource = currentLayer.source as ProceduralSource;
           const isFullSource =
             (sourceUpdates as any).type === "procedural" ||
             (sourceUpdates as any).kind !== undefined;
@@ -1057,18 +1121,15 @@ export function StudioProvider({
             seed: (sourceUpdates as any).seed ?? currentSource.seed,
           };
 
-          const updatedLayer: Layer = {
-            ...current,
+          const newItems = updateLayerInItems(frame.items, layerId, (cur) => ({
+            ...cur,
             source: nextSource,
             updatedAt: Date.now(),
-          };
-
-          const nextLayers = [...frame.layers];
-          nextLayers[layerIdx] = updatedLayer;
+          }));
 
           const updatedFrame: Frame = {
             ...frame,
-            layers: nextLayers,
+            items: newItems,
             updatedAt: Date.now(),
           };
 
@@ -1092,44 +1153,41 @@ export function StudioProvider({
         const activeFId = activeFrameIdRef.current;
         return prev.map((frame) => {
           if (frame.id !== activeFId) return frame;
-          const layerIdx = frame.layers.findIndex((l) => l.id === layerId);
-          if (layerIdx === -1) return frame;
 
-          const current = frame.layers[layerIdx];
-          let nextTransform = current.transform;
+          const loc = findLayerLocation(frame.items, layerId);
+          if (!loc) return frame;
+
+          let nextTransform = loc.layer.transform;
           if (updates.transform !== undefined) {
             nextTransform = sanitizeTransform(updates.transform);
           }
 
-          let nextSource = current.source;
+          let nextSource = loc.layer.source;
           if (updates.source) {
             nextSource = {
-              ...current.source,
+              ...loc.layer.source,
               ...updates.source,
             } as LayerSource;
           }
 
           // Hard invariant: backdrop at index 0 cannot be unlocked
-          let nextLocked = updates.locked !== undefined ? updates.locked : current.locked;
-          if (layerIdx === 0 && current.locked && updates.locked === false) {
+          let nextLocked = updates.locked !== undefined ? updates.locked : loc.layer.locked;
+          if (loc.type === "root" && loc.index === 0 && loc.layer.locked && updates.locked === false) {
             nextLocked = true;
           }
 
-          const updatedLayer: Layer = {
+          const newItems = updateLayerInItems(frame.items, layerId, (current) => ({
             ...current,
             ...updates,
             locked: nextLocked,
             ...(nextTransform ? { transform: nextTransform } : {}),
             ...(nextSource ? { source: nextSource } : {}),
             updatedAt: Date.now(),
-          };
-
-          const newLayers = [...frame.layers];
-          newLayers[layerIdx] = updatedLayer;
+          }));
 
           const updatedFrame: Frame = {
             ...frame,
-            layers: newLayers,
+            items: newItems,
             updatedAt: Date.now(),
           };
 
@@ -1144,8 +1202,7 @@ export function StudioProvider({
     [recordDiscreteSnapshot]
   );
 
-
-  const reorderLayers = React.useCallback(
+  const moveRootItemAction = React.useCallback(
     (fromIndex: number, toIndex: number) => {
       recordDiscreteSnapshot();
 
@@ -1154,47 +1211,30 @@ export function StudioProvider({
         return prev.map((frame) => {
           if (frame.id !== activeFId) return frame;
 
-          // Hard Invariant: index 0 is canonical backdrop / locked background
-          // Layers are only reorderable at indices >= 1, and locked layers cannot be moved
-          if (fromIndex <= 0 || toIndex <= 0 || frame.layers[fromIndex]?.locked) {
-            console.warn("Cannot reorder locked backdrop layer at index 0");
-            return frame;
-          }
-          if (
-            fromIndex >= frame.layers.length ||
-            toIndex >= frame.layers.length ||
-            fromIndex === toIndex
-          ) {
-            return frame;
-          }
-
-          const newLayers = [...frame.layers];
-          const [moved] = newLayers.splice(fromIndex, 1);
-          newLayers.splice(toIndex, 0, moved);
-
-          // Structural invariant: if a backdrop exists, it must remain behind all upper layers at index 0
-          const hasBackdrop = frame.layers.some((l) => l.source?.type === "procedural" || l.type === "generative");
-          const firstIsBackdrop = newLayers[0]?.source?.type === "procedural" || newLayers[0]?.type === "generative";
-          if (hasBackdrop && !firstIsBackdrop) {
-            console.warn("Reorder rejected: index 0 must be backdrop layer");
-            return frame;
-          }
+          const newItems = moveRootItemInItems(frame.items, fromIndex, toIndex);
+          if (newItems === frame.items) return frame;
 
           const updatedFrame: Frame = {
             ...frame,
-            layers: newLayers,
+            items: newItems,
             updatedAt: Date.now(),
           };
 
           if (typeof dbSaveFrame === "function") {
             dbSaveFrame(updatedFrame).catch(console.error);
           }
-
           return updatedFrame;
         });
       });
     },
     [recordDiscreteSnapshot]
+  );
+
+  const reorderLayers = React.useCallback(
+    (fromIndex: number, toIndex: number) => {
+      moveRootItemAction(fromIndex, toIndex);
+    },
+    [moveRootItemAction]
   );
 
   const removeLayer = React.useCallback(
@@ -1205,29 +1245,35 @@ export function StudioProvider({
         const activeFId = activeFrameIdRef.current;
         return prev.map((frame) => {
           if (frame.id !== activeFId) return frame;
-          const layerIdx = frame.layers.findIndex((l) => l.id === layerId);
-          if (layerIdx === -1) return frame;
 
-          // Hard invariant: backdrop at index 0 is locked and cannot be removed
-          if (layerIdx === 0 && (frame.layers[0]?.locked || frame.layers[0]?.name === "Background")) {
+          // Hard invariant: backdrop at index 0 cannot be removed
+          if (frame.items.length > 0 && isLayer(frame.items[0]) && frame.items[0].id === layerId) {
             console.warn("Cannot remove locked backdrop layer at index 0");
             return frame;
           }
 
+          const existingLoc = findLayerLocation(frame.items, layerId);
+          if (!existingLoc) return frame;
+          if (existingLoc.type === "group" && existingLoc.group.locked) {
+            console.warn("Cannot remove layer from locked group");
+            return frame;
+          }
+
           const isGenerative =
-            frame.layers[layerIdx].source?.type === "procedural" ||
-            frame.layers[layerIdx].type === "generative";
-          const newLayers = frame.layers.filter((l) => l.id !== layerId);
+            existingLoc.layer.source?.type === "procedural" ||
+            existingLoc.layer.type === "generative";
+
+          const newItems = removeLayerFromItems(frame.items, layerId);
+          const remainingLayers = flattenItemsToLayers(newItems);
+
           let nextActiveLayerId = frame.activeLayerId;
           const wasActive = frame.activeLayerId === layerId || activeLayerIdRef.current === layerId;
 
           if (wasActive) {
-            if (newLayers.length === 0) {
+            if (remainingLayers.length === 0) {
               nextActiveLayerId = null;
             } else {
-              // Prefer adjacent layer below (index - 1), else first remaining layer (index 0)
-              const adjacentIdx = layerIdx > 0 ? layerIdx - 1 : 0;
-              nextActiveLayerId = newLayers[adjacentIdx]?.id || null;
+              nextActiveLayerId = remainingLayers[remainingLayers.length - 1].id;
             }
             setActiveLayerIdState(nextActiveLayerId);
           }
@@ -1238,7 +1284,7 @@ export function StudioProvider({
 
           const updatedFrame: Frame = {
             ...frame,
-            layers: newLayers,
+            items: newItems,
             activeLayerId: nextActiveLayerId,
             updatedAt: Date.now(),
           };
@@ -1248,7 +1294,7 @@ export function StudioProvider({
           }
 
           if (wasActive && typeof dbSaveSessionState === "function") {
-            const activeL = newLayers.find((l) => l.id === nextActiveLayerId);
+            const activeL = remainingLayers.find((l) => l.id === nextActiveLayerId);
             const activeImg =
               activeL?.source?.type === "image"
                 ? activeL.source.assetId
@@ -1263,6 +1309,307 @@ export function StudioProvider({
             ).catch(console.error);
           }
 
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Phase 5 Group Actions
+  // ---------------------------------------------------------------------------
+
+  const createGroup = React.useCallback(
+    (name?: string) => {
+      const selected = Array.from(selectedLayerIds);
+      if (selected.length < 2) return;
+
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const newItems = createGroupFromSelection(frame.items, selected, name);
+          if (newItems === frame.items) return frame;
+
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          return updatedFrame;
+        });
+      });
+
+      setSelectedLayerIds(new Set());
+    },
+    [selectedLayerIds, recordDiscreteSnapshot]
+  );
+
+  const ungroup = React.useCallback(
+    (groupId: string) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const newItems = ungroupItems(frame.items, groupId);
+          if (newItems === frame.items) return frame;
+
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  const deleteGroup = React.useCallback(
+    (groupId: string) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const targetGroup = findGroupById(frame.items, groupId);
+          if (!targetGroup) return frame;
+
+          const childIds = new Set(targetGroup.group.children.map((c) => c.id));
+          const newItems = deleteGroupItems(frame.items, groupId);
+          if (newItems === frame.items) return frame;
+
+          const remainingLayers = flattenItemsToLayers(newItems);
+          let nextActiveLayerId = frame.activeLayerId;
+          if (nextActiveLayerId && childIds.has(nextActiveLayerId)) {
+            nextActiveLayerId = remainingLayers[remainingLayers.length - 1]?.id ?? null;
+            setActiveLayerIdState(nextActiveLayerId);
+          }
+
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            activeLayerId: nextActiveLayerId,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  const renameGroup = React.useCallback(
+    (groupId: string, newName: string) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const newItems = renameGroupInItems(frame.items, groupId, newName);
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  const toggleGroupVisibility = React.useCallback(
+    (groupId: string) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const target = findGroupById(frame.items, groupId);
+          if (!target) return frame;
+
+          const newItems = setGroupVisibilityInItems(frame.items, groupId, !target.group.visible);
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  const toggleGroupLock = React.useCallback(
+    (groupId: string) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const target = findGroupById(frame.items, groupId);
+          if (!target) return frame;
+
+          const newItems = setGroupLockedInItems(frame.items, groupId, !target.group.locked);
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  const toggleGroupCollapse = React.useCallback(
+    (groupId: string) => {
+      // NOTE: NO undo history snapshot! Collapse is UI view state.
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const target = findGroupById(frame.items, groupId);
+          if (!target) return frame;
+
+          const newItems = setGroupCollapsedInItems(frame.items, groupId, !target.group.collapsed);
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          return updatedFrame;
+        });
+      });
+    },
+    []
+  );
+
+  const reorderGroupChild = React.useCallback(
+    (groupId: string, fromIndex: number, toIndex: number) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const newItems = reorderGroupChildInItems(frame.items, groupId, fromIndex, toIndex);
+          if (newItems === frame.items) return frame;
+
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  const moveLayerToGroup = React.useCallback(
+    (layerId: string, targetGroupId: string, targetIndex?: number) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const newItems = moveLayerToGroupInItems(frame.items, layerId, targetGroupId, targetIndex);
+          if (newItems === frame.items) return frame;
+
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot]
+  );
+
+  const ejectLayerFromGroup = React.useCallback(
+    (layerId: string, targetRootIndex?: number) => {
+      recordDiscreteSnapshot();
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const newItems = ejectLayerFromGroupInItems(frame.items, layerId, targetRootIndex);
+          if (newItems === frame.items) return frame;
+
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
           return updatedFrame;
         });
       });
@@ -1420,12 +1767,12 @@ export function StudioProvider({
 
           const isOnlyEmptyDefault =
             updatedFrames.length === 1 &&
-            !updatedFrames[0].layers.some((l) => l.type === "image");
+            !flattenItemsToLayers(updatedFrames[0].items).some((l) => l.type === "image");
 
           if (isOnlyEmptyDefault) {
             const firstAsset = newlyCreated[0];
             const baseBackdrop =
-              updatedFrames[0].layers[0] ||
+              (updatedFrames[0].items[0] as Layer) ||
               createDefaultBackdropLayer();
             const firstLayer = createImageLayer(
               firstAsset.id,
@@ -1441,7 +1788,7 @@ export function StudioProvider({
                 height: firstAsset.height || 1080,
                 presetId: null,
               },
-              layers: [baseBackdrop, firstLayer],
+              items: [baseBackdrop, firstLayer],
               activeLayerId: firstLayer.id,
               updatedAt: Date.now(),
             };
@@ -1457,7 +1804,7 @@ export function StudioProvider({
                   height: asset.height || 1080,
                   presetId: null,
                 },
-                layers: [backdrop, layer],
+                items: [backdrop, layer],
                 activeLayerId: layer.id,
                 createdAt: asset.createdAt || Date.now(),
                 updatedAt: Date.now(),
@@ -1477,7 +1824,7 @@ export function StudioProvider({
                   height: asset.height || 1080,
                   presetId: null,
                 },
-                layers: [backdrop, layer],
+                items: [backdrop, layer],
                 activeLayerId: layer.id,
                 createdAt: asset.createdAt || Date.now(),
                 updatedAt: Date.now(),
@@ -1488,14 +1835,15 @@ export function StudioProvider({
 
           const targetFrame =
             updatedFrames.find((f) =>
-              f.layers.some((l) => l.type === "image" && l.assetId === newActiveId)
+              flattenItemsToLayers(f.items).some((l) => l.type === "image" && l.assetId === newActiveId)
             ) || updatedFrames[updatedFrames.length - 1];
 
           setActiveFrameIdState(targetFrame.id);
-          const targetLayer = targetFrame.layers.find(
+          const allTargetLayers = flattenItemsToLayers(targetFrame.items);
+          const targetLayer = allTargetLayers.find(
             (l) => l.type === "image" && l.assetId === newActiveId
           );
-          setActiveLayerIdState(targetLayer?.id || targetFrame.layers[0].id);
+          setActiveLayerIdState(targetLayer?.id || allTargetLayers[0]?.id || null);
 
           if (typeof dbSaveFrames === "function") {
             dbSaveFrames(updatedFrames).catch(console.error);
@@ -1546,25 +1894,28 @@ export function StudioProvider({
       setFrames((prevFrames) => {
         let updatedFrames = prevFrames
           .map((f) => {
-            const nextLayers = f.layers.filter(
+            const matchingLayers = flattenItemsToLayers(f.items).filter(
               (l) =>
-                !(
-                  (l.source?.type === "image" && l.source.assetId === id) ||
-                  (l.type === "image" && l.assetId === id)
-                )
+                (l.source?.type === "image" && l.source.assetId === id) ||
+                (l.type === "image" && l.assetId === id)
             );
+            let nextItems = f.items;
+            for (const match of matchingLayers) {
+              nextItems = removeLayerFromItems(nextItems, match.id);
+            }
+            const flat = flattenItemsToLayers(nextItems);
             return {
               ...f,
-              layers: nextLayers,
+              items: nextItems,
               activeLayerId:
-                f.activeLayerId && !nextLayers.some((l) => l.id === f.activeLayerId)
-                  ? nextLayers[nextLayers.length - 1]?.id ?? null
+                f.activeLayerId && !flat.some((l) => l.id === f.activeLayerId)
+                  ? flat[flat.length - 1]?.id ?? null
                   : f.activeLayerId,
               updatedAt: Date.now(),
             };
           })
           .filter((f) => {
-            if (f.id === `frame-${id}` && f.layers.length <= 1) {
+            if (f.id === `frame-${id}` && flattenItemsToLayers(f.items).length <= 1) {
               return false;
             }
             return true;
@@ -1579,17 +1930,18 @@ export function StudioProvider({
           updatedFrames[updatedFrames.length - 1];
 
         setActiveFrameIdState(nextActiveFrame.id);
+        const nextActiveFrameLayers = flattenItemsToLayers(nextActiveFrame.items);
         const nextActiveLayerId =
-          nextActiveFrame.activeLayerId && nextActiveFrame.layers.some((l) => l.id === nextActiveFrame.activeLayerId)
+          nextActiveFrame.activeLayerId && nextActiveFrameLayers.some((l) => l.id === nextActiveFrame.activeLayerId)
             ? nextActiveFrame.activeLayerId
-            : (nextActiveFrame.layers[nextActiveFrame.layers.length - 1]?.id ?? null);
+            : (nextActiveFrameLayers[nextActiveFrameLayers.length - 1]?.id ?? null);
         setActiveLayerIdState(nextActiveLayerId);
 
         if (typeof dbSaveFrames === "function") {
           dbSaveFrames(updatedFrames).catch(console.error);
         }
         if (typeof dbSaveSessionState === "function") {
-          const activeL = nextActiveFrame.layers.find((l) => l.id === nextActiveLayerId);
+          const activeL = findLayerInItems(nextActiveFrame.items, nextActiveLayerId);
           const activeImgId =
             activeL?.source?.type === "image"
               ? activeL.source.assetId
@@ -1642,57 +1994,51 @@ export function StudioProvider({
 
       setFrames((prevFrames) => {
         let frameIndex = -1;
-        let layerIndex = -1;
+        let matchedLayerId: string | null = null;
 
         for (let fi = 0; fi < prevFrames.length; fi++) {
           const frame = prevFrames[fi];
-          const li = frame.layers.findIndex((l) => {
-            // Priority 1 — Canonical Layer ID
+          const flat = flattenItemsToLayers(frame.items);
+          const match = flat.find((l) => {
             if (l.id === targetId) return true;
-            // Priority 2 — Transitional ImageSource
             if (l.source?.type === "image" && l.source.assetId === targetId) return true;
-            // Priority 3 — Legacy compatibility
             if (l.type === "image" && l.assetId === targetId) return true;
             return false;
           });
-          if (li !== -1) {
+          if (match) {
             frameIndex = fi;
-            layerIndex = li;
+            matchedLayerId = match.id;
             break;
           }
         }
 
         if (frameIndex === -1 && activeFrameRef.current) {
           frameIndex = prevFrames.findIndex((f) => f.id === activeFrameRef.current!.id);
-          if (frameIndex !== -1) {
-            const frame = prevFrames[frameIndex];
-            // Priority 4 — Active layer fallback strictly by layer ID
-            layerIndex = frame.layers.findIndex(
-              (l) => l.id === activeLayerRef.current?.id
-            );
+          if (frameIndex !== -1 && activeLayerRef.current) {
+            matchedLayerId = activeLayerRef.current.id;
           }
         }
 
-        if (frameIndex === -1 || layerIndex === -1) {
+        if (frameIndex === -1 || !matchedLayerId) {
           return prevFrames;
         }
 
         const targetFrame = prevFrames[frameIndex];
-        const targetLayer = targetFrame.layers[layerIndex];
+        const targetLayer = findLayerInItems(targetFrame.items, matchedLayerId);
+        if (!targetLayer) return prevFrames;
+
         const currentStack = targetLayer.effectStack || [];
         const nextStack = mutator(currentStack);
 
-        const updatedLayer: Layer = {
-          ...targetLayer,
+        const newItems = updateLayerInItems(targetFrame.items, matchedLayerId, (l) => ({
+          ...l,
           effectStack: nextStack,
-        };
-
-        const nextLayers = [...targetFrame.layers];
-        nextLayers[layerIndex] = updatedLayer;
+          updatedAt: Date.now(),
+        }));
 
         const updatedFrame: Frame = {
           ...targetFrame,
-          layers: nextLayers,
+          items: newItems,
           updatedAt: Date.now(),
         };
 
@@ -1945,20 +2291,33 @@ export function StudioProvider({
       setFrames((prevFrames) => {
         const updatedFrames = prevFrames.map((frame) => {
           let hasChange = false;
-          const nextLayers = frame.layers.map((layer) => {
-            if (layer.type === "image") {
-              const img = layer as ImageLayer;
-              if (assetIds.includes(img.assetId)) {
+          const nextItems = frame.items.map((item) => {
+            if ("children" in item) {
+              const nextChildren = item.children.map((child) => {
+                if (child.type === "image" && assetIds.includes((child as ImageLayer).assetId)) {
+                  hasChange = true;
+                  return {
+                    ...child,
+                    effectStack: newStacksMap[(child as ImageLayer).assetId] || [],
+                    updatedAt: Date.now(),
+                  };
+                }
+                return child;
+              });
+              return { ...item, children: nextChildren };
+            } else {
+              if (item.type === "image" && assetIds.includes((item as ImageLayer).assetId)) {
                 hasChange = true;
                 return {
-                  ...layer,
-                  effectStack: newStacksMap[img.assetId] || [],
+                  ...item,
+                  effectStack: newStacksMap[(item as ImageLayer).assetId] || [],
+                  updatedAt: Date.now(),
                 };
               }
+              return item;
             }
-            return layer;
           });
-          return hasChange ? { ...frame, layers: nextLayers, updatedAt: Date.now() } : frame;
+          return hasChange ? { ...frame, items: nextItems, updatedAt: Date.now() } : frame;
         });
 
         if (typeof dbSaveFrames === "function") {
@@ -2033,16 +2392,14 @@ export function StudioProvider({
         if (frameIndex === -1) return prev;
         const targetFrame = prev[frameIndex];
 
-        let procIdx = targetFrame.layers.findIndex(
-          (l) => l.id === targetFrame.activeLayerId && l.source?.type === "procedural"
-        );
-        if (procIdx === -1) {
-          procIdx = targetFrame.layers.findIndex((l) => l.source?.type === "procedural");
-        }
-        if (procIdx === -1) return prev;
+        const allLayers = flattenItemsToLayers(targetFrame.items);
+        let targetProcLayer =
+          (targetFrame.activeLayerId ? allLayers.find((l) => l.id === targetFrame.activeLayerId && l.source?.type === "procedural") : null) ||
+          allLayers.find((l) => l.source?.type === "procedural");
 
-        const currentLayer = targetFrame.layers[procIdx];
-        const currentSource = currentLayer.source as ProceduralSource;
+        if (!targetProcLayer) return prev;
+
+        const currentSource = targetProcLayer.source as ProceduralSource;
         const nextKind = updates.type && updates.type !== "transparent" ? updates.type : currentSource.kind;
         const nextParams: Record<string, unknown> = {
           ...currentSource.parameters,
@@ -2055,7 +2412,7 @@ export function StudioProvider({
         const isVisible = updates.visible !== undefined ? updates.visible : updates.type !== "transparent";
 
         const updatedLayer: Layer = {
-          ...currentLayer,
+          ...targetProcLayer,
           visible: isVisible,
           source: {
             type: "procedural",
@@ -2066,12 +2423,11 @@ export function StudioProvider({
           updatedAt: Date.now(),
         };
 
-        const nextLayers = [...targetFrame.layers];
-        nextLayers[procIdx] = updatedLayer;
+        const newItems = updateLayerInItems(targetFrame.items, targetProcLayer.id, () => updatedLayer);
 
         const updatedFrame: Frame = {
           ...targetFrame,
-          layers: nextLayers,
+          items: newItems,
           updatedAt: Date.now(),
         };
 
@@ -2106,11 +2462,11 @@ export function StudioProvider({
       const targetFrame = prev[frameIndex];
 
       // Reset index 0 to hidden default, remove all upper procedural layers (index >= 1)
-      const nextLayers: Layer[] = [];
-      targetFrame.layers.forEach((l, idx) => {
+      const nextItems: (Layer | Group)[] = [];
+      targetFrame.items.forEach((item, idx) => {
         if (idx === 0) {
           const resetBackdrop: Layer = {
-            ...l,
+            ...(item as Layer),
             visible: false,
             source: {
               type: "procedural",
@@ -2119,17 +2475,22 @@ export function StudioProvider({
             },
             updatedAt: Date.now(),
           };
-          nextLayers.push(resetBackdrop);
-        } else if (l.source?.type === "procedural" || l.type === "generative") {
+          nextItems.push(resetBackdrop);
+        } else if ("children" in item) {
+          const filteredChildren = item.children.filter(
+            (l) => l.source?.type !== "procedural" && l.type !== "generative"
+          );
+          nextItems.push({ ...item, children: filteredChildren });
+        } else if (item.source?.type === "procedural" || item.type === "generative") {
           // Exclude upper procedural layers
         } else {
-          nextLayers.push(l);
+          nextItems.push(item);
         }
       });
 
       const updatedFrame: Frame = {
         ...targetFrame,
-        layers: nextLayers,
+        items: nextItems,
         updatedAt: Date.now(),
       };
 
@@ -2167,7 +2528,25 @@ export function StudioProvider({
 
     // Restore state
     if (snapshotToRestore.frames && snapshotToRestore.frames.length > 0) {
-      const restoredFrames = snapshotToRestore.frames;
+      // Collect current collapse states from live frames to preserve UI collapse state across undo/redo
+      const currentCollapseMap = new Map<string, boolean>();
+      for (const frame of framesRef.current) {
+        for (const item of frame.items) {
+          if (isGroup(item)) {
+            currentCollapseMap.set(item.id, !!item.collapsed);
+          }
+        }
+      }
+
+      const restoredFrames = snapshotToRestore.frames.map((frame) => {
+        const nextItems = frame.items.map((item) => {
+          if (isGroup(item) && currentCollapseMap.has(item.id)) {
+            return { ...item, collapsed: currentCollapseMap.get(item.id)! };
+          }
+          return item;
+        });
+        return { ...frame, items: nextItems };
+      });
       setFrames(restoredFrames);
 
       // Validate and resolve activeFrameId
@@ -2179,13 +2558,14 @@ export function StudioProvider({
       setActiveFrameIdState(resolvedFrameId);
 
       // Validate and resolve activeLayerId
+      const allTargetLayers = flattenItemsToLayers(targetFrame.items);
       let resolvedLayerId: string | null = null;
-      if (snapshotToRestore.activeLayerId && targetFrame.layers.some((l) => l.id === snapshotToRestore.activeLayerId)) {
+      if (snapshotToRestore.activeLayerId && allTargetLayers.some((l) => l.id === snapshotToRestore.activeLayerId)) {
         resolvedLayerId = snapshotToRestore.activeLayerId;
-      } else if (targetFrame.activeLayerId && targetFrame.layers.some((l) => l.id === targetFrame.activeLayerId)) {
+      } else if (targetFrame.activeLayerId && allTargetLayers.some((l) => l.id === targetFrame.activeLayerId)) {
         resolvedLayerId = targetFrame.activeLayerId;
-      } else if (targetFrame.layers.length > 0) {
-        resolvedLayerId = targetFrame.layers[targetFrame.layers.length - 1].id;
+      } else if (allTargetLayers.length > 0) {
+        resolvedLayerId = allTargetLayers[allTargetLayers.length - 1].id;
       } else {
         resolvedLayerId = null;
       }
@@ -2206,25 +2586,29 @@ export function StudioProvider({
       // Legacy snapshot fallback
       setFrames((prev) =>
         prev.map((frame) => {
-          const imgLayer = frame.layers.find((l) => l.type === "image");
+          const allLayers = flattenItemsToLayers(frame.items);
+          const imgLayer = allLayers.find((l) => l.type === "image");
           const assetId = imgLayer?.type === "image" ? imgLayer.assetId : null;
-          let nextLayers = [...frame.layers];
+          let nextItems = [...frame.items];
           if (assetId && snapshotToRestore.effectStacks?.[assetId]) {
-            nextLayers = nextLayers.map((l) =>
-              l.type === "image" && l.assetId === assetId
-                ? { ...l, effectStack: snapshotToRestore.effectStacks[assetId] }
-                : l
-            );
+            const stack = snapshotToRestore.effectStacks[assetId];
+            nextItems = nextItems.map((item) => {
+              if (isGroup(item)) {
+                return {
+                  ...item,
+                  children: item.children.map((c) =>
+                    c.type === "image" && (c as ImageLayer).assetId === assetId
+                      ? { ...c, effectStack: stack }
+                      : c
+                  ),
+                };
+              } else if (item.type === "image" && (item as ImageLayer).assetId === assetId) {
+                return { ...item, effectStack: stack };
+              }
+              return item;
+            });
           }
-          if (assetId && snapshotToRestore.backgrounds) {
-            const bg = snapshotToRestore.backgrounds[assetId] || DEFAULT_BACKGROUND_STATE;
-            nextLayers = nextLayers.map((l) =>
-              l.type === "generative"
-                ? { ...l, backgroundConfig: bg }
-                : l
-            );
-          }
-          return { ...frame, layers: nextLayers, updatedAt: Date.now() };
+          return { ...frame, items: nextItems, updatedAt: Date.now() };
         })
       );
     }
@@ -2275,7 +2659,25 @@ export function StudioProvider({
 
     // Restore state
     if (snapshotToRestore.frames && snapshotToRestore.frames.length > 0) {
-      const restoredFrames = snapshotToRestore.frames;
+      // Collect current collapse states from live frames to preserve UI collapse state across undo/redo
+      const currentCollapseMap = new Map<string, boolean>();
+      for (const frame of framesRef.current) {
+        for (const item of frame.items) {
+          if (isGroup(item)) {
+            currentCollapseMap.set(item.id, !!item.collapsed);
+          }
+        }
+      }
+
+      const restoredFrames = snapshotToRestore.frames.map((frame) => {
+        const nextItems = frame.items.map((item) => {
+          if (isGroup(item) && currentCollapseMap.has(item.id)) {
+            return { ...item, collapsed: currentCollapseMap.get(item.id)! };
+          }
+          return item;
+        });
+        return { ...frame, items: nextItems };
+      });
       setFrames(restoredFrames);
 
       // Validate and resolve activeFrameId
@@ -2287,13 +2689,14 @@ export function StudioProvider({
       setActiveFrameIdState(resolvedFrameId);
 
       // Validate and resolve activeLayerId
+      const allTargetLayers = flattenItemsToLayers(targetFrame.items);
       let resolvedLayerId: string | null = null;
-      if (snapshotToRestore.activeLayerId && targetFrame.layers.some((l) => l.id === snapshotToRestore.activeLayerId)) {
+      if (snapshotToRestore.activeLayerId && allTargetLayers.some((l) => l.id === snapshotToRestore.activeLayerId)) {
         resolvedLayerId = snapshotToRestore.activeLayerId;
-      } else if (targetFrame.activeLayerId && targetFrame.layers.some((l) => l.id === targetFrame.activeLayerId)) {
+      } else if (targetFrame.activeLayerId && allTargetLayers.some((l) => l.id === targetFrame.activeLayerId)) {
         resolvedLayerId = targetFrame.activeLayerId;
-      } else if (targetFrame.layers.length > 0) {
-        resolvedLayerId = targetFrame.layers[targetFrame.layers.length - 1].id;
+      } else if (allTargetLayers.length > 0) {
+        resolvedLayerId = allTargetLayers[allTargetLayers.length - 1].id;
       } else {
         resolvedLayerId = null;
       }
@@ -2314,25 +2717,29 @@ export function StudioProvider({
       // Legacy snapshot fallback
       setFrames((prev) =>
         prev.map((frame) => {
-          const imgLayer = frame.layers.find((l) => l.type === "image");
+          const allLayers = flattenItemsToLayers(frame.items);
+          const imgLayer = allLayers.find((l) => l.type === "image");
           const assetId = imgLayer?.type === "image" ? imgLayer.assetId : null;
-          let nextLayers = [...frame.layers];
+          let nextItems = [...frame.items];
           if (assetId && snapshotToRestore.effectStacks?.[assetId]) {
-            nextLayers = nextLayers.map((l) =>
-              l.type === "image" && l.assetId === assetId
-                ? { ...l, effectStack: snapshotToRestore.effectStacks[assetId] }
-                : l
-            );
+            const stack = snapshotToRestore.effectStacks[assetId];
+            nextItems = nextItems.map((item) => {
+              if (isGroup(item)) {
+                return {
+                  ...item,
+                  children: item.children.map((c) =>
+                    c.type === "image" && (c as ImageLayer).assetId === assetId
+                      ? { ...c, effectStack: stack }
+                      : c
+                  ),
+                };
+              } else if (item.type === "image" && (item as ImageLayer).assetId === assetId) {
+                return { ...item, effectStack: stack };
+              }
+              return item;
+            });
           }
-          if (assetId && snapshotToRestore.backgrounds) {
-            const bg = snapshotToRestore.backgrounds[assetId] || DEFAULT_BACKGROUND_STATE;
-            nextLayers = nextLayers.map((l) =>
-              l.type === "generative"
-                ? { ...l, backgroundConfig: bg }
-                : l
-            );
-          }
-          return { ...frame, layers: nextLayers, updatedAt: Date.now() };
+          return { ...frame, items: nextItems, updatedAt: Date.now() };
         })
       );
     }
@@ -2581,6 +2988,23 @@ export function StudioProvider({
     reorderLayers,
     removeLayer,
     setFrameDimensions,
+
+    // Phase 5 Group & Multi-Selection Operations
+    selectedLayerIds,
+    toggleLayerSelection,
+    selectLayers,
+    clearLayerSelection,
+    createGroup,
+    ungroup,
+    deleteGroup,
+    renameGroup,
+    toggleGroupVisibility,
+    toggleGroupLock,
+    toggleGroupCollapse,
+    moveRootItem: moveRootItemAction,
+    reorderGroupChild,
+    moveLayerToGroup,
+    ejectLayerFromGroup,
 
     // Transitional Compatibility Adapters (Stage 1A)
     assets,

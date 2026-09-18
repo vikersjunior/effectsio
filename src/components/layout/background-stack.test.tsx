@@ -6,7 +6,11 @@ import { StudioProvider, useStudioStore } from "../../context/studio-context";
 import { InspectorPanel } from "./inspector-panel";
 import { FloatingBackgroundPanel } from "./floating-background-panel";
 import { LayersPanel } from "./layers-panel";
-import type { ProceduralSource } from "../../types/frame";
+import type { ProceduralSource, Frame, Layer } from "../../types/frame";
+import { flattenItemsToLayers } from "../../types/frame";
+
+const getLayers = (frame?: Frame | null): Layer[] =>
+  frame ? flattenItemsToLayers(frame.items) : [];
 
 function TestHost({ onStore }: { onStore?: (store: ReturnType<typeof useStudioStore>) => void }) {
   const store = useStudioStore();
@@ -18,7 +22,7 @@ function TestHost({ onStore }: { onStore?: (store: ReturnType<typeof useStudioSt
     <div className="relative w-full h-full">
       <span data-testid="is-hydrated">{String(store.isHydrated)}</span>
       <span data-testid="active-layer-id">{store.activeLayerId || "none"}</span>
-      <span data-testid="layer-count">{store.activeFrame?.layers.length ?? 0}</span>
+      <span data-testid="layer-count">{getLayers(store.activeFrame).length}</span>
       <button
         data-testid="open-bg-panel"
         onClick={() => store.setIsProceduralEditorOpen(true)}
@@ -62,14 +66,15 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      const initialLayers = storeRef.activeFrame?.layers.length ?? 0;
+      const initialLayers = getLayers(storeRef.activeFrame).length;
       expect(initialLayers).toBeGreaterThanOrEqual(1);
 
       // 1. Add Solid layer
       storeRef.addProceduralLayer("solid");
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(initialLayers + 1);
-        const added = storeRef.activeFrame?.layers[storeRef.activeFrame.layers.length - 1];
+        const layers = getLayers(storeRef.activeFrame);
+        expect(layers.length).toBe(initialLayers + 1);
+        const added = layers[layers.length - 1];
         expect(added?.source.type).toBe("procedural");
         expect((added?.source as ProceduralSource).kind).toBe("solid");
         expect(storeRef.activeLayerId).toBe(added?.id);
@@ -78,8 +83,9 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
       // 2. Add Dots layer
       storeRef.addProceduralLayer("dots");
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(initialLayers + 2);
-        const added = storeRef.activeFrame?.layers[storeRef.activeFrame.layers.length - 1];
+        const layers = getLayers(storeRef.activeFrame);
+        expect(layers.length).toBe(initialLayers + 2);
+        const added = layers[layers.length - 1];
         expect(added?.source.type).toBe("procedural");
         expect((added?.source as ProceduralSource).kind).toBe("dots");
         expect(storeRef.activeLayerId).toBe(added?.id);
@@ -88,8 +94,9 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
       // 3. Add Grid layer
       storeRef.addProceduralLayer("grid");
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(initialLayers + 3);
-        const added = storeRef.activeFrame?.layers[storeRef.activeFrame.layers.length - 1];
+        const layers = getLayers(storeRef.activeFrame);
+        expect(layers.length).toBe(initialLayers + 3);
+        const added = layers[layers.length - 1];
         expect(added?.source.type).toBe("procedural");
         expect((added?.source as ProceduralSource).kind).toBe("grid");
         expect(storeRef.activeLayerId).toBe(added?.id);
@@ -111,14 +118,14 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
       storeRef.addProceduralLayer("solid");
       let solidLayerId = "";
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(2);
+        expect(getLayers(storeRef.activeFrame).length).toBe(2);
         solidLayerId = storeRef.activeLayerId!;
       });
 
       storeRef.addProceduralLayer("dots");
       let dotsLayerId = "";
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(3);
+        expect(getLayers(storeRef.activeFrame).length).toBe(3);
         dotsLayerId = storeRef.activeLayerId!;
       });
 
@@ -150,14 +157,14 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
       storeRef.addProceduralLayer("solid");
       let solidLayerId = "";
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(2);
+        expect(getLayers(storeRef.activeFrame).length).toBe(2);
         solidLayerId = storeRef.activeLayerId!;
       });
 
       storeRef.addProceduralLayer("dots");
       let dotsLayerId = "";
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(3);
+        expect(getLayers(storeRef.activeFrame).length).toBe(3);
         dotsLayerId = storeRef.activeLayerId!;
       });
 
@@ -167,8 +174,9 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
       });
 
       await waitFor(() => {
-        const currentSolid = storeRef.activeFrame?.layers.find((l) => l.id === solidLayerId);
-        const currentDots = storeRef.activeFrame?.layers.find((l) => l.id === dotsLayerId);
+        const layers = getLayers(storeRef.activeFrame);
+        const currentSolid = layers.find((l) => l.id === solidLayerId);
+        const currentDots = layers.find((l) => l.id === dotsLayerId);
 
         expect((currentSolid?.source as ProceduralSource).parameters.color).toBe("#336699");
         expect((currentDots?.source as ProceduralSource).parameters.color).toBeUndefined();
@@ -189,16 +197,16 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      const backdrop = storeRef.activeFrame?.layers[0]!;
+      const backdrop = getLayers(storeRef.activeFrame)[0]!;
       expect(backdrop).toBeDefined();
       expect(backdrop.locked).toBe(true);
 
-      const countBefore = storeRef.activeFrame?.layers.length ?? 0;
+      const countBefore = getLayers(storeRef.activeFrame).length;
       storeRef.removeLayer(backdrop.id);
 
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(countBefore);
-        expect(storeRef.activeFrame?.layers[0].id).toBe(backdrop.id);
+        expect(getLayers(storeRef.activeFrame).length).toBe(countBefore);
+        expect(getLayers(storeRef.activeFrame)[0].id).toBe(backdrop.id);
       });
     });
 
@@ -214,11 +222,11 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      const backdrop = storeRef.activeFrame?.layers[0]!;
+      const backdrop = getLayers(storeRef.activeFrame)[0]!;
       storeRef.updateLayer(backdrop.id, { locked: false });
 
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers[0].locked).toBe(true);
+        expect(getLayers(storeRef.activeFrame)[0].locked).toBe(true);
       });
     });
 
@@ -234,7 +242,7 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      const backdrop = storeRef.activeFrame?.layers[0]!;
+      const backdrop = getLayers(storeRef.activeFrame)[0]!;
       storeRef.addProceduralLayer("dots");
       const dotsLayer = storeRef.activeLayer!;
 
@@ -243,7 +251,7 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
 
       await waitFor(() => {
         // Invariant: backdrop must remain at index 0
-        expect(storeRef.activeFrame?.layers[0].id).toBe(backdrop.id);
+        expect(getLayers(storeRef.activeFrame)[0].id).toBe(backdrop.id);
       });
     });
   });
@@ -261,13 +269,13 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      const countBefore = storeRef.activeFrame?.layers.length ?? 0;
+      const countBefore = getLayers(storeRef.activeFrame).length;
 
       // Add layer
       storeRef.addProceduralLayer("solid");
 
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(countBefore + 1);
+        expect(getLayers(storeRef.activeFrame).length).toBe(countBefore + 1);
         expect(storeRef.canUndo).toBe(true);
       });
 
@@ -275,7 +283,7 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
       fireEvent.click(screen.getByTestId("undo-btn"));
 
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(countBefore);
+        expect(getLayers(storeRef.activeFrame).length).toBe(countBefore);
         expect(storeRef.canRedo).toBe(true);
       });
 
@@ -283,7 +291,7 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Stack Suite", () =
       fireEvent.click(screen.getByTestId("redo-btn"));
 
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(countBefore + 1);
+        expect(getLayers(storeRef.activeFrame).length).toBe(countBefore + 1);
       });
     });
   });

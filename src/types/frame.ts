@@ -112,15 +112,18 @@ export type LayerSource = ImageSource | ProceduralSource;
 // Single-Tier Group Model (Approved Architecture)
 // ---------------------------------------------------------------------------
 
+export type RootCompositionItem = Layer | Group;
+export type FrameItem = RootCompositionItem;
+
 /**
  * Group organizes Layers within a Frame.
  * Universal rule: If it organizes visual objects -> Group.
- * v1: Single-tier grouping (Frame -> Group -> Layer[]).
+ * Canonical Model B: Single-tier physical containment (Frame.items -> Group -> children: Layer[]).
  */
 export interface Group {
   id: string;
   name: string;
-  layerIds: string[];
+  children: Layer[];
   visible: boolean;
   locked: boolean;
   collapsed?: boolean;
@@ -140,7 +143,6 @@ export interface BaseLayer {
   blendMode: BlendMode; // Layer-level blend mode interacting with accumulated backdrop
   effectStack: EffectStack;
   locked?: boolean;
-  groupId?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -250,8 +252,7 @@ export interface Frame {
   id: string;
   name: string;
   dimensions: FrameDimensions;
-  layers: Layer[]; // Ordered bottom-to-top (index 0 = backdrop, N-1 = foreground)
-  groups?: Group[];
+  items: (Layer | Group)[]; // Ordered bottom-to-top (index 0 = protected backdrop, N-1 = foreground)
   activeLayerId: string | null;
   createdAt: number;
   updatedAt: number;
@@ -301,6 +302,23 @@ export function isImageLayer(layer: Layer): layer is ImageLayer {
 
 export function isGenerativeLayer(layer: Layer): layer is GenerativeLayer {
   return layer.type === "generative";
+}
+
+export function isGroup(item: unknown): item is Group {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    Array.isArray((item as Group).children)
+  );
+}
+
+export function isLayer(item: unknown): item is Layer {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    "source" in item &&
+    !Array.isArray((item as any).children)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -361,7 +379,6 @@ export function createDefaultBackdropLayer(backgroundConfig?: BackgroundState): 
     source,
     transform: { ...DEFAULT_LAYER_TRANSFORM },
     fit: "contain",
-    groupId: null,
     type: "procedural",
     createdAt: now,
     updatedAt: now,
@@ -386,8 +403,7 @@ export function createImageLayer(
   name?: string,
   effectStack: EffectStack = [],
   fit: "contain" | "cover" = "contain",
-  transform?: Partial<LayerTransform>,
-  groupId?: string | null
+  transform?: Partial<LayerTransform>
 ): ImageLayer {
   const now = Date.now();
   return {
@@ -411,7 +427,6 @@ export function createImageLayer(
       scaleY: transform && Number.isFinite(transform.scaleY) ? Math.max(0.05, Math.min(20, transform.scaleY!)) : DEFAULT_LAYER_TRANSFORM.scaleY,
       rotation: transform && Number.isFinite(transform.rotation) ? transform.rotation! : DEFAULT_LAYER_TRANSFORM.rotation,
     },
-    groupId: groupId ?? null,
     // Legacy compatibility fields
     type: "image",
     assetId,
@@ -467,7 +482,6 @@ export function createLayer(params: {
     blendMode: params.blendMode ?? "normal",
     effectStack: params.effectStack ? [...params.effectStack] : [],
     locked: params.locked ?? false,
-    groupId: params.groupId ?? null,
     source: params.source,
     fit: params.fit || "contain",
     transform,
@@ -505,7 +519,6 @@ export function createProceduralLayer(
         transform?: Partial<LayerTransform>;
         fit?: "contain" | "cover";
         locked?: boolean;
-        groupId?: string | null;
         parameters?: Record<string, unknown>;
         seed?: number;
       },
@@ -518,7 +531,6 @@ export function createProceduralLayer(
     transform?: Partial<LayerTransform>;
     fit?: "contain" | "cover";
     locked?: boolean;
-    groupId?: string | null;
     parameters?: Record<string, unknown>;
     seed?: number;
   }
@@ -558,7 +570,6 @@ export function createProceduralLayer(
     transform: resolvedOpts.transform,
     fit: resolvedOpts.fit,
     locked: resolvedOpts.locked,
-    groupId: resolvedOpts.groupId,
   });
 }
 
@@ -567,7 +578,7 @@ export function createProceduralLayer(
  */
 export function createGroup(
   name: string,
-  layerIds: string[] = [],
+  children: Layer[] = [],
   options?: { id?: string; visible?: boolean; locked?: boolean; collapsed?: boolean }
 ): Group {
   const now = Date.now();
@@ -576,7 +587,7 @@ export function createGroup(
       ? `group-${crypto.randomUUID()}`
       : `group-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
     name,
-    layerIds: [...layerIds],
+    children: [...children],
     visible: options?.visible ?? true,
     locked: options?.locked ?? false,
     collapsed: options?.collapsed ?? false,
@@ -596,8 +607,7 @@ export function createDefaultFrame(id?: string, name?: string): Frame {
     id: frameId,
     name: name || "Frame 1",
     dimensions: { ...DEFAULT_FRAME_DIMENSIONS },
-    layers: [baseBackdrop],
-    groups: [],
+    items: [baseBackdrop],
     activeLayerId: baseBackdrop.id,
     createdAt: now,
     updatedAt: now,
@@ -656,7 +666,6 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
         blendMode: (candidate.blendMode as BlendMode) || "normal",
         effectStack: Array.isArray(candidate.effectStack) ? ([...candidate.effectStack] as EffectStack) : [],
         locked: Boolean(candidate.locked),
-        groupId: (candidate.groupId as string | null | undefined) ?? null,
         type: "image",
         assetId,
         source,
@@ -688,7 +697,6 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
         blendMode: (candidate.blendMode as BlendMode) || "normal",
         effectStack: Array.isArray(candidate.effectStack) ? ([...candidate.effectStack] as EffectStack) : [],
         locked: Boolean(candidate.locked),
-        groupId: (candidate.groupId as string | null | undefined) ?? null,
         type: (candidate.type as "procedural" | "generative") || "procedural",
         source: {
           type: "procedural",
@@ -740,7 +748,6 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
 
     const effectStack = Array.isArray(candidate.effectStack) ? (candidate.effectStack as EffectStack) : [];
     const layerLocked = Boolean(candidate.locked);
-    const groupId = (candidate.groupId as string | null | undefined) ?? null;
 
     return bgItems.map((item, index) => {
       const proceduralSource: ProceduralSource = {
@@ -761,7 +768,6 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
         // The top procedural layer inherits any effectStack on the legacy GenerativeLayer
         effectStack: index === bgItems.length - 1 ? [...effectStack] : [],
         locked: index === 0 ? layerLocked : false,
-        groupId,
         type: "procedural",
         source: proceduralSource,
         transform: { ...DEFAULT_LAYER_TRANSFORM },
@@ -802,7 +808,6 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
       blendMode: (candidate.blendMode as BlendMode) || "normal",
       effectStack: Array.isArray(candidate.effectStack) ? ([...candidate.effectStack] as EffectStack) : [],
       locked: Boolean(candidate.locked),
-      groupId: (candidate.groupId as string | null | undefined) ?? null,
       type: "image",
       assetId,
       source,
@@ -820,54 +825,221 @@ export function normalizeLayerToUniversal(layer: Layer | Record<string, unknown>
 }
 
 /**
- * Normalizes a complete Frame into the Unified Composition Model.
- *
- * Guaranteed Invariants:
- * 1. Every Layer has exactly one Source (ImageSource or ProceduralSource).
- * 2. Background is represented as one or more ordinary Layers with ProceduralSource.
- * 3. Single-tier groups are preserved or initialized as an empty array.
- * 4. Transforms are sanitized and clamped to valid bounds.
- * 5. activeLayerId is preserved or safely recovered.
- * 6. Idempotency: normalizing an already-normalized frame produces an identical structure.
+ * Flattens all visual Layers from root composition items in bottom-to-top order.
  */
-export function normalizeFrameToUniversalModel(frame: Frame): Frame {
-  if (!frame || typeof frame !== "object") return frame;
+export function flattenItemsToLayers(items: (Layer | Group)[]): Layer[] {
+  const result: Layer[] = [];
+  for (const item of items) {
+    if (isLayer(item)) {
+      result.push(item);
+    } else if (isGroup(item)) {
+      for (const child of item.children) {
+        result.push(child);
+      }
+    }
+  }
+  return result;
+}
 
-  const normalizedLayers = (frame.layers || []).flatMap((layer) => normalizeLayerToUniversal(layer));
-
-  // Recover or preserve activeLayerId
-  let activeLayerId = frame.activeLayerId;
-  const activeLayerExists = normalizedLayers.some((l) => l.id === activeLayerId);
-  if (!activeLayerExists && normalizedLayers.length > 0) {
-    activeLayerId = normalizedLayers[normalizedLayers.length - 1].id;
+/**
+ * Deterministically normalizes root composition items to guarantee
+ * Frame.items[0] is permanently a locked procedural backdrop Layer,
+ * preserving all user content and z-order.
+ */
+export function normalizeBackdrop(items: (Layer | Group)[]): (Layer | Group)[] {
+  // 1. Check if index 0 is already a valid procedural backdrop
+  if (
+    items.length > 0 &&
+    isLayer(items[0]) &&
+    items[0].source?.type === "procedural"
+  ) {
+    const backdrop: Layer = { ...(items[0] as Layer), locked: true };
+    return [backdrop, ...items.slice(1)];
   }
 
-  // Preserve groups
-  const groups: Group[] = Array.isArray(frame.groups)
-    ? frame.groups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        layerIds: [...g.layerIds],
-        visible: g.visible ?? true,
-        locked: g.locked ?? false,
-        collapsed: g.collapsed ?? false,
-        createdAt: g.createdAt || frame.createdAt,
-        updatedAt: g.updatedAt || frame.updatedAt,
-      }))
-    : [];
+  // 2. Find first valid procedural layer in bottom-to-top order
+  const firstCandidateIndex = items.findIndex(
+    (item) => isLayer(item) && item.source?.type === "procedural"
+  );
+
+  if (firstCandidateIndex !== -1) {
+    const candidate = items[firstCandidateIndex] as Layer;
+    const backdrop: Layer = { ...candidate, locked: true };
+    const remaining = [
+      ...items.slice(0, firstCandidateIndex),
+      ...items.slice(firstCandidateIndex + 1),
+    ];
+    return [backdrop, ...remaining];
+  }
+
+  // 3. No valid candidate exists: synthesize default
+  const defaultBackdrop = createDefaultBackdropLayer();
+  return [defaultBackdrop, ...items];
+}
+
+/**
+ * Normalizes a complete Frame into the Unified Composition Model (Canonical Model B).
+ *
+ * Guaranteed Invariants:
+ * 1. Frame.items is the sole composition stack (Layer | Group)[].
+ * 2. Frame.items[0] is permanently a locked procedural backdrop Layer.
+ * 3. Group membership is strictly physical containment (Group.children: Layer[]).
+ * 4. Nested groups are dissolved inline and their visibility/lock state materialized onto children.
+ * 5. Empty groups are auto-pruned.
+ * 6. activeLayerId is preserved or safely recovered.
+ * 7. Idempotency: normalize(normalize(x)) produces an identical structure.
+ */
+export function normalizeFrameToUniversalModel(rawFrame: unknown): Frame {
+  if (!rawFrame || typeof rawFrame !== "object") {
+    return createDefaultFrame();
+  }
+
+  const raw = rawFrame as Record<string, unknown>;
+  const now = Date.now();
+
+  let items: (Layer | Group)[] = [];
+
+  // Case 1: Raw input already has `items`
+  if (Array.isArray(raw.items)) {
+    for (const rawItem of raw.items) {
+      if (!rawItem || typeof rawItem !== "object") continue;
+
+      if (Array.isArray((rawItem as any).children)) {
+        // Group container
+        const rawGroup = rawItem as Record<string, unknown>;
+        const normalizedChildren: Layer[] = [];
+
+        for (const child of (rawGroup.children as any[])) {
+          if (!child || typeof child !== "object") continue;
+          if (Array.isArray(child.children)) {
+            // Nested Group: dissolve inline and materialize state onto children
+            const nestedGroup = child as Record<string, unknown>;
+            const nestedVisible = nestedGroup.visible !== false;
+            const nestedLocked = Boolean(nestedGroup.locked);
+            for (const grandChild of (nestedGroup.children as any[])) {
+              const normalizedGrandChildren = normalizeLayerToUniversal(grandChild);
+              for (const gc of normalizedGrandChildren) {
+                normalizedChildren.push({
+                  ...gc,
+                  visible: nestedVisible && gc.visible !== false,
+                  locked: Boolean(nestedLocked || gc.locked),
+                });
+              }
+            }
+          } else {
+            const normalized = normalizeLayerToUniversal(child);
+            normalizedChildren.push(...normalized);
+          }
+        }
+
+        // Only keep group if it has at least 1 child (auto-prune empty groups)
+        if (normalizedChildren.length > 0) {
+          items.push({
+            id: String(rawGroup.id || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? `group-${crypto.randomUUID()}` : `group-${now}`)),
+            name: String(rawGroup.name || "Group"),
+            children: normalizedChildren,
+            visible: rawGroup.visible !== false,
+            locked: Boolean(rawGroup.locked),
+            collapsed: Boolean(rawGroup.collapsed),
+            createdAt: Number(rawGroup.createdAt) || now,
+            updatedAt: Number(rawGroup.updatedAt) || now,
+          });
+        }
+      } else {
+        // Layer
+        const normalized = normalizeLayerToUniversal(rawItem);
+        items.push(...normalized);
+      }
+    }
+  } else if (Array.isArray(raw.layers)) {
+    // Case 2: Legacy Model A format with `layers` and optional `groups`
+    const normalizedLayers = (raw.layers as any[]).flatMap((l) => normalizeLayerToUniversal(l));
+    const legacyGroups = Array.isArray(raw.groups) ? (raw.groups as any[]) : [];
+    const groupedLayerIdSet = new Set<string>();
+    const groupMap = new Map<string, { group: any; children: Layer[]; minIndex: number }>();
+
+    for (const g of legacyGroups) {
+      if (!g || !Array.isArray(g.layerIds)) continue;
+      const childLayers: Layer[] = [];
+      let minIndex = Number.MAX_SAFE_INTEGER;
+      for (let i = 0; i < normalizedLayers.length; i++) {
+        const layer = normalizedLayers[i];
+        if (g.layerIds.includes(layer.id) || (layer as any).groupId === g.id) {
+          childLayers.push(layer);
+          groupedLayerIdSet.add(layer.id);
+          if (i < minIndex) minIndex = i;
+        }
+      }
+      if (childLayers.length > 0) {
+        groupMap.set(g.id, { group: g, children: childLayers, minIndex });
+      }
+    }
+
+    const placedGroupIds = new Set<string>();
+    for (let i = 0; i < normalizedLayers.length; i++) {
+      const layer = normalizedLayers[i];
+      for (const [gid, gData] of groupMap.entries()) {
+        if (!placedGroupIds.has(gid) && gData.minIndex === i) {
+          items.push({
+            id: String(gData.group.id || `group-${now}`),
+            name: String(gData.group.name || "Group"),
+            children: gData.children,
+            visible: gData.group.visible !== false,
+            locked: Boolean(gData.group.locked),
+            collapsed: Boolean(gData.group.collapsed),
+            createdAt: Number(gData.group.createdAt) || now,
+            updatedAt: Number(gData.group.updatedAt) || now,
+          });
+          placedGroupIds.add(gid);
+        }
+      }
+
+      if (!groupedLayerIdSet.has(layer.id)) {
+        items.push(layer);
+      }
+    }
+
+    for (const [gid, gData] of groupMap.entries()) {
+      if (!placedGroupIds.has(gid)) {
+        items.push({
+          id: String(gData.group.id || `group-${now}`),
+          name: String(gData.group.name || "Group"),
+          children: gData.children,
+          visible: gData.group.visible !== false,
+          locked: Boolean(gData.group.locked),
+          collapsed: Boolean(gData.group.collapsed),
+          createdAt: Number(gData.group.createdAt) || now,
+          updatedAt: Number(gData.group.updatedAt) || now,
+        });
+        placedGroupIds.add(gid);
+      }
+    }
+  }
+
+  // Universal Backdrop Normalization
+  items = normalizeBackdrop(items);
+
+  // Recover or preserve activeLayerId
+  let activeLayerId = typeof raw.activeLayerId === "string" ? raw.activeLayerId : null;
+  const allFlattenedLayers = flattenItemsToLayers(items);
+  const activeExists = allFlattenedLayers.some((l) => l.id === activeLayerId);
+  if (!activeExists && allFlattenedLayers.length > 0) {
+    activeLayerId = allFlattenedLayers[allFlattenedLayers.length - 1].id;
+  }
+
+  const frameDimensions = (raw.dimensions as any) || DEFAULT_FRAME_DIMENSIONS;
 
   return {
-    id: frame.id,
-    name: frame.name || "Frame",
+    id: String(raw.id || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `frame-${now}`)),
+    name: String(raw.name || "Frame 1"),
     dimensions: {
-      width: frame.dimensions?.width || 1080,
-      height: frame.dimensions?.height || 1080,
-      presetId: frame.dimensions?.presetId ?? null,
+      width: Number(frameDimensions.width) || 1080,
+      height: Number(frameDimensions.height) || 1080,
+      presetId: frameDimensions.presetId ?? null,
     },
-    layers: normalizedLayers,
-    groups,
-    activeLayerId: activeLayerId ?? (normalizedLayers[0]?.id || null),
-    createdAt: frame.createdAt || Date.now(),
-    updatedAt: frame.updatedAt || Date.now(),
+    items,
+    activeLayerId: activeLayerId ?? (items[0] && isLayer(items[0]) ? items[0].id : null),
+    createdAt: Number(raw.createdAt) || now,
+    updatedAt: Number(raw.updatedAt) || now,
   };
 }

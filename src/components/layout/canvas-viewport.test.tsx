@@ -271,7 +271,7 @@ describe("CanvasViewport: Stage 2 Transform Selection Overlay & Interactions", (
   const defaultFrame = createDefaultFrame("frame-1", "Frame 1");
   const mockFrame = {
     ...defaultFrame,
-    layers: [defaultFrame.layers[0], testImageLayer],
+    items: [defaultFrame.items[0], testImageLayer],
     activeLayerId: testImageLayer.id,
   };
 
@@ -320,9 +320,9 @@ describe("CanvasViewport: Stage 2 Transform Selection Overlay & Interactions", (
   it("never renders transform selection overlay for GenerativeLayer (protected background)", async () => {
     vi.mocked(loadHydratedProject).mockResolvedValue({
       assets: [mockAsset],
-      frames: [{ ...mockFrame, activeLayerId: defaultFrame.layers[0].id }],
+      frames: [{ ...mockFrame, activeLayerId: defaultFrame.items[0].id }],
       activeFrameId: "frame-1",
-      activeLayerId: defaultFrame.layers[0].id, // active is generative layer!
+      activeLayerId: defaultFrame.items[0].id, // active is generative layer!
       activeImageId: null,
       projectName: "Project Name",
       effectStacks: {},

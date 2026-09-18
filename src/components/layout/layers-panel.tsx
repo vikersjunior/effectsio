@@ -11,6 +11,7 @@ import {
   CircleHalfIcon,
   DotsNineIcon,
   GridFourIcon,
+  FolderSimpleIcon,
 } from "@phosphor-icons/react";
 import {
   DndContext,
@@ -31,15 +32,22 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, ScrollFade, Popover, PopoverTrigger, PopoverContent, ICON_SIZES } from "../ui";
 import { cn } from "../ui/lib/utils";
 import { useStudioStore } from "../../context/studio-context";
-import type { Layer, ProceduralSource } from "../../types/frame";
+import {
+  isGroup,
+  isLayer,
+  flattenItemsToLayers,
+  type Layer,
+  type ProceduralSource,
+} from "../../types/frame";
 import type { Asset } from "../../types/asset";
 import { DEFAULT_BACKGROUND_STATE } from "../../types/look";
+import { GroupRow } from "./group-row";
 
 interface SortableLayerRowProps {
   layer: Layer;
   asset?: Asset;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (e?: React.MouseEvent) => void;
   onToggleVisibility: (e: React.MouseEvent) => void;
   onRemove?: (e: React.MouseEvent) => void;
   isLocked?: boolean;
@@ -96,7 +104,7 @@ function SortableLayerRow({
       data-slot={isLocked ? "layer-row-background" : "layer-row"}
       data-testid={isLocked ? "locked-background-row" : "layer-row"}
       data-layer-id={layer.id}
-      onClick={onSelect}
+      onClick={(e) => onSelect(e)}
       className={cn(
         "group relative flex items-center gap-2 px-2.5 h-10 rounded-md border transition-colors cursor-pointer select-none",
         isSelected
@@ -179,7 +187,7 @@ function SortableLayerRow({
             onClick={onRemove}
             title="Remove layer"
             aria-label={`Remove ${layer.name}`}
-            className="size-6 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-[color:var(--destructive)] hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] transition-all p-0 cursor-pointer"
+            className="opacity-0 group-hover:opacity-100 text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] transition-opacity"
           >
             <TrashIcon size={ICON_SIZES.sm} />
           </Button>
@@ -190,14 +198,17 @@ function SortableLayerRow({
           variant="ghost"
           size="icon-xs"
           onClick={onToggleVisibility}
-          title={!isVisible ? "Show layer" : "Hide layer"}
-          aria-label={!isVisible ? `Show ${layer.name}` : `Hide ${layer.name}`}
-          className="size-6 rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors p-0 cursor-pointer"
+          title={isVisible ? "Hide layer" : "Show layer"}
+          aria-label={isVisible ? `Hide ${layer.name}` : `Show ${layer.name}`}
+          className={cn(
+            "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-opacity",
+            !isVisible ? "opacity-100 text-[color:var(--muted-foreground)]" : "opacity-0 group-hover:opacity-100"
+          )}
         >
-          {!isVisible ? (
-            <EyeSlashIcon size={ICON_SIZES.md} />
+          {isVisible ? (
+            <EyeIcon size={ICON_SIZES.sm} />
           ) : (
-            <EyeIcon size={ICON_SIZES.md} />
+            <EyeSlashIcon size={ICON_SIZES.sm} />
           )}
         </Button>
       </div>
@@ -214,8 +225,21 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
     activeFrame,
     activeLayerId,
     setActiveLayerId,
+    selectedLayerIds,
+    toggleLayerSelection,
+    selectLayers,
+    createGroup,
+    ungroup,
+    deleteGroup,
+    renameGroup,
+    toggleGroupVisibility,
+    toggleGroupLock,
+    toggleGroupCollapse,
+    moveRootItem,
+    reorderGroupChild,
+    moveLayerToGroup,
+    ejectLayerFromGroup,
     updateLayer,
-    reorderLayers,
     removeLayer,
     addLayerFromAsset,
     addProceduralLayer,
@@ -235,12 +259,28 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
     })
   );
 
-  const layers = activeFrame?.layers || [];
+  const items = activeFrame?.items || [];
+  const allLayers = React.useMemo(() => {
+    return activeFrame ? flattenItemsToLayers(activeFrame.items) : [];
+  }, [activeFrame]);
 
-  // Visual stack: all layers displayed in reverse array order (top layer at top of UI list, backdrop at bottom)
-  const visualLayers = React.useMemo(() => {
-    return [...layers].reverse();
-  }, [layers]);
+  // Visual stack: items displayed top-to-bottom (reverse of bottom-to-top data storage)
+  const visualItems = React.useMemo(() => {
+    return [...items].reverse();
+  }, [items]);
+
+  const allSortableIds = React.useMemo(() => {
+    const ids: string[] = [];
+    for (const item of visualItems) {
+      ids.push(item.id);
+      if (isGroup(item) && !item.collapsed) {
+        for (const child of [...item.children].reverse()) {
+          ids.push(child.id);
+        }
+      }
+    }
+    return ids;
+  }, [visualItems]);
 
   const assetMap = React.useMemo(() => {
     const map = new Map<string, Asset>();
@@ -254,15 +294,47 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
     const { active, over } = event;
     if (!active || !over || active.id === over.id || !activeFrame) return;
 
-    const fromIndex = activeFrame.layers.findIndex((l) => l.id === active.id);
-    const toIndex = activeFrame.layers.findIndex((l) => l.id === over.id);
-    if (fromIndex === -1 || toIndex === -1) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
 
-    // Hard invariant: backdrop at index 0 (if locked) must never be reordered or displaced below index 0
-    const minIndex = activeFrame.layers[0]?.locked ? 1 : 0;
-    if (fromIndex >= minIndex) {
-      const clampedToIndex = Math.max(minIndex, toIndex);
-      reorderLayers(fromIndex, clampedToIndex);
+    // 1. Check if both are root items
+    const fromRootIndex = activeFrame.items.findIndex((i) => i.id === activeId);
+    const toRootIndex = activeFrame.items.findIndex((i) => i.id === overId);
+
+    if (fromRootIndex !== -1 && toRootIndex !== -1) {
+      // Backdrop at index 0 is locked at base
+      const minIndex = 1;
+      if (fromRootIndex >= minIndex) {
+        const clampedToIndex = Math.max(minIndex, toRootIndex);
+        moveRootItem(fromRootIndex, clampedToIndex);
+      }
+      return;
+    }
+
+    // 2. Check if both are within the same group
+    for (const item of activeFrame.items) {
+      if (isGroup(item)) {
+        const fromChildIdx = item.children.findIndex((c) => c.id === activeId);
+        const toChildIdx = item.children.findIndex((c) => c.id === overId);
+        if (fromChildIdx !== -1 && toChildIdx !== -1) {
+          reorderGroupChild(item.id, fromChildIdx, toChildIdx);
+          return;
+        }
+      }
+    }
+
+    // 3. Move layer into group if dragged onto group header
+    const targetGroup = activeFrame.items.find((i) => isGroup(i) && i.id === overId);
+    if (targetGroup && isGroup(targetGroup)) {
+      moveLayerToGroup(activeId, targetGroup.id);
+      return;
+    }
+
+    // 4. Eject layer from group if dragged to root
+    if (toRootIndex !== -1) {
+      const clampedIndex = Math.max(1, toRootIndex);
+      ejectLayerFromGroup(activeId, clampedIndex);
+      return;
     }
   };
 
@@ -275,133 +347,150 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
             Layers
           </span>
           <span className="text-xs text-[color:var(--muted-foreground)]">
-            ({layers.length})
+            ({allLayers.length})
           </span>
         </div>
 
-        {/* Add Layer Popover */}
-        <Popover open={isAddPopoverOpen} onOpenChange={setIsAddPopoverOpen}>
-          <PopoverTrigger
-            render={(triggerProps) => (
-              <Button
-                {...triggerProps}
-                variant="ghost"
-                size="icon-sm"
-                title="Add layer"
-                aria-label="Add layer"
-                className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] [&_svg]:!size-4"
-              >
-                <PlusIcon size={ICON_SIZES.md} className="shrink-0" />
-              </Button>
-            )}
-          />
-          <PopoverContent
-            side="bottom"
-            align="end"
-            sideOffset={8}
-            className="w-56 p-2 flex flex-col gap-1 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg"
-          >
-            <span className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
-              Add Procedural Layer
-            </span>
-            <div className="flex flex-col gap-0.5 pb-1 mb-1 border-b border-[color:var(--border)]">
-              <button
-                type="button"
-                data-testid="add-procedural-solid-button"
-                onClick={() => {
-                  addProceduralLayer("solid");
-                  setIsAddPopoverOpen(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
-              >
-                <SquareIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
-                <span className="text-xs font-medium text-[color:var(--foreground)]">Solid</span>
-              </button>
-              <button
-                type="button"
-                data-testid="add-procedural-linear-gradient-button"
-                onClick={() => {
-                  addProceduralLayer("linear-gradient");
-                  setIsAddPopoverOpen(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
-              >
-                <CircleHalfIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
-                <span className="text-xs font-medium text-[color:var(--foreground)]">Linear Gradient</span>
-              </button>
-              <button
-                type="button"
-                data-testid="add-procedural-radial-gradient-button"
-                onClick={() => {
-                  addProceduralLayer("radial-gradient");
-                  setIsAddPopoverOpen(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
-              >
-                <CircleHalfIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
-                <span className="text-xs font-medium text-[color:var(--foreground)]">Radial Gradient</span>
-              </button>
-              <button
-                type="button"
-                data-testid="add-procedural-dots-button"
-                onClick={() => {
-                  addProceduralLayer("dots");
-                  setIsAddPopoverOpen(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
-              >
-                <DotsNineIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
-                <span className="text-xs font-medium text-[color:var(--foreground)]">Dots</span>
-              </button>
-              <button
-                type="button"
-                data-testid="add-procedural-grid-button"
-                onClick={() => {
-                  addProceduralLayer("grid");
-                  setIsAddPopoverOpen(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
-              >
-                <GridFourIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
-                <span className="text-xs font-medium text-[color:var(--foreground)]">Grid</span>
-              </button>
-            </div>
+        <div className="flex items-center gap-1.5">
+          {/* Phase 5 Group Action Button when >= 2 layers selected */}
+          {selectedLayerIds.size >= 2 && (
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={() => createGroup()}
+              title="Group selected layers"
+              aria-label="Group selected layers"
+              className="h-6 px-2 text-2xs font-semibold gap-1"
+            >
+              <FolderSimpleIcon size={ICON_SIZES.xs} />
+              <span>Group ({selectedLayerIds.size})</span>
+            </Button>
+          )}
 
-            <span className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
-              Add Layer from Assets
-            </span>
-            {assets.length === 0 ? (
-              <div className="p-3 text-center text-xs text-[color:var(--muted-foreground)]">
-                No assets in library. Import media to add image layers.
+          {/* Add Layer Popover */}
+          <Popover open={isAddPopoverOpen} onOpenChange={setIsAddPopoverOpen}>
+            <PopoverTrigger
+              render={(triggerProps) => (
+                <Button
+                  {...triggerProps}
+                  variant="ghost"
+                  size="icon-sm"
+                  title="Add layer"
+                  aria-label="Add layer"
+                  className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] [&_svg]:!size-4"
+                >
+                  <PlusIcon size={ICON_SIZES.md} className="shrink-0" />
+                </Button>
+              )}
+            />
+            <PopoverContent
+              side="bottom"
+              align="end"
+              sideOffset={8}
+              className="w-56 p-2 flex flex-col gap-1 dark:shadow-xl shadow-none bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg"
+            >
+              <span className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
+                Add Procedural Layer
+              </span>
+              <div className="flex flex-col gap-0.5 pb-1 mb-1 border-b border-[color:var(--border)]">
+                <button
+                  type="button"
+                  data-testid="add-procedural-solid-button"
+                  onClick={() => {
+                    addProceduralLayer("solid");
+                    setIsAddPopoverOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+                >
+                  <SquareIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
+                  <span className="text-xs font-medium text-[color:var(--foreground)]">Solid</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="add-procedural-linear-gradient-button"
+                  onClick={() => {
+                    addProceduralLayer("linear-gradient");
+                    setIsAddPopoverOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+                >
+                  <CircleHalfIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
+                  <span className="text-xs font-medium text-[color:var(--foreground)]">Linear Gradient</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="add-procedural-radial-gradient-button"
+                  onClick={() => {
+                    addProceduralLayer("radial-gradient");
+                    setIsAddPopoverOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+                >
+                  <CircleHalfIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
+                  <span className="text-xs font-medium text-[color:var(--foreground)]">Radial Gradient</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="add-procedural-dots-button"
+                  onClick={() => {
+                    addProceduralLayer("dots");
+                    setIsAddPopoverOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+                >
+                  <DotsNineIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
+                  <span className="text-xs font-medium text-[color:var(--foreground)]">Dots</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="add-procedural-grid-button"
+                  onClick={() => {
+                    addProceduralLayer("grid");
+                    setIsAddPopoverOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+                >
+                  <GridFourIcon size={ICON_SIZES.sm} className="text-[color:var(--foreground)]" />
+                  <span className="text-xs font-medium text-[color:var(--foreground)]">Grid</span>
+                </button>
               </div>
-            ) : (
-              <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                {assets.map((asset) => (
-                  <button
-                    key={asset.id}
-                    type="button"
-                    onClick={() => {
-                      addLayerFromAsset(asset.id);
-                      setIsAddPopoverOpen(false);
-                    }}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
-                  >
-                    <div className="size-5 rounded-xs bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] overflow-hidden shrink-0 border border-[color:color-mix(in_oklab,var(--border)_50%,transparent)]">
-                      <img
-                        src={asset.thumbnailUrl}
-                        alt={asset.filename}
-                        className="size-full object-cover"
-                      />
-                    </div>
-                    <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
-                      {asset.filename}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
+
+              <span className="px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
+                Add Layer from Assets
+              </span>
+              {assets.length === 0 ? (
+                <div className="p-3 text-center text-xs text-[color:var(--muted-foreground)]">
+                  No assets in library. Import media to add image layers.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                  {assets.map((asset) => (
+                    <button
+                      key={asset.id}
+                      type="button"
+                      onClick={() => {
+                        addLayerFromAsset(asset.id);
+                        setIsAddPopoverOpen(false);
+                      }}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[color:var(--secondary)] text-left transition-colors cursor-pointer"
+                    >
+                      <div className="size-5 rounded-xs bg-[color:color-mix(in_oklab,var(--foreground)_6%,transparent)] overflow-hidden shrink-0 border border-[color:color-mix(in_oklab,var(--border)_50%,transparent)]">
+                        <img
+                          src={asset.thumbnailUrl}
+                          alt={asset.filename}
+                          className="size-full object-cover"
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-[color:var(--foreground)] truncate">
+                        {asset.filename}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
       {/* Layer Stack Body */}
@@ -413,31 +502,116 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={visualLayers.map((l) => l.id)}
+              items={allSortableIds}
               strategy={verticalListSortingStrategy}
             >
-              {visualLayers.map((layer) => {
+              {visualItems.map((item) => {
+                if (isGroup(item)) {
+                  const isAllChildrenSelected =
+                    item.children.length > 0 &&
+                    item.children.every((c) => selectedLayerIds.has(c.id));
+
+                  return (
+                    <div key={item.id} className="flex flex-col gap-1.5">
+                      <GroupRow
+                        group={item}
+                        isSelected={isAllChildrenSelected}
+                        onSelect={() => {
+                          const childIds = item.children.map((c) => c.id);
+                          selectLayers(childIds);
+                          if (childIds.length > 0) {
+                            setActiveLayerId(childIds[0]);
+                          }
+                        }}
+                        onToggleCollapse={() => toggleGroupCollapse(item.id)}
+                        onToggleVisibility={() => toggleGroupVisibility(item.id)}
+                        onToggleLock={() => toggleGroupLock(item.id)}
+                        onRename={(newName) => renameGroup(item.id, newName)}
+                        onUngroup={() => ungroup(item.id)}
+                        onDelete={() => deleteGroup(item.id)}
+                      />
+
+                      {/* Single-tier left indentation (pl-4 / 16px) for child layers */}
+                      {!item.collapsed && item.children.length > 0 && (
+                        <div className="flex flex-col gap-1.5 pl-4">
+                          {[...item.children].reverse().map((child) => {
+                            const assetId =
+                              child.source?.type === "image" ? child.source.assetId : child.assetId;
+                            const isChildSelected =
+                              activeLayerId === child.id || selectedLayerIds.has(child.id);
+
+                            return (
+                              <SortableLayerRow
+                                key={child.id}
+                                layer={child}
+                                asset={assetId ? assetMap.get(assetId) : undefined}
+                                isSelected={isChildSelected}
+                                isLocked={Boolean(child.locked || item.locked)}
+                                onSelect={(e) => {
+                                  if (e?.shiftKey || e?.metaKey || e?.ctrlKey) {
+                                    toggleLayerSelection(child.id);
+                                    setActiveLayerId(child.id);
+                                  } else {
+                                    selectLayers([child.id]);
+                                    setActiveLayerId(child.id);
+                                  }
+                                }}
+                                onToggleVisibility={(e) => {
+                                  e.stopPropagation();
+                                  updateLayer(child.id, {
+                                    visible: child.visible === false ? true : false,
+                                  });
+                                }}
+                                onRemove={(e) => {
+                                  e.stopPropagation();
+                                  removeLayer(child.id);
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Root Layer item
                 const assetId =
-                  layer.source?.type === "image" ? layer.source.assetId : layer.assetId;
+                  item.source?.type === "image" ? item.source.assetId : item.assetId;
+                const isSelected =
+                  activeLayerId === item.id || selectedLayerIds.has(item.id);
+                const isBackdrop = activeFrame?.items[0]?.id === item.id;
+
                 return (
                   <SortableLayerRow
-                    key={layer.id}
-                    layer={layer}
+                    key={item.id}
+                    layer={item}
                     asset={assetId ? assetMap.get(assetId) : undefined}
-                    isSelected={activeLayerId === layer.id}
-                    onSelect={() => {
-                      setActiveLayerId(layer.id);
+                    isSelected={isSelected}
+                    isLocked={isBackdrop || Boolean(item.locked)}
+                    onSelect={(e) => {
+                      if (e?.shiftKey || e?.metaKey || e?.ctrlKey) {
+                        toggleLayerSelection(item.id);
+                        setActiveLayerId(item.id);
+                      } else {
+                        selectLayers([item.id]);
+                        setActiveLayerId(item.id);
+                      }
                     }}
                     onToggleVisibility={(e) => {
                       e.stopPropagation();
-                      updateLayer(layer.id, {
-                        visible: layer.visible === false ? true : false,
+                      updateLayer(item.id, {
+                        visible: item.visible === false ? true : false,
                       });
                     }}
-                    onRemove={(e) => {
-                      e.stopPropagation();
-                      removeLayer(layer.id);
-                    }}
+                    onRemove={
+                      isBackdrop
+                        ? undefined
+                        : (e) => {
+                            e.stopPropagation();
+                            removeLayer(item.id);
+                          }
+                    }
                   />
                 );
               })}
@@ -448,4 +622,3 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
     </div>
   );
 }
-

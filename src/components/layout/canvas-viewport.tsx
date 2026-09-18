@@ -26,7 +26,12 @@ import { GPUEffectPipeline, canExecuteStackOnGPU } from "../../rendering/webgl/w
 import { GPUBackgroundRenderer, isGPUSupportedBackground } from "../../rendering/webgl/webgl-background";
 import { WebGL2FrameCompositor } from "../../rendering/webgl/webgl-frame-compositor";
 import type { TextureSource } from "../../rendering/webgl/webgl-texture";
-import { DEFAULT_LAYER_TRANSFORM, type ImageLayer } from "../../types/frame";
+import { DEFAULT_LAYER_TRANSFORM, flattenItemsToLayers, type ImageLayer } from "../../types/frame";
+import {
+  findLayerInItems,
+  getEffectiveLayerVisibility,
+  getEffectiveLayerLocked,
+} from "../../utils/tree-operations";
 import { CanvasControlDock } from "./canvas-control-dock";
 import { FloatingEffectPanel } from "./floating-effect-panel";
 import { FloatingBackgroundPanel } from "./floating-background-panel";
@@ -85,7 +90,7 @@ export function CanvasViewport({
 
   const activeLayer = React.useMemo(() => {
     if (!activeFrame || !activeLayerId) return null;
-    return activeFrame.layers.find((l) => l.id === activeLayerId) || null;
+    return findLayerInItems(activeFrame.items, activeLayerId) || null;
   }, [activeFrame, activeLayerId]);
 
   const activeImageLayerAsset = React.useMemo(() => {
@@ -251,7 +256,8 @@ export function CanvasViewport({
   React.useEffect(() => {
     if (!activeFrame) return;
 
-    const imageLayers = activeFrame.layers.filter((l): l is ImageLayer => l.type === "image");
+    const allLayers = flattenItemsToLayers(activeFrame.items);
+    const imageLayers = allLayers.filter((l): l is ImageLayer => l.type === "image");
     for (const layer of imageLayers) {
       if (!loadedAssetsRef.current.has(layer.assetId)) {
         const asset = assets.find((a) => a.id === layer.assetId);
@@ -334,7 +340,7 @@ export function CanvasViewport({
 
       // 5. Render Transformed Frame / Active Image & Processed Layer Stack
       const isSourceLoaded = Boolean(activeAsset && loadedSourceImage && loadedSourceImage.id === activeAsset.id);
-      const hasFrameLayers = Boolean(activeFrame && activeFrame.layers && activeFrame.layers.length > 0);
+      const hasFrameLayers = Boolean(activeFrame && activeFrame.items && activeFrame.items.length > 0);
 
       if (isSourceLoaded || hasFrameLayers) {
         const scale = currentZoom / 100;
@@ -1075,11 +1081,13 @@ export function CanvasViewport({
         viewport.panY
       );
 
-      // Iterate in reverse (topmost visual layer first, excluding GenerativeLayer at index 0)
+      // Iterate in reverse (topmost visual layer first, excluding procedural backdrop at index 0)
       let hitLayerId: string | null = null;
-      for (let i = activeFrame.layers.length - 1; i >= 1; i--) {
-        const layer = activeFrame.layers[i];
-        if (!layer || layer.visible === false || layer.type !== "image") continue;
+      const allVisualLayers = flattenItemsToLayers(activeFrame.items);
+      for (let i = allVisualLayers.length - 1; i >= 1; i--) {
+        const layer = allVisualLayers[i];
+        if (!layer || !getEffectiveLayerVisibility(activeFrame.items, layer.id) || layer.type !== "image") continue;
+        if (getEffectiveLayerLocked(activeFrame.items, layer.id)) continue;
 
         const asset = assets.find((a) => a.id === layer.assetId);
         if (!asset) continue;
@@ -1240,6 +1248,7 @@ export function CanvasViewport({
         {activeFrame &&
           (activeLayer?.source?.type === "image" || activeLayer?.type === "image") &&
           activeImageLayerAsset &&
+          !getEffectiveLayerLocked(activeFrame.items, activeLayer.id) &&
           (containerSize.width > 0 || (containerRef.current?.clientWidth ?? 0) > 0) && (
             <LayerSelectionOverlay
               frame={activeFrame}

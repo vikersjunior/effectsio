@@ -373,7 +373,7 @@ A frame can exist without an uploaded image.
 A frame owns:
 - composition dimensions (`width`, `height`, optional preset)
 - optional background / fill color fallback
-- root composition items (`(Layer | Group)[]`) in explicit bottom-to-top z-order
+- root composition items (`Frame.items: (Layer | Group)[]`) in explicit bottom-to-top z-order
 
 #### Frame presets
 
@@ -403,16 +403,18 @@ Hero-friendly presets may be presented as convenient starting points, but they a
 
 ### 10.2 Composition Structure
 
-EffectsIO uses a unified composition model:
+EffectsIO uses a unified single-tier composition tree model:
 
 ```text
 Project
 └── Frame
-    ├── Group
-    │   ├── Layer → Source
-    │   └── Layer → Source
-    ├── Layer → Source
-    └── Layer → Source
+    └── items: (Layer | Group)[]
+        ├── Layer → Source → Effect Stack
+        ├── Group
+        │   └── children: Layer[]
+        │       ├── Layer → Source → Effect Stack
+        │       └── Layer → Source → Effect Stack
+        └── Layer → Source → Effect Stack
 ```
 
 Core principles:
@@ -421,6 +423,8 @@ Core principles:
 - **If it changes pixels → Effect.**
 - **If it organizes visual objects → Group.**
 - **If it defines composition bounds → Frame.**
+
+`Frame.items` is the sole authoritative composition and render stack in bottom-to-top z-order.
 
 ### 10.3 Layer
 
@@ -432,7 +436,6 @@ A Layer owns compositional properties:
 - **opacity** (0.0 to 1.0)
 - **blend mode** (layer-level blending against underlying composite)
 - **transform** (spatial position, scale, rotation)
-- **z-order** (explicit array position in composition stack)
 - **effect stack** (modular GPU effect shaders)
 - **animation state** where supported
 - **Source** (exactly one content generator)
@@ -452,25 +455,39 @@ Source types supported by the roadmap include:
 
 ### 10.5 Group
 
-A **Group** is an organizational container used to group and manipulate multiple Layers as a unit.
+A **Group** is an organizational composition container used to group and manipulate multiple Layers as a unit.
 
-For v1:
 ```text
-Group → Layer[]
+Group
+└── children: Layer[]
 ```
 
-- **Single-tier nesting**: Groups contain Layers. Phase 1 Groups do not contain nested Groups (`Group → Group` is not supported).
-- **Capabilities**: A Group provides organizational containment, a name, a collective spatial transform (translation, scale, rotation), collective visibility toggling, collective locking, and an ordered list of child Layers.
-- **Organizational focus**: A Group is an organizational and spatial convenience, not a separate rendering or compositing primitive in v1.
+#### Group Capabilities & Boundaries (Phase 5 Scope)
+- **Organizational containment**: A Group owns an `id`, a `name`, an ordered list of `children: Layer[]`, `visible` (boolean), `locked` (boolean), and `collapsed` (boolean UI presentation state).
+- **No visual or compositing properties**: In Phase 5, Groups are strictly organizational containers. Groups do **NOT** own their own `opacity`, `blendMode`, `effectStack`, `mask`, or independent shader/compositing pipelines.
+- **Group transforms explicitly deferred**: Collective spatial transforms for Groups are explicitly deferred to a later Motion/Animation phase (Phase 5+ / Phase 6). In Phase 5, individual Layers own their transforms.
+- **Single-tier nesting**: Groups contain Layers. Phase 5 Groups do not contain nested Groups (`Group → Group` is not supported).
+- **No non-contiguous Groups**: Group membership is physical containment in `Group.children`. A Group occupies exactly one root composition slot in `Frame.items`. Children cannot be separated by outside root Layers while remaining members of that Group.
+- **Single source of truth for membership**: Group membership is represented exclusively by `Group.children`. Foreign keys (`Layer.groupId`, `Group.layerIds`) are non-canonical legacy representations.
 
-### 10.6 Background as a Visual Role
+#### Group Lifecycle & Interaction
+- **Create Group**: One or more eligible Layers become a `Group` containing those Layers as `children`. The backdrop layer is never eligible.
+- **Ungroup**: Dissolves the container; children retain order and occupy the Group's former root position in `Frame.items`.
+- **Delete Group**: Deleting a Group removes the Group and all its children as one atomic operation.
+- **Empty Groups unsupported**: Empty Groups cannot be created intentionally. Removing the final child automatically prunes the Group from `Frame.items`.
+- **Effective Visibility**: `effectiveVisible = group.visible && layer.visible`. Group visibility short-circuits child rendering without overwriting individual child visibility values.
+- **Effective Lock**: `effectiveLocked = group.locked || layer.locked`. A locked Group locks its children against structural moves, reordering, ejection, deletion, and Inspector property editing without overwriting individual child lock values.
+- **Collapse State**: `group.collapsed` is Layers Panel presentation state (`Persisted: YES, Undo/Redo: NO, Rendering: NO`).
+- **Selection & Editing Authority**: `activeFrameId + activeLayerId` is the sole property-editing authority. `selectedGroupId` is not part of canonical Studio state. Group actions receive the `groupId` directly from the relevant UI action (`renameGroup`, `toggleGroupVisibility`, `toggleGroupLock`, `toggleGroupCollapse`, `ungroup`, `deleteGroup`). Transient `selectedLayerIds: Set<string>` supports batch structural operations without replacing `activeLayerId`.
+
+### 10.6 Background as a Visual Role & Backdrop Invariant
 
 **Background is a visual role, not a Layer type.**
 
-A standard Layer may fulfill the background role based on its position in the stack (typically lower in the order) and creative intent.
+A standard Layer fulfills the background role based on its position at the bottom of the stack:
+- **Canonical Backdrop Invariant**: `Frame.items[0]` is permanently the protected canonical procedural backdrop Layer.
+- It always exists, remains at root index 0, cannot be a Group, cannot belong to a Group, cannot be deleted, cannot be reordered, cannot be ejected, and remains locked against canvas spatial drag.
 - There is no user-facing `BackgroundLayer`, `BackgroundItem`, `BackgroundStack`, or special background object type in the document model.
-- Any standard Layer serving as a background can be repositioned, transformed, duplicated, hidden, styled with effects, or removed like any other Layer.
-- The product may still provide background-focused tools, templates, and UI workflows, but these are creative affordances, not separate document-model primitives.
 - The Frame itself may provide a simple background/fill color value where appropriate.
 
 ### 10.7 What does not change
@@ -857,7 +874,18 @@ Each Layer carries:
 - effect stack (with per-effect blend modes)
 - mask behavior where supported
 
-Groups unroll or composite their child Layers in sequence according to the Group's z-order slot and collective transform. Do not assume the earlier single-image effect pipeline is sufficient without an explicit multi-layer compositing stage.
+The WebGL2 compositor renders visual content by unrolling `Frame.items` bottom-to-top:
+```text
+Frame.items
+    ↓
+Layer → render directly
+Group
+    ↓ evaluate group.visible (short-circuits if false)
+Group.children
+    ↓
+Layer → render directly
+```
+If an item is a Layer, it composites directly; if an item is a Group, the compositor evaluates `group.visible` (skipping all child layers in a single branch if false) and unrolls `group.children` in sequence directly onto the canvas framebuffer. Phase 5 organizational Groups do not introduce intermediate offscreen framebuffers (FBOs), group shaders, group effect stacks, group blend modes, or group opacity pipelines. Group spatial transforms are explicitly deferred to later Motion/Animation phases.
 
 ---
 
@@ -907,11 +935,11 @@ Account
 │       ├── Assets[]
 │       ├── Frames[]
 │       │   └── Frame
-│       │       ├── Groups[]
-│       │       │   └── Layers[]
-│       │       │       └── Source
-│       │       ├── Layers[]
-│       │       │   └── Source
+│       │       ├── items[]
+│       │       │   ├── Layer → Source
+│       │       │   └── Group
+│       │       │       └── children[]
+│       │       │           └── Layer → Source
 │       │       ├── Global Mask
 │       │       ├── Animation State
 │       │       └── Export Settings
@@ -919,6 +947,8 @@ Account
 │       └── Versions / Share Snapshots
 └── Shared / Remixed Compositions
 ```
+
+The canonical composition data structure is `Frame.items` and `Group.children`. Legacy persisted structures (`frame.layers`, `frame.groups`, `layer.groupId`, `group.layerIds`) are non-canonical historical formats normalized strictly at the storage/input boundary.
 
 The exact backend/storage implementation is not prescribed by this PRD. The state ownership and user-facing semantics are the requirement.
 
@@ -1256,7 +1286,7 @@ Build:
 - active frame / active layer context (`activeFrameId` + `activeLayerId`)
 - universal Layer model
 - Source abstraction (imported image source referencing immutable asset, procedural sources)
-- single-tier Groups (`Group → Layer[]`)
+- single-tier Groups (`Group.children: Layer[]`) within root composition items (`Frame.items`)
 - layer ordering (z-order)
 - layer visibility
 - layer opacity

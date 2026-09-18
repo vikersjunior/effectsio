@@ -19,8 +19,13 @@ import {
   createImageLayer,
   type Frame,
   type GenerativeLayer,
+  type Layer,
+  flattenItemsToLayers,
 } from "../types/frame";
 import { DEFAULT_BACKGROUND_STATE, type BackgroundState } from "../types/look";
+
+const getLayers = (frame?: Frame | null): Layer[] =>
+  frame ? flattenItemsToLayers(frame.items) : [];
 
 function createMockIndexedDB() {
   const stores: Record<string, Map<string, any>> = {};
@@ -460,12 +465,12 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       expect(genLayer.sublayers[1].name).toBe("Top Pattern");
     });
 
-    it("ensures sublayer reordering does not alter frame.layers or displace GenerativeLayer at index 0", () => {
+    it("ensures sublayer reordering does not alter frame.items or displace GenerativeLayer at index 0", () => {
       const frame = createDefaultFrame("frame-reorder-test");
       const imgLayer = createImageLayer("asset-1", "Image 1");
-      frame.layers.push(imgLayer);
+      frame.items.push(imgLayer);
 
-      const genLayer = frame.layers[0] as GenerativeLayer;
+      const genLayer = frame.items[0] as GenerativeLayer;
       const sub1 = createGenerativeSublayer("solid", { id: "s1" });
       const sub2 = createGenerativeSublayer("dots", { id: "s2" });
       genLayer.sublayers = [sub1, sub2];
@@ -478,12 +483,12 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       expect(genLayer.sublayers[0].id).toBe("s2");
       expect(genLayer.sublayers[1].id).toBe("s1");
 
-      // Verify Frame hierarchy invariant: frame.layers[0] is still the Procedural Backdrop Layer
-      expect(frame.layers).toHaveLength(2);
-      expect(frame.layers[0].type).toBe("procedural");
-      expect(frame.layers[0].id).toBe(genLayer.id);
-      expect(frame.layers[1].type).toBe("image");
-      expect(frame.layers[1].id).toBe(imgLayer.id);
+      // Verify Frame hierarchy invariant: frame.items[0] is still the Procedural Backdrop Layer
+      expect(frame.items).toHaveLength(2);
+      expect((frame.items[0] as Layer).type).toBe("procedural");
+      expect(frame.items[0].id).toBe(genLayer.id);
+      expect((frame.items[1] as Layer).type).toBe("image");
+      expect(frame.items[1].id).toBe(imgLayer.id);
     });
   });
 
@@ -510,7 +515,7 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       });
 
       const frame = createDefaultFrame("frame-persistence-test");
-      const genLayer = frame.layers[0] as GenerativeLayer;
+      const genLayer = frame.items[0] as GenerativeLayer;
       genLayer.backgrounds = [customSublayer1, customSublayer2];
       genLayer.sublayers = genLayer.backgrounds;
 
@@ -519,7 +524,7 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       // Verify direct retrieval from frames store
       const allFrames = await dbGetAllFrames();
       expect(allFrames).toHaveLength(1);
-      const retrievedGenLayer = allFrames[0].layers[0] as GenerativeLayer;
+      const retrievedGenLayer = allFrames[0].items[0] as GenerativeLayer;
       expect(retrievedGenLayer.backgrounds).toHaveLength(2);
       expect(retrievedGenLayer.backgrounds[0].id).toBe("persist-sub-1");
       expect(retrievedGenLayer.backgrounds[0].type).toBe("solid");
@@ -531,11 +536,12 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       // Verify full project hydration (Decision A: GenerativeLayer with 2 backgrounds splits into 2 canonical procedural layers)
       const hydrated = await loadHydratedProject();
       expect(hydrated.frames).toHaveLength(1);
-      expect(hydrated.frames[0].layers).toHaveLength(2);
-      expect(hydrated.frames[0].layers[0].source.type).toBe("procedural");
-      expect((hydrated.frames[0].layers[0].source as any).kind).toBe("solid");
-      expect(hydrated.frames[0].layers[1].source.type).toBe("procedural");
-      expect((hydrated.frames[0].layers[1].source as any).kind).toBe("grid");
+      const hydratedLayers = getLayers(hydrated.frames[0]);
+      expect(hydratedLayers).toHaveLength(2);
+      expect(hydratedLayers[0].source.type).toBe("procedural");
+      expect((hydratedLayers[0].source as any).kind).toBe("solid");
+      expect(hydratedLayers[1].source.type).toBe("procedural");
+      expect((hydratedLayers[1].source as any).kind).toBe("grid");
 
       if (originalIDB) {
         globalThis.window.indexedDB = originalIDB;
@@ -544,7 +550,7 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       }
     });
 
-    it("hydrates legacy frames without sublayers by deterministically converting backgroundConfig", async () => {
+    it("hydrates single legacy background array with fallback to default if missing", async () => {
       const { mockIDBFactory } = createMockIndexedDB();
       const originalIDB = (globalThis as any).window?.indexedDB;
       if (!globalThis.window) (globalThis as any).window = {};
@@ -552,31 +558,36 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
 
       const { dbSaveFrame, dbGetAllFrames } = await import("../storage/db");
 
-      // Frame created by legacy code before Stage 3A without sublayers property
       const legacyFrame: any = {
-        id: "frame-old",
-        name: "Old Frame",
-        dimensions: { width: 1080, height: 1080, presetId: "1:1" },
-        layers: [
+        id: "frame-legacy-single",
+        name: "Legacy Frame",
+        width: 1920,
+        height: 1080,
+        items: [
           {
-            id: "gen-old",
+            id: "legacy-gen-layer",
+            type: "procedural",
             name: "Background",
-            type: "generative",
             visible: true,
-            opacity: 1.0,
+            locked: false,
+            opacity: 1,
             blendMode: "normal",
-            effectStack: [],
-            backgroundMode: "solid",
-            backgroundConfig: {
-              ...DEFAULT_BACKGROUND_STATE,
-              type: "solid",
-              color: "#059669",
-              opacity: 100,
+            source: {
+              type: "procedural",
+              kind: "solid",
+              parameters: { color: "#059669" },
             },
-            // no sublayers
+            backgrounds: [
+              {
+                id: "single-bg",
+                type: "solid",
+                visible: true,
+                opacity: 1,
+                parameters: { color: "#059669" },
+              },
+            ],
           },
         ],
-        activeLayerId: "gen-old",
         createdAt: 1000,
         updatedAt: 1000,
       };
@@ -585,7 +596,7 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
 
       const frames = await dbGetAllFrames();
       expect(frames).toHaveLength(1);
-      const genLayer = frames[0].layers[0] as GenerativeLayer;
+      const genLayer = frames[0].items[0] as GenerativeLayer;
       expect(genLayer.backgrounds).toBeDefined();
       expect(genLayer.backgrounds).toHaveLength(1);
       expect(genLayer.backgrounds[0].type).toBe("solid");
@@ -616,16 +627,16 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
       });
 
       const store = result.current;
-      expect(store.activeFrame?.layers).toBeDefined();
-      const initialCount = store.activeFrame!.layers.length;
+      expect(getLayers(store.activeFrame)).toBeDefined();
+      const initialCount = getLayers(store.activeFrame).length;
 
       // 1. Add solid procedural layer
       await act(async () => {
         store.addProceduralLayer("solid", { parameters: { color: "#ff0000" } });
       });
 
-      expect(result.current.activeFrame!.layers).toHaveLength(initialCount + 1);
-      const addedSolid = result.current.activeFrame!.layers[result.current.activeFrame!.layers.length - 1];
+      expect(getLayers(result.current.activeFrame)).toHaveLength(initialCount + 1);
+      const addedSolid = getLayers(result.current.activeFrame)[getLayers(result.current.activeFrame).length - 1];
       expect((addedSolid.source as any).kind).toBe("solid");
       expect((addedSolid.source as any).parameters.color).toBe("#ff0000");
       expect(result.current.canUndo).toBe(true);
@@ -635,8 +646,8 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
         result.current.addProceduralLayer("dots", { parameters: { spacing: 30 } });
       });
 
-      expect(result.current.activeFrame!.layers).toHaveLength(initialCount + 2);
-      const addedDots = result.current.activeFrame!.layers[result.current.activeFrame!.layers.length - 1];
+      expect(getLayers(result.current.activeFrame)).toHaveLength(initialCount + 2);
+      const addedDots = getLayers(result.current.activeFrame)[getLayers(result.current.activeFrame).length - 1];
       expect((addedDots.source as any).kind).toBe("dots");
       expect((addedDots.source as any).parameters.spacing).toBe(30);
 
@@ -648,7 +659,7 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
         });
       });
 
-      const updatedSolid = result.current.activeFrame!.layers.find((l) => l.id === addedSolid.id);
+      const updatedSolid = getLayers(result.current.activeFrame).find((l) => l.id === addedSolid.id);
       expect(updatedSolid?.opacity).toBe(0.75);
       expect(updatedSolid?.blendMode).toBe("multiply");
 
@@ -661,49 +672,48 @@ describe("Stage 3A: Generative Layer Foundation Suite", () => {
         );
       });
 
-      const scrubbedSolid = result.current.activeFrame!.layers.find((l) => l.id === addedSolid.id);
+      const scrubbedSolid = getLayers(result.current.activeFrame).find((l) => l.id === addedSolid.id);
       expect((scrubbedSolid?.source as any).parameters.color).toBe("#00ff00");
 
       // 5. Reorder procedural layers (indices 1 and 2 above backdrop)
-      const firstId = result.current.activeFrame!.layers[1].id;
-      const secondId = result.current.activeFrame!.layers[2].id;
+      const firstId = getLayers(result.current.activeFrame)[1].id;
+      const secondId = getLayers(result.current.activeFrame)[2].id;
       await act(async () => {
         result.current.reorderLayers(1, 2);
       });
 
-      expect(result.current.activeFrame!.layers[1].id).toBe(secondId);
-      expect(result.current.activeFrame!.layers[2].id).toBe(firstId);
+      expect(getLayers(result.current.activeFrame)[1].id).toBe(secondId);
+      expect(getLayers(result.current.activeFrame)[2].id).toBe(firstId);
 
       // 6. Undo restores previous order
       await act(async () => {
         result.current.undo();
       });
 
-      expect(result.current.activeFrame!.layers[1].id).toBe(firstId);
-      expect(result.current.activeFrame!.layers[2].id).toBe(secondId);
+      expect(getLayers(result.current.activeFrame)[1].id).toBe(firstId);
+      expect(getLayers(result.current.activeFrame)[2].id).toBe(secondId);
 
       // 7. Redo restores reordered state
       await act(async () => {
         result.current.redo();
       });
 
-      expect(result.current.activeFrame!.layers[1].id).toBe(secondId);
-      expect(result.current.activeFrame!.layers[2].id).toBe(firstId);
+      expect(getLayers(result.current.activeFrame)[1].id).toBe(secondId);
+      expect(getLayers(result.current.activeFrame)[2].id).toBe(firstId);
 
       // 8. Remove procedural layer
       await act(async () => {
         result.current.removeLayer(addedSolid.id);
       });
 
-      expect(result.current.activeFrame!.layers.some((l) => l.id === addedSolid.id)).toBe(false);
+      expect(getLayers(result.current.activeFrame).some((l) => l.id === addedSolid.id)).toBe(false);
 
       // 9. Undo restores the removed procedural layer
       await act(async () => {
         result.current.undo();
       });
 
-      expect(result.current.activeFrame!.layers.some((l) => l.id === addedSolid.id)).toBe(true);
+      expect(getLayers(result.current.activeFrame).some((l) => l.id === addedSolid.id)).toBe(true);
     });
   });
 });
-

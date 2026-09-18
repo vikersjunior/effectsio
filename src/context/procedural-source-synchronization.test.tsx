@@ -8,6 +8,7 @@ import {
   createDefaultBackdropLayer,
   createImageLayer,
   createLayer,
+  flattenItemsToLayers,
   type Frame,
   type Layer,
   type ProceduralSource,
@@ -15,6 +16,9 @@ import {
 } from "../types/frame";
 import type { Asset } from "../types/asset";
 import { WebGL2FrameCompositor } from "../rendering/webgl/webgl-frame-compositor";
+
+const getLayers = (frame?: Frame | null): Layer[] =>
+  frame ? flattenItemsToLayers(frame.items) : [];
 
 // Mock storage/db
 vi.mock("../storage/db", () => {
@@ -167,8 +171,7 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
       id: "frame-sync-test",
       name: "Sync Test Frame",
       dimensions: { width: 1080, height: 1080, presetId: null },
-      layers: [solidBackdrop],
-      groups: [],
+      items: [solidBackdrop],
       activeLayerId: solidBackdrop.id,
       createdAt: 1000,
       updatedAt: 1000,
@@ -202,7 +205,7 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
   // ---------------------------------------------------------------------------
   it("Test A: procedural parameter mutation updates layer.source.parameters canonically", async () => {
     const activeFrame = hookResult.current.activeFrame!;
-    const backdropLayer = activeFrame.layers[0];
+    const backdropLayer = getLayers(activeFrame)[0];
     expect(backdropLayer.source?.type).toBe("procedural");
 
     // Mutate parameter via updateLayerSource
@@ -213,7 +216,7 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
     });
 
     const updatedFrame = hookResult.current.activeFrame!;
-    const updatedBackdrop = updatedFrame.layers[0];
+    const updatedBackdrop = getLayers(updatedFrame)[0];
     expect(updatedBackdrop.source).toBeDefined();
     expect(updatedBackdrop.source?.type).toBe("procedural");
     const procSource = updatedBackdrop.source as ProceduralSource;
@@ -228,7 +231,7 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
     const compositor = new WebGL2FrameCompositor(mockGL);
 
     const activeFrame = hookResult.current.activeFrame!;
-    const backdropLayer = activeFrame.layers[0];
+    const backdropLayer = getLayers(activeFrame)[0];
 
     // Update parameters in studio context via updateLayerSource
     await act(async () => {
@@ -237,7 +240,7 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
       });
     });
 
-    const currentLayer = hookResult.current.activeFrame!.layers[0];
+    const currentLayer = getLayers(hookResult.current.activeFrame)[0];
     const resolvedSource = compositor.resolveLayerSource(currentLayer);
 
     expect(resolvedSource).toBeDefined();
@@ -254,7 +257,7 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
   // ---------------------------------------------------------------------------
   it("Test C: updateLayer with canonical ProceduralSource synchronizes legacy layer.backgrounds mirror", async () => {
     const activeFrame = hookResult.current.activeFrame!;
-    const backdropId = activeFrame.layers[0].id;
+    const backdropId = getLayers(activeFrame)[0].id;
 
     // Update canonical source via updateLayer
     await act(async () => {
@@ -268,7 +271,7 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
       });
     });
 
-    const updatedLayer = hookResult.current.activeFrame!.layers[0];
+    const updatedLayer = getLayers(hookResult.current.activeFrame)[0];
 
     // Canonical source updated
     expect(updatedLayer.source?.type).toBe("procedural");
@@ -290,9 +293,9 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
     });
 
     const frame = hookResult.current.activeFrame!;
-    expect(frame.layers.length).toBe(2);
+    expect(getLayers(frame).length).toBe(2);
 
-    const imageLayer = frame.layers[1];
+    const imageLayer = getLayers(frame)[1];
     expect(imageLayer.source?.type).toBe("image");
     expect((imageLayer.source as ImageSource).assetId).toBe(sampleAsset.id);
 
@@ -304,7 +307,7 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
       });
     });
 
-    const updatedImageLayer = hookResult.current.activeFrame!.layers[1];
+    const updatedImageLayer = getLayers(hookResult.current.activeFrame)[1];
     expect(updatedImageLayer.source?.type).toBe("image");
     expect((updatedImageLayer.source as ImageSource).assetId).toBe(sampleAsset.id);
     expect(updatedImageLayer.opacity).toBe(0.85);
@@ -320,7 +323,7 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
     expect(backdrop.locked).toBe(true);
 
     const frame = createDefaultFrame();
-    expect(frame.layers[0].locked).toBe(true);
+    expect(getLayers(frame)[0].locked).toBe(true);
   });
 
   // ---------------------------------------------------------------------------
@@ -332,22 +335,22 @@ describe("BLK-01 & BLK-02 Remediation Verification Suite", () => {
     });
 
     const frame = hookResult.current.activeFrame!;
-    expect(frame.layers.length).toBe(2);
-    const backdropId = frame.layers[0].id;
-    const imageId = frame.layers[1].id;
+    expect(getLayers(frame).length).toBe(2);
+    const backdropId = getLayers(frame)[0].id;
+    const imageId = getLayers(frame)[1].id;
 
     // Attempt to move backdrop (index 0) to index 1 -> rejected
     await act(async () => {
       hookResult.current.reorderLayers(0, 1);
     });
-    expect(hookResult.current.activeFrame!.layers[0].id).toBe(backdropId);
-    expect(hookResult.current.activeFrame!.layers[1].id).toBe(imageId);
+    expect(getLayers(hookResult.current.activeFrame)[0].id).toBe(backdropId);
+    expect(getLayers(hookResult.current.activeFrame)[1].id).toBe(imageId);
 
     // Attempt to move image layer (index 1) to index 0 -> rejected
     await act(async () => {
       hookResult.current.reorderLayers(1, 0);
     });
-    expect(hookResult.current.activeFrame!.layers[0].id).toBe(backdropId);
-    expect(hookResult.current.activeFrame!.layers[1].id).toBe(imageId);
+    expect(getLayers(hookResult.current.activeFrame)[0].id).toBe(backdropId);
+    expect(getLayers(hookResult.current.activeFrame)[1].id).toBe(imageId);
   });
 });

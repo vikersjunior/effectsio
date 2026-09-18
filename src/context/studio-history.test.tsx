@@ -5,6 +5,7 @@ import { renderHook, act } from "@testing-library/react";
 import { StudioProvider, useStudioStore } from "./studio-context";
 import type { Asset } from "../types/asset";
 import type { Look } from "../types/look";
+import { flattenItemsToLayers } from "../types/frame";
 
 // Mock storage/db
 vi.mock("../storage/db", () => ({
@@ -386,7 +387,7 @@ describe("Phase 7.8 Multi-Asset Selection, Batch Looks & Global History Suite", 
     it("supports background updates and undo/redo", () => {
       act(() => {
         const targetFrame = hookResult.current.frames.find((f) =>
-          f.layers.some(
+          flattenItemsToLayers(f.items).some(
             (l) =>
               (l.source?.type === "image" && l.source.assetId === "asset-1") ||
               (l.type === "image" && l.assetId === "asset-1")

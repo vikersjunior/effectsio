@@ -5,6 +5,11 @@ import { render, screen, fireEvent, cleanup, waitFor, within } from "@testing-li
 import { InspectorPanel } from "./inspector-panel";
 import { StudioProvider, useStudioStore } from "../../context/studio-context";
 import type { Asset } from "../../types/asset";
+import type { Frame, Layer } from "../../types/frame";
+import { flattenItemsToLayers } from "../../types/frame";
+
+const getLayers = (frame?: Frame | null): Layer[] =>
+  frame ? flattenItemsToLayers(frame.items) : [];
 
 const sampleAsset: Asset = {
   id: "test-asset-1",
@@ -220,7 +225,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       });
 
       // When Background Layer is selected, Background section appears AND Effects & Looks are present (UCM Sections 13 & 26)
-      const bgLayer = storeRef.activeFrame?.layers.find(
+      const bgLayer = getLayers(storeRef.activeFrame).find(
         (l) => l.source?.type === "procedural"
       );
       if (bgLayer) {
@@ -422,7 +427,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
           <button
             data-testid="select-bg-layer"
             onClick={() => {
-              const bg = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
+              const bg = getLayers(store.activeFrame).find((l) => l.source?.type === "procedural");
               if (bg) store.setActiveLayerId(bg.id);
             }}
           >
@@ -482,7 +487,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
             <button
               data-testid="select-bg-layer"
               onClick={() => {
-                const bg = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
+                const bg = getLayers(store.activeFrame).find((l) => l.source?.type === "procedural");
                 if (bg) store.setActiveLayerId(bg.id);
               }}
             >
@@ -600,7 +605,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
           <button
             data-testid="select-bg-layer"
             onClick={() => {
-              const bg = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
+              const bg = getLayers(store.activeFrame).find((l) => l.source?.type === "procedural");
               if (bg) store.setActiveLayerId(bg.id);
             }}
           >
@@ -943,7 +948,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
   describe("Stage 2D Transform Inspector Section", () => {
     function TransformTestHost() {
       const store = useStudioStore();
-      const activeLayer = store.activeFrame?.layers.find((l) => l.id === store.activeFrame?.activeLayerId);
+      const activeLayer = getLayers(store.activeFrame).find((l) => l.id === store.activeFrame?.activeLayerId);
       const transform = activeLayer?.type === "image" ? activeLayer.transform : null;
 
       return (
@@ -1040,7 +1045,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
             <button
               data-testid="select-procedural"
               onClick={() => {
-                const proc = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
+                const proc = getLayers(store.activeFrame).find((l) => l.source?.type === "procedural");
                 if (proc) store.setActiveLayerId(proc.id);
               }}
             >
@@ -1084,7 +1089,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
             <button
               data-testid="select-procedural"
               onClick={() => {
-                const proc = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
+                const proc = getLayers(store.activeFrame).find((l) => l.source?.type === "procedural");
                 if (proc) store.setActiveLayerId(proc.id);
               }}
             >
@@ -1093,7 +1098,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
             <button
               data-testid="mutate-source"
               onClick={() => {
-                const proc = store.activeFrame?.layers.find((l) => l.source?.type === "procedural");
+                const proc = getLayers(store.activeFrame).find((l) => l.source?.type === "procedural");
                 if (proc) {
                   store.updateLayerSource(proc.id, {
                     kind: "grid",
@@ -1131,7 +1136,7 @@ describe("InspectorPanel (Correction 02.3 - Figma nodes 10:920 & 61:1306)", () =
       fireEvent.click(screen.getByTestId("mutate-source"));
 
       await waitFor(() => {
-        const procLayer = storeRef.activeFrame?.layers.find((l) => l.id === storeRef.activeLayerId);
+        const procLayer = getLayers(storeRef.activeFrame).find((l) => l.id === storeRef.activeLayerId);
         expect(procLayer?.source?.type).toBe("procedural");
         expect((procLayer?.source as any)?.kind).toBe("grid");
         expect(screen.getByText(/Grid/i)).toBeDefined();

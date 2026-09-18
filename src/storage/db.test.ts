@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { BackgroundState, Look } from "../types/look";
 import { DEFAULT_BACKGROUND_STATE } from "../types/look";
 import type { EffectStack } from "../types/asset";
+import { findLayerInItems } from "../utils/tree-operations";
 
 describe("Phase 6 Storage & Schema Architecture Suite", () => {
   it("provides complete default background state", () => {
@@ -211,11 +212,11 @@ describe("Stage 1A Frame Storage & Migration Suite", () => {
     expect(defaultFrame.dimensions.width).toBe(1080);
     expect(defaultFrame.dimensions.height).toBe(1080);
     expect(defaultFrame.dimensions.presetId).toBe("1:1");
-    expect(defaultFrame.layers).toHaveLength(1);
-    expect(defaultFrame.layers[0].type).toBe("procedural");
-    expect(defaultFrame.layers[0].name).toBe("Background");
+    expect(defaultFrame.items).toHaveLength(1);
+    expect((defaultFrame.items[0] as any).type).toBe("procedural");
+    expect((defaultFrame.items[0] as any).name).toBe("Background");
     expect(project.activeFrameId).toBe(defaultFrame.id);
-    expect(project.activeLayerId).toBe(defaultFrame.layers[0].id);
+    expect(project.activeLayerId).toBe(defaultFrame.items[0].id);
 
     if (originalIDB) {
       globalThis.window.indexedDB = originalIDB;
@@ -275,22 +276,22 @@ describe("Stage 1A Frame Storage & Migration Suite", () => {
     expect(frame.name).toBe("photo.png");
     expect(frame.dimensions.width).toBe(1920);
     expect(frame.dimensions.height).toBe(1080);
-    expect(frame.layers).toHaveLength(2);
+    expect(frame.items).toHaveLength(2);
 
     // Layer 0: Procedural Backdrop
-    expect(frame.layers[0].type).toBe("procedural");
-    expect(frame.layers[0].source.type).toBe("procedural");
+    expect((frame.items[0] as any).type).toBe("procedural");
+    expect((frame.items[0] as any).source.type).toBe("procedural");
 
     // Layer 1: ImageLayer
-    expect(frame.layers[1].type).toBe("image");
-    expect((frame.layers[1] as any).assetId).toBe("asset-legacy-1");
-    expect((frame.layers[1] as any).fit).toBe("contain");
-    expect((frame.layers[1] as any).effectStack).toHaveLength(1);
-    expect((frame.layers[1] as any).effectStack[0].effectId).toBe("grain");
+    expect((frame.items[1] as any).type).toBe("image");
+    expect((frame.items[1] as any).assetId).toBe("asset-legacy-1");
+    expect((frame.items[1] as any).fit).toBe("contain");
+    expect((frame.items[1] as any).effectStack).toHaveLength(1);
+    expect((frame.items[1] as any).effectStack[0].effectId).toBe("grain");
 
     // Authoritative active state
     expect(project.activeFrameId).toBe(frame.id);
-    expect(project.activeLayerId).toBe(frame.layers[1].id);
+    expect(project.activeLayerId).toBe(frame.items[1].id);
     // Derived activeImageId
     expect(project.activeImageId).toBe("asset-legacy-1");
 
@@ -314,8 +315,8 @@ describe("Stage 1A Frame Storage & Migration Suite", () => {
 
     const { dbSaveFrames, dbDeleteFrame, dbGetAllFrames } = await import("./db");
 
-    const f1: any = { id: "f-1", name: "F1", dimensions: { width: 100, height: 100, presetId: null }, layers: [] };
-    const f2: any = { id: "f-2", name: "F2", dimensions: { width: 200, height: 200, presetId: null }, layers: [] };
+    const f1: any = { id: "f-1", name: "F1", dimensions: { width: 100, height: 100, presetId: null }, items: [] };
+    const f2: any = { id: "f-2", name: "F2", dimensions: { width: 200, height: 200, presetId: null }, items: [] };
 
     await dbSaveFrames([f1, f2]);
     let all = await dbGetAllFrames();
@@ -350,9 +351,9 @@ describe("Stage 1A Frame Storage & Migration Suite", () => {
     const project = await loadHydratedProject();
 
     expect(project.frames).toHaveLength(1);
-    expect(project.frames[0].layers[0].type).toBe("procedural");
+    expect((project.frames[0].items[0] as any).type).toBe("procedural");
     expect(project.activeFrameId).toBe(project.frames[0].id);
-    expect(project.activeLayerId).toBe(project.frames[0].layers[0].id);
+    expect(project.activeLayerId).toBe(project.frames[0].items[0].id);
     expect(project.assets).toEqual([]);
     expect(project.activeImageId).toBeNull();
 
@@ -437,10 +438,10 @@ describe("Stage 1A Frame Storage & Migration Suite", () => {
     const loadedFrame = project.frames.find((f) => f.id === "frame-legacy");
     expect(loadedFrame).toBeDefined();
 
-    const legacyLayer = loadedFrame!.layers.find((l) => l.id === "img-legacy") as any;
+    const legacyLayer = findLayerInItems(loadedFrame!.items, "img-legacy") as any;
     expect(legacyLayer.transform).toEqual(DEFAULT_LAYER_TRANSFORM);
 
-    const transformedLayer = loadedFrame!.layers.find((l) => l.id === "img-transformed") as any;
+    const transformedLayer = findLayerInItems(loadedFrame!.items, "img-transformed") as any;
     expect(transformedLayer.transform).toEqual({
       x: 150,
       y: -80,

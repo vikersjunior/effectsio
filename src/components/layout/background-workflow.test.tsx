@@ -7,7 +7,11 @@ import { InspectorPanel } from "./inspector-panel";
 import { FloatingBackgroundPanel } from "./floating-background-panel";
 import { LayersPanel } from "./layers-panel";
 import type { Asset } from "../../types/asset";
-import type { ProceduralSource } from "../../types/frame";
+import type { ProceduralSource, Frame, Layer } from "../../types/frame";
+import { flattenItemsToLayers } from "../../types/frame";
+
+const getLayers = (frame?: Frame | null): Layer[] =>
+  frame ? flattenItemsToLayers(frame.items) : [];
 
 const sampleAsset: Asset = {
   id: "test-asset-1",
@@ -32,7 +36,7 @@ function FullTestStudioHost({ onStore }: { onStore?: (store: ReturnType<typeof u
     <div className="relative w-full h-full">
       <span data-testid="is-hydrated">{String(store.isHydrated)}</span>
       <span data-testid="active-layer-id">{store.activeLayerId || "none"}</span>
-      <span data-testid="layer-count">{store.activeFrame?.layers.length ?? 0}</span>
+      <span data-testid="layer-count">{getLayers(store.activeFrame).length}</span>
       <button
         data-testid="setup-image-asset"
         onClick={async () => {
@@ -45,8 +49,9 @@ function FullTestStudioHost({ onStore }: { onStore?: (store: ReturnType<typeof u
       <button
         data-testid="select-backdrop-layer"
         onClick={() => {
-          if (store.activeFrame?.layers[0]) {
-            store.setActiveLayerId(store.activeFrame.layers[0].id);
+          const layers = getLayers(store.activeFrame);
+          if (layers[0]) {
+            store.setActiveLayerId(layers[0].id);
           }
         }}
       >
@@ -210,18 +215,18 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Workflow Suite", (
         expect(screen.getByTestId("floating-background-panel")).toBeDefined();
       });
 
-      const initialCount = storeRef.activeFrame?.layers.length ?? 0;
+      const initialCount = getLayers(storeRef.activeFrame).length;
 
       // Click alpha on backdrop -> backdrop must NOT be deleted
       fireEvent.click(screen.getByTestId("primitive-transparent"));
 
-      expect(storeRef.activeFrame?.layers.length).toBe(initialCount);
+      expect(getLayers(storeRef.activeFrame).length).toBe(initialCount);
 
       // 2. Add an upper procedural layer
       fireEvent.click(screen.getByTestId("add-procedural-dots"));
 
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(initialCount + 1);
+        expect(getLayers(storeRef.activeFrame).length).toBe(initialCount + 1);
       });
 
       // Open editor for upper procedural layer
@@ -235,7 +240,7 @@ describe("EffectsIO — Decision A Canonical Procedural Layer Workflow Suite", (
       fireEvent.click(screen.getByTestId("primitive-transparent"));
 
       await waitFor(() => {
-        expect(storeRef.activeFrame?.layers.length).toBe(initialCount);
+        expect(getLayers(storeRef.activeFrame).length).toBe(initialCount);
       });
     });
   });

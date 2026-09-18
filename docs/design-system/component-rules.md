@@ -71,6 +71,8 @@ EffectsIO design tokens & custom visual language
 | **Dividers / Seams** | `Separator` | `src/components/ui/primitives/separator.tsx` | Accessible hairline horizontal and vertical dividers (`orientation="horizontal" \| "vertical"`). |
 | **Icons** | `@phosphor-icons/react` | N/A (Direct package imports) | Canonical icon set for all primitives, toolbars, buttons, and panels (regular weight by default). |
 | **Upload Dropzone** | Utility Dropzone | `src/components/layout/asset-panel.tsx` | Compact utility container with `CloudArrowUpIcon`, instructional text, and `Import media` Button. |
+| **Layer Stack Row** | `SortableLayerRow` | `src/components/layout/layers-panel.tsx` | Reorderable layer row with source thumbnail/swatch, name, visibility, lock, delete. |
+| **Group Container Row** | `GroupRow` | `src/components/layout/group-row.tsx` | Single-tier organizational group header with caret, folder icon, name, count badge, lock, eye, and action menu. |
 
 ---
 
@@ -220,3 +222,28 @@ EffectsIO uses its native component architecture, sizing, spacing, surfaces, bor
    - **Figma Authoritative Exception**: When a specific Figma node intentionally designates a distinct icon scale, Figma remains authoritative. Do not alter approved designs simply to force every icon into one size.
    - **No Arbitrary Classes**: Avoid scattered ad-hoc styles (`w-[13px]`, `w-[15px]`, `!size-3.5` overrides). Always use `ICON_SIZES` and canonical `Button` size variants (`icon-xs`, `icon-sm`, `icon-md`).
 
+---
+
+## 10. Layers Panel & GroupRow Specification
+
+### Component Ownership
+- `SortableLayerRow` (`src/components/layout/layers-panel.tsx`): Represents an individual visual `Layer`.
+- `GroupRow` (`src/components/layout/group-row.tsx`): Represents an organizational `Group` container.
+
+### `GroupRow` Design & Interaction Rules
+1. **Semantic Role**: An organizational grouping header. A GroupRow does **not** represent a visual layer or property-editing target.
+2. **Height & Spacing**: Standard `h-10` matching `SortableLayerRow`, with consistent border and radius tokens (`rounded-md`, `border-[color:var(--border)]`).
+3. **Expand / Collapse Caret**: Uses `CaretRightIcon` (collapsed) and `CaretDownIcon` (expanded) with `ICON_SIZES.xs` (12px) in a decoupled hit area (`size-5` or `size-6`).
+4. **Iconography**: Group folder glyph (`FolderSimpleIcon` or `FolderSimpleDashedIcon`) with `ICON_SIZES.sm` (14px).
+5. **Inline Rename**: Double-clicking the group title activates an inline text `Input` styled with canonical focus tokens. Submitting with Enter or blur commits `renameGroup(groupId, name)`.
+6. **Child Layer Count**: Compact status indicator using `Badge` (`variant="outline"`, `h-[18px]`, `text-2xs`).
+7. **Collective Controls**:
+   - Visibility toggle: `EyeIcon` / `EyeSlashIcon` using `ICON_SIZES.sm` (14px).
+   - Lock toggle: `LockSimpleIcon` using `ICON_SIZES.sm` (14px).
+8. **Child Indentation Standard**: When expanded, child `SortableLayerRow` elements receive strict single-tier left indentation (`pl-4` / 16px). Arbitrary multi-level indentation is prohibited because nested groups are not supported in Phase 5.
+9. **DnD Affordance**: Drag handle using `DotsSixVerticalIcon` (`ICON_SIZES.md`), allowing atomic reordering of the Group and all its children as a single composition slot.
+10. **Action Menu / Popover**: Standard `Popover` containing approved group-level operations:
+    - Inline Rename trigger
+    - Ungroup (`ungroup(groupId)`): Dissolves the container; children occupy former root position.
+    - Delete Group (`deleteGroup(groupId)`): Atomic deletion of group and all children.
+11. **Selection Model**: Clicking a GroupRow selects its children in `selectedLayerIds` and sets `activeLayerId` to the first child. Groups do not become competing property-editing targets in the Inspector.

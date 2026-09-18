@@ -19,6 +19,7 @@ import {
   createImageLayer,
   createLayer,
   createProceduralLayer,
+  createGroup,
 } from "../../types/frame";
 import { createGenerativeSublayer } from "../../generative/registry";
 
@@ -300,7 +301,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "test-frame",
         name: "Test Frame",
         dimensions: { width: 1080, height: 1080, presetId: "1:1" },
-        layers: [baseGen, imgA, imgB],
+        items: [baseGen, imgA, imgB],
         activeLayerId: imgB.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -337,7 +338,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-skip",
         name: "Frame Skip",
         dimensions: { width: 500, height: 500, presetId: null },
-        layers: [baseGen, imgVisible, imgInvisible, imgZeroOpacity],
+        items: [baseGen, imgVisible, imgInvisible, imgZeroOpacity],
         activeLayerId: imgVisible.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -411,7 +412,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-order-1",
         name: "Order 1",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [baseGen, imgA, imgB],
+        items: [baseGen, imgA, imgB],
         activeLayerId: imgA.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -421,7 +422,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-order-2",
         name: "Order 2",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [baseGen, imgB, imgA],
+        items: [baseGen, imgB, imgA],
         activeLayerId: imgB.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -456,7 +457,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-effects",
         name: "Effect Isolation",
         dimensions: { width: 600, height: 600, presetId: null },
-        layers: [baseGen, imgWithEffect, imgClean],
+        items: [baseGen, imgWithEffect, imgClean],
         activeLayerId: imgWithEffect.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -488,7 +489,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-abc",
         name: "ABC",
         dimensions: { width: 1000, height: 1000, presetId: null },
-        layers: [baseGen, imgA, imgB, imgC],
+        items: [baseGen, imgA, imgB, imgC],
         activeLayerId: imgC.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -526,7 +527,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-default-trans",
         name: "Default Transform",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [baseGen, imgLayer],
+        items: [baseGen, imgLayer],
         activeLayerId: imgLayer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -559,7 +560,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-custom-trans",
         name: "Custom Transform",
         dimensions: { width: 1080, height: 1080, presetId: null },
-        layers: [baseGen, imgTrans],
+        items: [baseGen, imgTrans],
         activeLayerId: imgTrans.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -598,7 +599,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-trans-effect",
         name: "Transform + Effect",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [baseGen, imgWithEffect],
+        items: [baseGen, imgWithEffect],
         activeLayerId: imgWithEffect.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -631,7 +632,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-trans-cache",
         name: "Cache Invalidation Test",
         dimensions: { width: 1000, height: 1000, presetId: null },
-        layers: [baseGen, img],
+        items: [baseGen, img],
         activeLayerId: img.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -650,7 +651,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       // Mutate transform
       const modifiedFrame: Frame = {
         ...frame,
-        layers: [
+        items: [
           baseGen,
           {
             ...img,
@@ -850,7 +851,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
           id: `frame-${sub.type}`,
           name: `Frame ${sub.type}`,
           dimensions: { width: 800, height: 600, presetId: null },
-          layers: [genLayer],
+          items: [genLayer],
           activeLayerId: genLayer.id,
           createdAt: 1000,
           updatedAt: 1000,
@@ -894,7 +895,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-multi-sublayers",
         name: "Multi Sublayers Frame",
         dimensions: { width: 1080, height: 1080, presetId: "1:1" },
-        layers: [genLayer],
+        items: [genLayer],
         activeLayerId: genLayer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -932,7 +933,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-order-1",
         name: "Order 1",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [gen1],
+        items: [gen1],
         activeLayerId: gen1.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -942,7 +943,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-order-2",
         name: "Order 2",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [gen2],
+        items: [gen2],
         activeLayerId: gen2.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -977,7 +978,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-disabled",
         name: "Frame Disabled",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [genLayer],
+        items: [genLayer],
         activeLayerId: genLayer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1004,7 +1005,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-empty",
         name: "Frame Empty",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [genEmpty],
+        items: [genEmpty],
         activeLayerId: genEmpty.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1048,7 +1049,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-opacities",
         name: "Frame Opacities",
         dimensions: { width: 500, height: 500, presetId: null },
-        layers: [genLayer],
+        items: [genLayer],
         activeLayerId: genLayer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1084,7 +1085,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-cache",
         name: "Cache Frame",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [genLayer],
+        items: [genLayer],
         activeLayerId: genLayer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1095,7 +1096,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       // 1. Change parameter (spacing)
       const modParams = {
         ...baseFrame,
-        layers: [{
+        items: [{
           ...genLayer,
           sublayers: [{
             ...baseSub,
@@ -1108,7 +1109,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       // 2. Change sublayer opacity
       const modOpacity = {
         ...baseFrame,
-        layers: [{
+        items: [{
           ...genLayer,
           sublayers: [{ ...baseSub, opacity: 0.4 }],
         }],
@@ -1118,7 +1119,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       // 3. Change sublayer blend mode
       const modBlend = {
         ...baseFrame,
-        layers: [{
+        items: [{
           ...genLayer,
           sublayers: [{ ...baseSub, blendMode: "multiply" as const }],
         }],
@@ -1128,7 +1129,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       // 4. Change sublayer enabled
       const modEnabled = {
         ...baseFrame,
-        layers: [{
+        items: [{
           ...genLayer,
           sublayers: [{ ...baseSub, enabled: false }],
         }],
@@ -1167,7 +1168,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-regression",
         name: "Regression Frame",
         dimensions: { width: 1920, height: 1080, presetId: "16:9" },
-        layers: [genLayer, imgLayer],
+        items: [genLayer, imgLayer],
         activeLayerId: imgLayer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1208,7 +1209,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-canonical-image",
         name: "Canonical Image Frame",
         dimensions: { width: 1000, height: 1000, presetId: null },
-        layers: [layer],
+        items: [layer],
         activeLayerId: layer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1262,7 +1263,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-procedural",
         name: "Procedural Frame",
         dimensions: { width: 800, height: 600, presetId: null },
-        layers: [proceduralLayer],
+        items: [proceduralLayer],
         activeLayerId: proceduralLayer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1345,7 +1346,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-heterogeneous",
         name: "Heterogeneous Multi-Layer Frame",
         dimensions: { width: 1080, height: 1080, presetId: null },
-        layers: [layer0, layer1, layer2, layer3],
+        items: [layer0, layer1, layer2, layer3],
         activeLayerId: layer3.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1398,7 +1399,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-vis-test",
         name: "Visibility Frame",
         dimensions: { width: 500, height: 500, presetId: null },
-        layers: [layerVisible, layerInvisible, layerZeroOpacity],
+        items: [layerVisible, layerInvisible, layerZeroOpacity],
         activeLayerId: layerVisible.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1464,7 +1465,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-fx-test",
         name: "Effects and Transform Frame",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [procWithEffects, imgWithEffects],
+        items: [procWithEffects, imgWithEffects],
         activeLayerId: imgWithEffects.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1500,7 +1501,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-cache",
         name: "Cache Test",
         dimensions: { width: 500, height: 500, presetId: null },
-        layers: [layerA],
+        items: [layerA],
         activeLayerId: layerA.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1511,7 +1512,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       // Change procedural parameter
       const frameB: Frame = {
         ...frameA,
-        layers: [
+        items: [
           {
             ...layerA,
             source: {
@@ -1530,12 +1531,12 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         name: "Img Layer",
         source: { type: "image", assetId: "img-1" },
       });
-      const frameImgA: Frame = { ...frameA, layers: [imgLayerA] };
+      const frameImgA: Frame = { ...frameA, items: [imgLayerA] };
       const keyImg1 = (compositor as any).generateCompositionKey(frameImgA);
 
       const frameImgB: Frame = {
         ...frameA,
-        layers: [
+        items: [
           {
             ...imgLayerA,
             source: { type: "image", assetId: "img-2" },
@@ -1574,7 +1575,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-contradictory-proc",
         name: "Contradictory Frame",
         dimensions: { width: 800, height: 800, presetId: null },
-        layers: [layer],
+        items: [layer],
         activeLayerId: layer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1623,7 +1624,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-contradictory-img",
         name: "Contradictory Image Frame",
         dimensions: { width: 600, height: 600, presetId: null },
-        layers: [layer],
+        items: [layer],
         activeLayerId: layer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1664,7 +1665,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
         id: "frame-legacy-fallback",
         name: "Legacy Fallback Frame",
         dimensions: { width: 500, height: 500, presetId: null },
-        layers: [legacyLayer],
+        items: [legacyLayer],
         activeLayerId: legacyLayer.id,
         createdAt: 1000,
         updatedAt: 1000,
@@ -1676,6 +1677,105 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       // When canonical source is absent, renderLegacyCompatibilityLayer and renderGenerativeLayer must be called
       expect(renderLegacySpy).toHaveBeenCalledTimes(1);
       expect(renderGenerativeSpy).toHaveBeenCalledTimes(1);
+
+      compositor.dispose();
+    });
+  });
+
+  describe("Phase 5: Canonical Model B Group Compositing Suite", () => {
+    it("composites children of a visible group directly without intermediate FBOs", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const renderProceduralSpy = vi.spyOn(compositor as any, "renderProceduralSourceLayer");
+
+      const backdrop = createProceduralLayer("solid", "Backdrop", { parameters: { color: "#000000" } });
+      const child1 = createProceduralLayer("linear-gradient", "Child 1", { parameters: { colorA: "#ffffff", colorB: "#000000" } });
+      const child2 = createProceduralLayer("dots", "Child 2", { parameters: { dotColor: "#ff0000" } });
+      const group = createGroup("Illustration Group", [child1, child2], { visible: true });
+
+      const frame: Frame = {
+        id: "frame-group-test",
+        name: "Group Test Frame",
+        dimensions: { width: 500, height: 500, presetId: null },
+        items: [backdrop, group],
+        activeLayerId: child1.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const result = compositor.composeFrame(frame);
+      expect(result).toBeDefined();
+
+      // Backdrop + 2 children = 3 procedural render calls
+      expect(renderProceduralSpy).toHaveBeenCalledTimes(3);
+
+      compositor.dispose();
+    });
+
+    it("skips all children when group.visible is false", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const renderProceduralSpy = vi.spyOn(compositor as any, "renderProceduralSourceLayer");
+
+      const backdrop = createProceduralLayer("solid", "Backdrop", { parameters: { color: "#000000" } });
+      const child1 = createProceduralLayer("linear-gradient", "Child 1");
+      const child2 = createProceduralLayer("dots", "Child 2");
+      const group = createGroup("Hidden Group", [child1, child2], { visible: false });
+
+      const frame: Frame = {
+        id: "frame-hidden-group-test",
+        name: "Hidden Group Test Frame",
+        dimensions: { width: 500, height: 500, presetId: null },
+        items: [backdrop, group],
+        activeLayerId: backdrop.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const result = compositor.composeFrame(frame);
+      expect(result).toBeDefined();
+
+      // Only backdrop rendered!
+      expect(renderProceduralSpy).toHaveBeenCalledTimes(1);
+
+      compositor.dispose();
+    });
+
+    it("does not invalidate composition key or re-render when group.collapsed changes", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const renderProceduralSpy = vi.spyOn(compositor as any, "renderProceduralSourceLayer");
+
+      const backdrop = createProceduralLayer("solid", "Backdrop");
+      const child1 = createProceduralLayer("linear-gradient", "Child 1");
+      const groupExpanded = createGroup("Folder", [child1], { collapsed: false });
+
+      const frameExpanded: Frame = {
+        id: "frame-collapse-test",
+        name: "Collapse Test Frame",
+        dimensions: { width: 500, height: 500, presetId: null },
+        items: [backdrop, groupExpanded],
+        activeLayerId: child1.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      compositor.composeFrame(frameExpanded);
+      expect(renderProceduralSpy).toHaveBeenCalledTimes(2);
+
+      // Now toggle collapse
+      const groupCollapsed = { ...groupExpanded, collapsed: true };
+      const frameCollapsed: Frame = {
+        ...frameExpanded,
+        items: [backdrop, groupCollapsed],
+      };
+
+      compositor.composeFrame(frameCollapsed);
+      // Key must match: no new render calls!
+      expect(renderProceduralSpy).toHaveBeenCalledTimes(2);
 
       compositor.dispose();
     });

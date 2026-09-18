@@ -9,6 +9,7 @@ import {
   createImageLayer,
   createLayer,
   createGroup,
+  isGroup,
   isImageSource,
   isProceduralSource,
   isImageLayer,
@@ -299,20 +300,18 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
   // -------------------------------------------------------------------------
   describe("3. Idempotency", () => {
     it("running normalizeFrameToUniversalModel twice produces the exact same structure", () => {
+      const img1 = createImageLayer("asset-test-1", "Hero Image");
+      const img2 = createImageLayer("asset-test-2", "Sticker");
       const initialFrame: Frame = {
         id: "frame-idempotency",
         name: "Test Composition",
         dimensions: { width: 1080, height: 1080, presetId: "1:1" },
-        layers: [
+        items: [
           createDefaultBackdropLayer({
             type: "solid",
             color: "#334455",
           }),
-          createImageLayer("asset-test-1", "Hero Image"),
-          createImageLayer("asset-test-2", "Sticker"),
-        ],
-        groups: [
-          createGroup("Graphics", ["layer-1", "layer-2"]),
+          createGroup("Graphics", [img1, img2]),
         ],
         activeLayerId: "asset-test-1",
         createdAt: 100000,
@@ -322,25 +321,15 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
       const pass1 = normalizeFrameToUniversalModel(initialFrame);
       const pass2 = normalizeFrameToUniversalModel(pass1);
 
-      // Verify layers count
-      expect(pass2.layers).toHaveLength(pass1.layers.length);
+      // Verify items count
+      expect(pass2.items).toHaveLength(pass1.items.length);
 
       // Verify exact structure match
       expect(pass2.id).toBe(pass1.id);
       expect(pass2.name).toBe(pass1.name);
       expect(pass2.dimensions).toEqual(pass1.dimensions);
       expect(pass2.activeLayerId).toBe(pass1.activeLayerId);
-      expect(pass2.groups).toEqual(pass1.groups);
-
-      for (let i = 0; i < pass1.layers.length; i++) {
-        expect(pass2.layers[i].id).toBe(pass1.layers[i].id);
-        expect(pass2.layers[i].name).toBe(pass1.layers[i].name);
-        expect(pass2.layers[i].visible).toBe(pass1.layers[i].visible);
-        expect(pass2.layers[i].opacity).toBe(pass1.layers[i].opacity);
-        expect(pass2.layers[i].blendMode).toBe(pass1.layers[i].blendMode);
-        expect(pass2.layers[i].source).toEqual(pass1.layers[i].source);
-        expect(pass2.layers[i].transform).toEqual(pass1.layers[i].transform);
-      }
+      expect(pass2.items).toEqual(pass1.items);
     });
 
     it("normalizing an individual canonical Layer repeatedly does not mutate or duplicate it", () => {
@@ -364,15 +353,16 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
   // -------------------------------------------------------------------------
   describe("4. Existing Project Preservation", () => {
     it("preserves all frame and layer metadata through normalization", () => {
-      const frame: Frame = {
+      const imgLayer = createImageLayer("asset-preserved", "Preserved Image", [
+        { instanceId: "fx-1", effectId: "vintage-film", enabled: true, parameters: {} },
+      ]);
+      imgLayer.id = "layer-id-1";
+
+      const frame: any = {
         id: "frame-custom-meta",
         name: "Custom Social Banner",
         dimensions: { width: 1200, height: 630, presetId: "landscape" },
-        layers: [
-          createImageLayer("asset-preserved", "Preserved Image", [
-            { instanceId: "fx-1", effectId: "vintage-film", enabled: true, parameters: {} },
-          ]),
-        ],
+        layers: [imgLayer],
         groups: [
           {
             id: "group-1",
@@ -397,17 +387,15 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
       expect(normalized.dimensions).toEqual({ width: 1200, height: 630, presetId: "landscape" });
       expect(normalized.createdAt).toBe(1600000000);
       expect(normalized.updatedAt).toBe(1700000000);
-      expect(normalized.groups).toHaveLength(1);
-      expect(normalized.groups![0]).toEqual({
-        id: "group-1",
-        name: "Main Group",
-        layerIds: ["layer-id-1"],
-        visible: true,
-        locked: false,
-        collapsed: true,
-        createdAt: 500,
-        updatedAt: 600,
-      });
+      const groupItem = normalized.items.find(isGroup);
+      expect(groupItem).toBeDefined();
+      expect(isGroup(groupItem!)).toBe(true);
+      if (isGroup(groupItem!)) {
+        expect(groupItem!.id).toBe("group-1");
+        expect(groupItem!.name).toBe("Main Group");
+        expect(groupItem!.children).toHaveLength(1);
+        expect(groupItem!.children[0].id).toBe("layer-id-1");
+      }
     });
   });
 
@@ -437,8 +425,7 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
         id: "frame-ready",
         name: "Ready Frame",
         dimensions: { width: 1080, height: 1080 },
-        layers: [procLayer, imageLayer],
-        groups: [],
+        items: [procLayer, imageLayer],
         activeLayerId: imageLayer.id,
         createdAt: 100,
         updatedAt: 200,
@@ -446,16 +433,16 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
 
       const normalized = normalizeFrameToUniversalModel(frame);
 
-      expect(normalized.layers).toHaveLength(2);
-      expect(normalized.layers[0].id).toBe("layer-proc-ready");
-      expect(normalized.layers[0].source).toEqual({
+      expect(normalized.items).toHaveLength(2);
+      expect(normalized.items[0].id).toBe("layer-proc-ready");
+      expect((normalized.items[0] as Layer).source).toEqual({
         type: "procedural",
         kind: "solid",
         parameters: { color: "#123456" },
         seed: undefined,
       });
-      expect(normalized.layers[1].id).toBe("layer-img-ready");
-      expect(normalized.layers[1].source).toEqual({
+      expect(normalized.items[1].id).toBe("layer-img-ready");
+      expect((normalized.items[1] as Layer).source).toEqual({
         type: "image",
         assetId: "asset-universal-1",
       });
@@ -468,7 +455,9 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
   // -------------------------------------------------------------------------
   describe("6. Single-Tier Group Model Foundation", () => {
     it("creates a valid single-tier Group container with layer membership and controls", () => {
-      const group = createGroup("Illustration Elements", ["layer-a", "layer-b"], {
+      const child1 = createImageLayer("asset-a", "Layer A");
+      const child2 = createImageLayer("asset-b", "Layer B");
+      const group = createGroup("Illustration Elements", [child1, child2], {
         visible: true,
         locked: false,
         collapsed: false,
@@ -476,7 +465,7 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
 
       expect(group.id).toMatch(/^group-/);
       expect(group.name).toBe("Illustration Elements");
-      expect(group.layerIds).toEqual(["layer-a", "layer-b"]);
+      expect(group.children).toEqual([child1, child2]);
       expect(group.visible).toBe(true);
       expect(group.locked).toBe(false);
       expect(group.collapsed).toBe(false);
@@ -484,17 +473,16 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
       expect(group.updatedAt).toBeGreaterThan(0);
     });
 
-    it("attaches groupId to layers without breaking base layer integrity", () => {
+    it("verifies layers have no Model A groupId property", () => {
       const layer = createImageLayer(
         "asset-grouped",
         "Grouped Image",
         [],
         "contain",
-        DEFAULT_LAYER_TRANSFORM,
-        "group-123"
+        DEFAULT_LAYER_TRANSFORM
       );
 
-      expect(layer.groupId).toBe("group-123");
+      expect((layer as any).groupId).toBeUndefined();
       expect(layer.source?.type).toBe("image");
     });
   });
@@ -503,14 +491,14 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
   // 7. Canonical Layer & Default Frame Invariants
   // -------------------------------------------------------------------------
   describe("7. Canonical Layer & Default Frame Invariants", () => {
-    it("createDefaultFrame() produces a frame where layer 0 is a canonical Layer with ProceduralSource(solid)", () => {
+    it("createDefaultFrame() produces a frame where item 0 is a canonical Layer with ProceduralSource(solid)", () => {
       const frame = createDefaultFrame("frame-default-test", "New Composition");
 
       expect(frame.id).toBe("frame-default-test");
       expect(frame.name).toBe("New Composition");
-      expect(frame.layers).toHaveLength(1);
+      expect(frame.items).toHaveLength(1);
 
-      const backdrop = frame.layers[0];
+      const backdrop = frame.items[0] as Layer;
       // Must have required source
       expect(backdrop.source).toBeDefined();
       expect(isProceduralSource(backdrop.source)).toBe(true);
@@ -528,7 +516,6 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
 
       // Active layer matches backdrop
       expect(frame.activeLayerId).toBe(backdrop.id);
-      expect(frame.groups).toEqual([]);
     });
 
     it("createDefaultBackdropLayer() creates a canonical Layer with ProceduralSource and legacy fields for compatibility", () => {
@@ -602,7 +589,7 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
       expect(baseLayerBody).toMatch(/\bblendMode:\s*BlendMode/);
       expect(baseLayerBody).toMatch(/\beffectStack:\s*EffectStack/);
       expect(baseLayerBody).toMatch(/\blocked\?:/);
-      expect(baseLayerBody).toMatch(/\bgroupId\?:/);
+      expect(baseLayerBody).not.toMatch(/\bgroupId\?:/);
       expect(baseLayerBody).toMatch(/\bcreatedAt:\s*number/);
       expect(baseLayerBody).toMatch(/\bupdatedAt:\s*number/);
     });
@@ -677,26 +664,23 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
 
     it("normalizing createDefaultFrame is strictly idempotent and preserves backdrop ID and activeLayerId without new ID generation", () => {
       const defaultFrame = createDefaultFrame("frame-default-idempotent", "Idempotent Frame");
-      const initialBackdrop = defaultFrame.layers[0];
+      const initialBackdrop = defaultFrame.items[0];
       expect(initialBackdrop).toBeDefined();
       expect(defaultFrame.activeLayerId).toBe(initialBackdrop.id);
-      expect(defaultFrame.groups).toEqual([]);
 
       // Pass 1
       const norm1 = normalizeFrameToUniversalModel(defaultFrame);
-      expect(norm1.layers).toHaveLength(1);
-      expect(norm1.layers[0].id).toBe(initialBackdrop.id);
+      expect(norm1.items).toHaveLength(1);
+      expect(norm1.items[0].id).toBe(initialBackdrop.id);
       expect(norm1.activeLayerId).toBe(initialBackdrop.id);
-      expect(norm1.groups).toEqual([]);
-      expect(isProceduralSource(norm1.layers[0].source)).toBe(true);
+      expect(isProceduralSource((norm1.items[0] as Layer).source)).toBe(true);
 
       // Pass 2
       const norm2 = normalizeFrameToUniversalModel(norm1);
-      expect(norm2.layers).toHaveLength(1);
-      expect(norm2.layers[0].id).toBe(initialBackdrop.id);
+      expect(norm2.items).toHaveLength(1);
+      expect(norm2.items[0].id).toBe(initialBackdrop.id);
       expect(norm2.activeLayerId).toBe(initialBackdrop.id);
-      expect(norm2.groups).toEqual([]);
-      expect(norm2.layers[0].source).toEqual(norm1.layers[0].source);
+      expect((norm2.items[0] as Layer).source).toEqual((norm1.items[0] as Layer).source);
     });
 
     it("verifies repeated normalization across a multi-layer frame does not alter structure or synthesize new IDs", () => {
@@ -704,41 +688,45 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
         id: "frame-multi-test",
         name: "Multi-Layer Composition",
         dimensions: { width: 1080, height: 1080, presetId: "1:1" },
-        layers: [
+        items: [
           createDefaultBackdropLayer({ type: "solid", color: "#111111", visible: true, opacity: 100 }),
-          createLayer({
-            id: "layer-img-fixed",
-            name: "Hero Photo",
-            source: { type: "image", assetId: "asset-hero" },
-            visible: true,
-            opacity: 0.95,
-            blendMode: "screen",
-            transform: { x: 10, y: 20, scaleX: 1.1, scaleY: 1.1, rotation: 5 },
-          }),
+          createGroup(
+            "Main Group",
+            [
+              createLayer({
+                id: "layer-img-fixed",
+                name: "Hero Photo",
+                source: { type: "image", assetId: "asset-hero" },
+                visible: true,
+                opacity: 0.95,
+                blendMode: "screen",
+                transform: { x: 10, y: 20, scaleX: 1.1, scaleY: 1.1, rotation: 5 },
+              }),
+            ],
+            { id: "grp-1", visible: true, locked: false, collapsed: false }
+          ),
         ],
-        groups: [{ id: "grp-1", name: "Main Group", layerIds: ["layer-img-fixed"], visible: true, locked: false, collapsed: false, createdAt: 100, updatedAt: 100 }],
         activeLayerId: "layer-img-fixed",
         createdAt: 100,
         updatedAt: 100,
       };
 
       const pass1 = normalizeFrameToUniversalModel(initialFrame);
-      expect(pass1.layers).toHaveLength(2);
-      expect(pass1.layers[0].id).toBe(initialFrame.layers[0].id);
-      expect(pass1.layers[1].id).toBe("layer-img-fixed");
+      expect(pass1.items).toHaveLength(2);
+      expect(pass1.items[0].id).toBe(initialFrame.items[0].id);
+      expect(pass1.items[1].id).toBe("grp-1");
       expect(pass1.activeLayerId).toBe("layer-img-fixed");
-      expect(pass1.groups).toHaveLength(1);
-      expect(pass1.groups![0].id).toBe("grp-1");
 
       const pass2 = normalizeFrameToUniversalModel(pass1);
-      expect(pass2.layers).toHaveLength(2);
-      expect(pass2.layers[0].id).toBe(initialFrame.layers[0].id);
-      expect(pass2.layers[1].id).toBe("layer-img-fixed");
+      expect(pass2.items).toHaveLength(2);
+      expect(pass2.items[0].id).toBe(initialFrame.items[0].id);
+      expect(pass2.items[1].id).toBe("grp-1");
       expect(pass2.activeLayerId).toBe("layer-img-fixed");
-      expect(pass2.groups).toHaveLength(1);
-      expect(pass2.groups![0].id).toBe("grp-1");
-      expect(pass2.layers[1].source).toEqual({ type: "image", assetId: "asset-hero" });
-      expect(pass2.layers[1].transform).toEqual(initialFrame.layers[1].transform);
+      const grp2 = pass2.items[1] as Group;
+      expect(grp2.children[0].source).toEqual({ type: "image", assetId: "asset-hero" });
+      expect(grp2.children[0].transform).toEqual(
+        ((initialFrame.items[1] as Group).children[0] as Layer).transform
+      );
     });
   });
 });

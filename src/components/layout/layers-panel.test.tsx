@@ -8,8 +8,11 @@ import { LayersPanel } from "./layers-panel";
 import { InspectorPanel } from "./inspector-panel";
 import { CanvasControlDock } from "./canvas-control-dock";
 import type { Asset } from "../../types/asset";
-import type { Frame, ImageLayer, GenerativeLayer } from "../../types/frame";
-import { createDefaultGenerativeLayer, createImageLayer } from "../../types/frame";
+import type { Frame, ImageLayer, GenerativeLayer, Layer } from "../../types/frame";
+import { createDefaultGenerativeLayer, createImageLayer, flattenItemsToLayers } from "../../types/frame";
+
+const getLayers = (frame?: Frame | null): Layer[] =>
+  frame ? flattenItemsToLayers(frame.items) : [];
 
 const mockAsset1: Asset = {
   id: "asset-1",
@@ -43,17 +46,17 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
   });
 
   describe("1. State Invariants & Explicit Layer Creation", () => {
-    function TestHost({ onStore }: { onStore: (store: ReturnType<typeof useStudioStore>) => void }) {
+    function TestHost({ onStore }: { onStore?: (store: ReturnType<typeof useStudioStore>) => void }) {
       const store = useStudioStore();
       React.useEffect(() => {
-        onStore(store);
+        onStore?.(store);
       }, [store, onStore]);
 
       return (
         <div>
           <span data-testid="is-hydrated">{String(store.isHydrated)}</span>
           <span data-testid="active-layer-id">{store.activeLayerId || "none"}</span>
-          <span data-testid="layer-count">{store.activeFrame?.layers.length ?? 0}</span>
+          <span data-testid="layer-count">{getLayers(store.activeFrame).length}</span>
         </div>
       );
     }
@@ -71,16 +74,16 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
       });
 
       // Initial state has only the base GenerativeLayer (1 layer)
-      expect(currentStore.activeFrame?.layers.length).toBe(1);
-      expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
+      expect(getLayers(currentStore.activeFrame).length).toBe(1);
+      expect(getLayers(currentStore.activeFrame)[0].type).toBe("procedural");
 
       // Set activeImageId directly (asset library selection)
       currentStore.setActiveImageId("some-asset-id");
 
       await waitFor(() => {
         // Must NOT have created an ImageLayer
-        expect(currentStore.activeFrame?.layers.length).toBe(1);
-        expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
+        expect(getLayers(currentStore.activeFrame).length).toBe(1);
+        expect(getLayers(currentStore.activeFrame)[0].type).toBe("procedural");
       });
     });
 
@@ -101,7 +104,7 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
 
       // Initial import auto-populated first layer on empty frame (2 layers: [generative, image])
       await waitFor(() => {
-        expect(currentStore.activeFrame?.layers.length).toBe(2);
+        expect(getLayers(currentStore.activeFrame).length).toBe(2);
       });
 
       const layer = currentStore.addLayerFromAsset(mockAsset1.id);
@@ -111,9 +114,9 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
 
       await waitFor(() => {
         const frame = currentStore.activeFrame!;
-        expect(frame.layers.length).toBe(3);
-        expect(frame.layers[0].type).toBe("procedural");
-        expect(frame.layers[2].id).toBe(layer?.id);
+        expect(getLayers(frame).length).toBe(3);
+        expect(getLayers(frame)[0].type).toBe("procedural");
+        expect(getLayers(frame)[2].id).toBe(layer?.id);
         expect(currentStore.activeLayerId).toBe(layer?.id);
       });
     });
@@ -132,35 +135,35 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
 
       await currentStore.addAssets([mockAsset1, mockAsset2]);
       await waitFor(() => {
-        expect(currentStore.activeFrame?.layers.length).toBe(2);
+        expect(getLayers(currentStore.activeFrame).length).toBe(2);
       });
 
-      const initialLayerId = currentStore.activeFrame!.layers[1].id;
+      const initialLayerId = getLayers(currentStore.activeFrame)[1].id;
       const l2 = currentStore.addLayerFromAsset(mockAsset2.id)!;
 
       await waitFor(() => {
-        expect(currentStore.activeFrame?.layers.length).toBe(3);
+        expect(getLayers(currentStore.activeFrame).length).toBe(3);
       });
 
       // Layers: [0: Generative, 1: initialLayer (mockAsset1), 2: l2 (mockAsset2)]
-      expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
-      expect(currentStore.activeFrame?.layers[1].id).toBe(initialLayerId);
-      expect(currentStore.activeFrame?.layers[2].id).toBe(l2.id);
+      expect(getLayers(currentStore.activeFrame)[0].type).toBe("procedural");
+      expect(getLayers(currentStore.activeFrame)[1].id).toBe(initialLayerId);
+      expect(getLayers(currentStore.activeFrame)[2].id).toBe(l2.id);
 
       // Attempt invalid reorder to move GenerativeLayer (fromIndex 0)
       currentStore.reorderLayers(0, 2);
-      expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
+      expect(getLayers(currentStore.activeFrame)[0].type).toBe("procedural");
 
       // Attempt invalid reorder to move an ImageLayer into index 0 (toIndex 0)
       currentStore.reorderLayers(2, 0);
-      expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
+      expect(getLayers(currentStore.activeFrame)[0].type).toBe("procedural");
 
       // Valid reorder among ImageLayers (1 <-> 2)
       currentStore.reorderLayers(1, 2);
       await waitFor(() => {
-        expect(currentStore.activeFrame?.layers[0].type).toBe("procedural");
-        expect(currentStore.activeFrame?.layers[1].id).toBe(l2.id);
-        expect(currentStore.activeFrame?.layers[2].id).toBe(initialLayerId);
+        expect(getLayers(currentStore.activeFrame)[0].type).toBe("procedural");
+        expect(getLayers(currentStore.activeFrame)[1].id).toBe(l2.id);
+        expect(getLayers(currentStore.activeFrame)[2].id).toBe(initialLayerId);
       });
     });
 
@@ -176,13 +179,13 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      const genLayerId = currentStore.activeFrame!.layers[0].id;
+      const genLayerId = getLayers(currentStore.activeFrame)[0].id;
       // Attempt removal of base background layer
       currentStore.removeLayer(genLayerId);
 
       // Must remain in place
-      expect(currentStore.activeFrame?.layers.length).toBe(1);
-      expect(currentStore.activeFrame?.layers[0].id).toBe(genLayerId);
+      expect(getLayers(currentStore.activeFrame).length).toBe(1);
+      expect(getLayers(currentStore.activeFrame)[0].id).toBe(genLayerId);
     });
 
     it("removing an ImageLayer updates activeLayerId fallback safely", async () => {
@@ -199,17 +202,17 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
 
       await currentStore.addAssets([mockAsset1]);
       await waitFor(() => {
-        expect(currentStore.activeFrame?.layers.length).toBe(2);
+        expect(getLayers(currentStore.activeFrame).length).toBe(2);
       });
 
-      const l1 = currentStore.activeFrame!.layers[1];
+      const l1 = getLayers(currentStore.activeFrame)[1];
       expect(currentStore.activeLayerId).toBe(l1.id);
 
       currentStore.removeLayer(l1.id);
 
       await waitFor(() => {
-        expect(currentStore.activeFrame?.layers.length).toBe(1);
-        expect(currentStore.activeLayerId).toBe(currentStore.activeFrame?.layers[0].id);
+        expect(getLayers(currentStore.activeFrame).length).toBe(1);
+        expect(currentStore.activeLayerId).toBe(getLayers(currentStore.activeFrame)[0].id);
       });
     });
 
@@ -235,7 +238,7 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
       });
 
       await waitFor(() => {
-        const updated = currentStore.activeFrame?.layers.find((l) => l.id === l1.id) as ImageLayer;
+        const updated = getLayers(currentStore.activeFrame).find((l) => l.id === l1.id) as ImageLayer;
         expect(updated.opacity).toBe(0.75);
         expect(updated.blendMode).toBe("multiply");
         expect(updated.visible).toBe(false);
@@ -421,7 +424,7 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
       });
 
       const frame = currentStore.activeFrame!;
-      expect(frame.layers[0].source?.type).toBe("procedural");
+      expect(getLayers(frame)[0].source?.type).toBe("procedural");
 
       // Verify the layer row is rendered with the locked-background-row data-slot
       const lockedRow = screen.getByTestId("locked-background-row");
@@ -442,12 +445,12 @@ describe("Stage 1C — Frame & Layer UI Integration Suite", () => {
         expect(screen.getByTestId("is-hydrated").textContent).toBe("true");
       });
 
-      const backdropId = currentStore.activeFrame!.layers[0].id;
+      const backdropId = getLayers(currentStore.activeFrame)[0].id;
       // Attempt to remove backdrop
       currentStore.removeLayer(backdropId);
-      expect(currentStore.activeFrame!.layers.length).toBe(1);
-      expect(currentStore.activeFrame!.layers[0].id).toBe(backdropId);
-      expect(currentStore.activeFrame!.layers[0].source?.type).toBe("procedural");
+      expect(getLayers(currentStore.activeFrame).length).toBe(1);
+      expect(getLayers(currentStore.activeFrame)[0].id).toBe(backdropId);
+      expect(getLayers(currentStore.activeFrame)[0].source?.type).toBe("procedural");
     });
   });
 });

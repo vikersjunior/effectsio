@@ -21,6 +21,7 @@ import { ProjectNameInput } from './project-name-input';
 import { AssetSearch } from './asset-search';
 import { LayersPanel } from './layers-panel';
 import type { Asset } from '../../types/asset';
+import { flattenItemsToLayers } from '../../types/frame';
 
 export interface AssetPanelProps {
   onClose?: () => void;
@@ -151,7 +152,7 @@ export function AssetPanel({ onClose }: AssetPanelProps): React.JSX.Element {
                 : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
             )}
           >
-            Layers ({activeFrame?.layers.length ?? 0})
+            Layers ({activeFrame ? flattenItemsToLayers(activeFrame.items).length : 0})
           </button>
         </div>
 

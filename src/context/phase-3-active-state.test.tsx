@@ -5,7 +5,7 @@ import { renderHook, act } from "@testing-library/react";
 import { StudioProvider, useStudioStore } from "./studio-context";
 import type { Frame, Layer, ImageLayer, GenerativeLayer } from "../types/frame";
 import type { Asset } from "../types/asset";
-import { createDefaultGenerativeLayer, createImageLayer, createDefaultFrame } from "../types/frame";
+import { createDefaultGenerativeLayer, createImageLayer, createDefaultFrame, flattenItemsToLayers } from "../types/frame";
 import { loadHydratedProject } from "../storage/db";
 
 // Mock storage/db
@@ -124,8 +124,9 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
     });
 
     const currentFrame = hookResult.current.activeFrame!;
-    expect(currentFrame.layers.length).toBeGreaterThan(0);
-    const topLayer = currentFrame.layers[currentFrame.layers.length - 1];
+    const currentLayers = flattenItemsToLayers(currentFrame.items);
+    expect(currentLayers.length).toBeGreaterThan(0);
+    const topLayer = currentLayers[currentLayers.length - 1];
 
     expect(hookResult.current.activeLayerId).toBe(topLayer.id);
     expect(hookResult.current.activeLayer?.id).toBe(topLayer.id);
@@ -154,33 +155,35 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
     expect(hookResult.current.frames.length).toBe(2);
     const frameA = hookResult.current.frames[0];
     const frameB = hookResult.current.frames[1];
+    const frameALayers = flattenItemsToLayers(frameA.items);
+    const frameBLayers = flattenItemsToLayers(frameB.items);
 
     // Select backdrop layer (index 0) on frame A
     act(() => {
       hookResult.current.setActiveFrameId(frameA.id);
     });
     act(() => {
-      hookResult.current.setActiveLayerId(frameA.layers[0].id);
+      hookResult.current.setActiveLayerId(frameALayers[0].id);
     });
-    expect(hookResult.current.activeLayerId).toBe(frameA.layers[0].id);
+    expect(hookResult.current.activeLayerId).toBe(frameALayers[0].id);
 
     // Switch to frame B; select image layer (index 1) on frame B
     act(() => {
       hookResult.current.setActiveFrameId(frameB.id);
     });
-    expect(hookResult.current.activeLayerId).toBe(frameB.layers[1].id);
+    expect(hookResult.current.activeLayerId).toBe(frameBLayers[1].id);
 
     // Switch back to frame A: Frame A's remembered selection (layer 0) is restored
     act(() => {
       hookResult.current.setActiveFrameId(frameA.id);
     });
-    expect(hookResult.current.activeLayerId).toBe(frameA.layers[0].id);
+    expect(hookResult.current.activeLayerId).toBe(frameALayers[0].id);
 
     // Switch back to frame B: Frame B's remembered selection (layer 1) is restored
     act(() => {
       hookResult.current.setActiveFrameId(frameB.id);
     });
-    expect(hookResult.current.activeLayerId).toBe(frameB.layers[1].id);
+    expect(hookResult.current.activeLayerId).toBe(frameBLayers[1].id);
   });
 
   // 4. Invalid Layer Recovery
@@ -200,7 +203,8 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
       hookResult.current.setActiveFrameId(frame.id);
     });
 
-    const expectedTopLayerId = frame.layers[frame.layers.length - 1].id;
+    const frameLayers = flattenItemsToLayers(frame.items);
+    const expectedTopLayerId = frameLayers[frameLayers.length - 1].id;
     expect(hookResult.current.activeLayerId).toBe(expectedTopLayerId);
     expect(hookResult.current.activeLayer?.id).toBe(expectedTopLayerId);
   });
@@ -224,9 +228,10 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
     });
 
     const frame = hookResult.current.activeFrame!;
-    expect(frame.layers.length).toBe(2);
-    const bottomLayer = frame.layers[0];
-    const topLayer = frame.layers[1];
+    const frameLayers = flattenItemsToLayers(frame.items);
+    expect(frameLayers.length).toBe(2);
+    const bottomLayer = frameLayers[0];
+    const topLayer = frameLayers[1];
 
     expect(hookResult.current.activeLayerId).toBe(topLayer.id);
 
@@ -243,15 +248,16 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
   // 7. Complete Layer Deletion / Backdrop Invariant
   it("7. Complete layer deletion: backdrop at index 0 cannot be deleted, preserving layer and activeLayerId", () => {
     const frame = hookResult.current.activeFrame!;
-    expect(frame.layers.length).toBe(1);
-    const onlyLayer = frame.layers[0];
+    const frameLayers = flattenItemsToLayers(frame.items);
+    expect(frameLayers.length).toBe(1);
+    const onlyLayer = frameLayers[0];
 
     act(() => {
       hookResult.current.removeLayer(onlyLayer.id);
     });
 
     // Invariant: backdrop layer cannot be deleted
-    expect(hookResult.current.activeFrame?.layers.length).toBe(1);
+    expect(flattenItemsToLayers(hookResult.current.activeFrame!.items).length).toBe(1);
     expect(hookResult.current.activeLayerId).toBe(onlyLayer.id);
   });
 
@@ -287,7 +293,7 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
   // 10. activeImageId for ProceduralSource
   it("10. activeImageId for ProceduralSource: returns null when active layer has source.type === 'procedural'", () => {
     // Default frame has a procedural backdrop layer at index 0
-    const defaultLayer = hookResult.current.activeFrame!.layers[0];
+    const defaultLayer = flattenItemsToLayers(hookResult.current.activeFrame!.items)[0];
     expect(defaultLayer.source.type).toBe("procedural");
 
     act(() => {
@@ -305,8 +311,9 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
     });
 
     const frame = hookResult.current.activeFrame!;
-    const proceduralLayer = frame.layers.find((l) => l.source.type === "procedural")!;
-    const imageLayer = frame.layers.find((l) => l.source.type === "image")!;
+    const allLayers = flattenItemsToLayers(frame.items);
+    const proceduralLayer = allLayers.find((l) => l.source.type === "procedural")!;
+    const imageLayer = allLayers.find((l) => l.source.type === "image")!;
 
     expect(proceduralLayer).toBeDefined();
     expect(imageLayer).toBeDefined();
@@ -328,7 +335,8 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
     });
 
     const frame = hookResult.current.activeFrame!;
-    const imageLayer = frame.layers.find((l) => l.source.type === "image")!;
+    const allLayers = flattenItemsToLayers(frame.items);
+    const imageLayer = allLayers.find((l) => l.source.type === "image")!;
 
     // Deselect layer first
     act(() => {
@@ -392,7 +400,7 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
 
   // 15. Universal Effect Stack Behavior
   it("15. Universal effect stack behavior: exposes and mutates effectStack on procedural layers as well as image layers", () => {
-    const proceduralLayer = hookResult.current.activeFrame!.layers[0];
+    const proceduralLayer = flattenItemsToLayers(hookResult.current.activeFrame!.items)[0];
     expect(proceduralLayer.source.type).toBe("procedural");
 
     act(() => {
@@ -418,7 +426,7 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
 
     const frameA = hookResult.current.frames[0];
     const frameB = hookResult.current.frames[1];
-    const layerB = frameB.layers[1];
+    const layerB = flattenItemsToLayers(frameB.items)[1];
 
     act(() => {
       hookResult.current.setActiveFrameId(frameA.id);
@@ -431,7 +439,7 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
 
     expect(hookResult.current.activeFrameId).toBe(frameA.id);
     expect(hookResult.current.activeLayerId).toBe(layerB.id);
-    // Strict lookup: layerB is not in frameA.layers, so activeLayer is null
+    // Strict lookup: layerB is not in frameA.items, so activeLayer is null
     expect(hookResult.current.activeLayer).toBeNull();
   });
 
@@ -442,7 +450,7 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
     });
 
     const frame = hookResult.current.activeFrame!;
-    const targetLayer = frame.layers[0];
+    const targetLayer = flattenItemsToLayers(frame.items)[0];
 
     act(() => {
       hookResult.current.setActiveLayerId(targetLayer.id);
@@ -458,7 +466,7 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
       id: "frame-custom-1",
       name: "Custom Frame 1",
       dimensions: { width: 1080, height: 1080 },
-      layers: [
+      items: [
         createDefaultGenerativeLayer(),
         createImageLayer("asset-1", "photo-1.png"),
       ],
@@ -466,7 +474,7 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
       createdAt: 1000,
       updatedAt: 1000,
     };
-    frame1.layers[1].id = "layer-img-target";
+    (frame1.items[1] as Layer).id = "layer-img-target";
 
     const { __setMockHydratedProject } = (await import("../storage/db")) as any;
     __setMockHydratedProject({
@@ -501,7 +509,7 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
       id: "frame-custom-2",
       name: "Custom Frame 2",
       dimensions: { width: 1080, height: 1080 },
-      layers: [
+      items: [
         createDefaultGenerativeLayer(),
         createImageLayer("asset-1", "photo-1.png"),
       ],
@@ -509,7 +517,7 @@ describe("Phase 3 — Studio Context & Active Editing State Suite", () => {
       createdAt: 1000,
       updatedAt: 1000,
     };
-    const topLayerId = frame1.layers[1].id;
+    const topLayerId = (frame1.items[1] as Layer).id;
 
     const { __setMockHydratedProject } = (await import("../storage/db")) as any;
     __setMockHydratedProject({

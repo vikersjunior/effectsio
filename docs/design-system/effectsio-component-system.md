@@ -395,7 +395,41 @@ Owns:
 
 ---
 
-## 17. Canvas
+## 17. Layers & Groups
+
+### `LayersPanel`
+Owns composition tree presentation and manipulation:
+- scrollable composition stack
+- bottom-to-top presentation (visually reversed so foreground is at top, backdrop is at bottom)
+- root composition item list (`Frame.items: (Layer | Group)[]`)
+- multi-container drag-and-drop orchestration
+- backdrop invariant protection (`Frame.items[0]` is non-deletable, non-reorderable, locked)
+
+### `SortableLayerRow`
+Represents an individual visual `Layer` within the composition stack:
+- source-specific thumbnail / preview swatch (image thumbnail for image source, procedural canvas swatch for procedural source)
+- Layer name and inline edit
+- visibility toggle (`Eye` / `EyeSlash`)
+- lock status (`LockSimple`)
+- deletion action (disabled on backdrop)
+- selection highlight (`activeLayerId` primary selection, `selectedLayerIds` secondary selection)
+
+### `GroupRow` (Phase 5 Canonical Specification)
+Represents an organizational `Group` container within the root composition stack:
+- **Expand/collapse affordance**: Chevron toggle (`CaretRight` when collapsed, `CaretDown` when expanded) using `ICON_SIZES.xs` (12px).
+- **Iconography**: Group folder icon (`FolderSimple` / `FolderSimpleDashed`) using `ICON_SIZES.sm` (14px).
+- **Group name**: Inline readable label with double-click inline rename input.
+- **Item count badge**: Compact child layer count using `Badge` (`variant="outline"`, `text-2xs`).
+- **Visibility toggle**: Collective visibility toggle (`Eye` / `EyeSlash`), affecting effective child rendering.
+- **Lock toggle**: Collective lock toggle (`LockSimple`), preventing child drag, reordering, deletion, and property edits.
+- **Child indentation**: Strict single-tier visual indentation (`pl-4` / 16px) for child `SortableLayerRow` items when expanded.
+- **DnD affordance**: Drag handle for atomic group movement across root composition slots.
+- **Action menu / popover**: Group-specific actions (Rename, Ungroup, Delete Group with children).
+- **No competing property editing**: Clicking a GroupRow selects its children; Groups do not become property-editing targets in the Inspector.
+
+---
+
+## 18. Canvas
 
 ### `CanvasViewport`
 

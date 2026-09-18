@@ -1,6 +1,7 @@
 import type {
   Frame,
   Layer,
+  Group,
   GenerativeLayer,
   ImageLayer,
   BlendMode,
@@ -9,7 +10,7 @@ import type {
   ProceduralSource,
   BackgroundItem,
 } from "../../types/frame";
-import { DEFAULT_LAYER_TRANSFORM } from "../../types/frame";
+import { DEFAULT_LAYER_TRANSFORM, isGroup, isLayer } from "../../types/frame";
 import type { EffectInstance, EffectStack } from "../../types/asset";
 import { DEFAULT_BACKGROUND_STATE, type BackgroundState } from "../../types/look";
 import {
@@ -263,6 +264,55 @@ export class WebGL2FrameCompositor {
   /**
    * Returns a cache key representing all composition-affecting state in a Frame.
    */
+  private appendLayerKey(parts: string[], layer: Layer, prefix: string): void {
+    const isVisible = (layer as any).visibility !== false && layer.visible !== false;
+    parts.push(
+      `${prefix}:${layer.id}:${layer.type}:${isVisible}:${layer.opacity}:${layer.blendMode}`,
+    );
+
+    // Canonical source-based key invalidation (authoritative when valid canonical source exists)
+    const source = this.resolveLayerSource(layer);
+    if (source?.type === "image") {
+      const t = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
+      parts.push(`img:${source.assetId}:${layer.fit ?? "contain"}:${t.x}:${t.y}:${t.scaleX}:${t.scaleY}:${t.rotation}`);
+      const stack = (layer as any).effects ?? layer.effectStack ?? [];
+      for (const eff of stack) {
+        if (eff.enabled !== false) {
+          parts.push(`eff:${eff.effectId}:${JSON.stringify(eff.parameters ?? {})}`);
+        }
+      }
+    } else if (source?.type === "procedural") {
+      const t = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
+      parts.push(
+        `proc:${source.kind}:${source.seed ?? ""}:${JSON.stringify(source.parameters ?? {})}:${layer.fit ?? "contain"}:${t.x}:${t.y}:${t.scaleX}:${t.scaleY}:${t.rotation}`,
+      );
+      const stack = (layer as any).effects ?? layer.effectStack ?? [];
+      for (const eff of stack) {
+        if (eff.enabled !== false) {
+          parts.push(`eff:${eff.effectId}:${JSON.stringify(eff.parameters ?? {})}`);
+        }
+      }
+    } else if (layer.type === "generative" || (layer as any).backgrounds || (layer as any).sublayers) {
+      const legacyLayer = layer as any;
+      // Support legacy sublayers invalidation ONLY when canonical source is absent
+      if (legacyLayer.sublayers && legacyLayer.sublayers !== legacyLayer.backgrounds) {
+        legacyLayer.backgrounds = legacyLayer.sublayers;
+      }
+      const normalized = normalizeGenerativeLayer(layer as GenerativeLayer);
+      const backgrounds = (normalized as any).backgrounds ?? (normalized as any).sublayers ?? [];
+      parts.push(`gen:${backgrounds.length}`);
+      for (let s = 0; s < backgrounds.length; s++) {
+        const bg = backgrounds[s]!;
+        parts.push(
+          `bg[${s}]:${bg.id}:${bg.type}:${bg.enabled}:${bg.opacity}:${bg.blendMode}:${bg.seed ?? ""}:${JSON.stringify(bg.parameters ?? {})}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Returns a cache key representing all composition-affecting state in a Frame.
+   */
   private generateCompositionKey(
     frame: Frame,
     assetSources?: Map<string, TextureSource>,
@@ -274,50 +324,20 @@ export class WebGL2FrameCompositor {
       `t:${time}`,
     ];
 
-    for (let i = 0; i < frame.layers.length; i++) {
-      const layer = frame.layers[i]!;
-      const isVisible = (layer as any).visibility !== false && layer.visible !== false;
-      parts.push(
-        `l[${i}]:${layer.id}:${layer.type}:${isVisible}:${layer.opacity}:${layer.blendMode}`,
-      );
+    const items = (frame.items || (frame as any).layers || []) as (Layer | Group)[];
 
-      // Canonical source-based key invalidation (authoritative when valid canonical source exists)
-      const source = this.resolveLayerSource(layer);
-      if (source?.type === "image") {
-        const t = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
-        parts.push(`img:${source.assetId}:${layer.fit ?? "contain"}:${t.x}:${t.y}:${t.scaleX}:${t.scaleY}:${t.rotation}`);
-        const stack = (layer as any).effects ?? layer.effectStack ?? [];
-        for (const eff of stack) {
-          if (eff.enabled !== false) {
-            parts.push(`eff:${eff.effectId}:${JSON.stringify(eff.parameters ?? {})}`);
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]!;
+      if (isGroup(item)) {
+        const isGrpVisible = item.visible !== false;
+        parts.push(`g[${i}]:${item.id}:${isGrpVisible}`);
+        if (isGrpVisible) {
+          for (let j = 0; j < item.children.length; j++) {
+            this.appendLayerKey(parts, item.children[j]!, `g[${i}]c[${j}]`);
           }
         }
-      } else if (source?.type === "procedural") {
-        const t = layer.transform ?? DEFAULT_LAYER_TRANSFORM;
-        parts.push(
-          `proc:${source.kind}:${source.seed ?? ""}:${JSON.stringify(source.parameters ?? {})}:${layer.fit ?? "contain"}:${t.x}:${t.y}:${t.scaleX}:${t.scaleY}:${t.rotation}`,
-        );
-        const stack = (layer as any).effects ?? layer.effectStack ?? [];
-        for (const eff of stack) {
-          if (eff.enabled !== false) {
-            parts.push(`eff:${eff.effectId}:${JSON.stringify(eff.parameters ?? {})}`);
-          }
-        }
-      } else if (layer.type === "generative" || (layer as any).backgrounds || (layer as any).sublayers) {
-        const legacyLayer = layer as any;
-        // Support legacy sublayers invalidation ONLY when canonical source is absent
-        if (legacyLayer.sublayers && legacyLayer.sublayers !== legacyLayer.backgrounds) {
-          legacyLayer.backgrounds = legacyLayer.sublayers;
-        }
-        const normalized = normalizeGenerativeLayer(layer as GenerativeLayer);
-        const backgrounds = (normalized as any).backgrounds ?? (normalized as any).sublayers ?? [];
-        parts.push(`gen:${backgrounds.length}`);
-        for (let s = 0; s < backgrounds.length; s++) {
-          const bg = backgrounds[s]!;
-          parts.push(
-            `bg[${s}]:${bg.id}:${bg.type}:${bg.enabled}:${bg.opacity}:${bg.blendMode}:${bg.seed ?? ""}:${JSON.stringify(bg.parameters ?? {})}`,
-          );
-        }
+      } else {
+        this.appendLayerKey(parts, item, `l[${i}]`);
       }
     }
 
@@ -326,7 +346,7 @@ export class WebGL2FrameCompositor {
 
   /**
    * Executes the full multi-layer compositing pipeline for a Frame.
-   * Consumes `frame.layers` strictly bottom-to-top.
+   * Consumes `frame.items` strictly bottom-to-top (dissolving visible groups without intermediate FBOs).
    * Returns the final `FBOTextureAttachment` containing the complete composited artwork.
    */
   public composeFrame(
@@ -354,8 +374,27 @@ export class WebGL2FrameCompositor {
     gl.clearColor(0.0, 0.0, 0.0, 0.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // 2. Iterate layers strictly in bottom-to-top order (index 0..N-1)
-    const layers = frame.layers;
+    // 2. Iterate items strictly in bottom-to-top order (index 0..N-1)
+    // Groups are structural containers: if hidden, skip entirely; if visible, iterate children directly.
+    const items = (frame.items || (frame as any).layers || []) as (Layer | Group)[];
+    const layers: Layer[] = [];
+
+    for (const item of items) {
+      if (isGroup(item)) {
+        if (item.visible === false) continue;
+        for (const child of item.children) {
+          const isVisible = (child as any).visibility !== false && child.visible !== false;
+          if (isVisible && child.opacity > 0) {
+            layers.push(child);
+          }
+        }
+      } else {
+        const isVisible = (item as any).visibility !== false && item.visible !== false;
+        if (isVisible && item.opacity > 0) {
+          layers.push(item);
+        }
+      }
+    }
 
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i]!;
