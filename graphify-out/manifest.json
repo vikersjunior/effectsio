@@ -1944,10 +1944,10 @@
     "semantic_hash": "72dc1e85f81db720af6ba5bec8405e27"
   },
   "src/types/frame.ts": {
-    "mtime": 1789818249.09,
-    "seen": 1789819026.9123762,
-    "ast_hash": "778322bd378ba8003ed7e7761c118463",
-    "semantic_hash": "778322bd378ba8003ed7e7761c118463"
+    "mtime": 1789822153.38,
+    "seen": 1789822333.668442,
+    "ast_hash": "4e2984bcee5b56a7328f286b963bdb9b",
+    "semantic_hash": "4e2984bcee5b56a7328f286b963bdb9b"
   },
   "src/rendering/webgl/shaders/layer-blend.ts": {
     "mtime": 1788579484.43,
@@ -2106,10 +2106,10 @@
     "semantic_hash": "6d55bbf7d3191ae92e9b9af49bd0624c"
   },
   "src/utils/tree-operations.ts": {
-    "mtime": 1789818255.16,
-    "seen": 1789819026.912731,
-    "ast_hash": "cee10b7db0ca81925825522bb173c0ff",
-    "semantic_hash": "cee10b7db0ca81925825522bb173c0ff"
+    "mtime": 1789822088.53,
+    "seen": 1789822333.6695628,
+    "ast_hash": "9ae6916698c1deec577fae985a06d334",
+    "semantic_hash": "9ae6916698c1deec577fae985a06d334"
   },
   "src/components/layout/group-compositing-backdrop.test.tsx": {
     "mtime": 1789818513.8,

@@ -1,136 +1,6 @@
 {
   "communities": {
     "0": [
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_addmanualcontexttext",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyediting",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyglobalbarlabelstate",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyplaceholdersizingstyles",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buffertobase64",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildcollapsible",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildcolormodels",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildlisthtml",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildlocatorforleaf",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildplaceholderresizehandles",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildradiimodels",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildtypographymodels",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_canrestoremanualeditelement",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_collecteditabletextrows",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_collecteditabletextrows_visit",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_collectfontcsstext",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_collectmanualcontextpieces",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_collectmanualcontextpieces_walk",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_commitacceptedvarianttodom",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_computeinsertposition",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_contextelementformanualedit",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_copyeditcontainercontext",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_copyeditleafcontext",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_copytoclipboard",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_createinsertplaceholder",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cssident",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_csssafe",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cursorforinsertaxis",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cursorforplaceholderedge",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_designemptymessage",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_detectinsertaxis",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_detectinsertaxisfromstyle",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_directmixedtextrestorenodes",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_documentrefclasssuffix",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_documentrefforelement",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_documentrefidsuffix",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_documentrefsegment",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_elementmatchesmanualrefsegment",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_enableinlineedit",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_ensureinsertline",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_escapehtml",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_extractcontext",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findmanualeditrestoreelement",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findmatchingcssbrace",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findprosedescription",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_fontstack",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_forbiddenmanualtextchars",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_globalbarmodetoggles",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_groupbykind",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_groupsiblingrows",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handlemousemove",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hidehighlighttagtooltip",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hideinsertline",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_highlightbold",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hitsiblinginsertgap",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_horizontaloverlap",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_humanizekey",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_indexamongsametag",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_inlinefonturls",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_inlinemd",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_insertlinecoords",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_ismeaningfulmanualcontextpiece",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_isusefulmanualeditcontext",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_isvariantshown",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_jsxstyleobjecttocss",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_jsxstyleproptocss",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_layoutflowchildren",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_loadinteractionprefs",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_loadpickpref",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_maybeshowfirstsavetoast",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_mixedtextwraprestorehint",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_msgdiv",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_nearbyeditabletextsformanualedit",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_normalizecsscolor",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_normalizedocumentreftoken",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_normalizemanualcontexttext",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_normalizesourcefallbackblock",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_oninlineinput",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_onpendingtrashclick",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_parsemanualeditrefsegment",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_parsesourceloc",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_placeholdersizing",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_prefixcssselectors",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_querymanualeditref",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rationale_5294",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rationale_6754",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rationale_7891",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rationale_8934",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_readvisiblevariantfromdom",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendercolortiles",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendercomponenttiles",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderdesignbody",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderdesignvisual",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderdosdontscollapsible",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendermarkdown",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderoverviewcollapsible",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderparsedmdcta",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderradiitile",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderrawtab",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderrulescollapsible",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendershadowtiles",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderstalehint",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendertypetiles",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_resolveinserthover",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_restorediscardedmanualedits",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_restoremixedtextnodemanualedit",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_sanitizedcontextouterhtml",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_savedesignprefs",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_scopecssblock",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_selectorforacceptedroot",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_setpageinteractioncursor",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_shouldscopenestedcssatrule",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_shouldshowhighlighttagtooltip",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showhighlight",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showinsertline",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_snapshotacceptedvariantdom",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_sourcehintforelement",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_splitcssselectorlist",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_splitfontfamily",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_stripmanualeditruntimestate",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_syncpageinteractioncursor",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_synthesizenarrative",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_synthesizeramp",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_titleforkind",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_unwrapmixedcontenttextnodes",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_unwrapsvelteglobalselector",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_wrapmixedcontenttextnodes"
-    ],
-    "1": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_animation_value_keywords",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_bordercolorsfromstyle",
@@ -250,6 +120,125 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_text_overflow_skip_tags",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_textdescendantsflushsides",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_shared_constants_isbrandfontonowndomain"
+    ],
+    "1": [
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyglobalbarlabelstate",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyplaceholdersizingstyles",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_averagergb01",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_bindeditbadgeproxy",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buffertobase64",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildcollapsible",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildcolormodels",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildlisthtml",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildplaceholderresizehandles",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildradiimodels",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildtypographymodels",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_capturechromenodes",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_captureelementfromrenderedancestor",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_captureelementtoblob",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_collectfontcsstext",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_commitacceptedvarianttodom",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_compileshader",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_computeinsertposition",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_copytoclipboard",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_createinsertplaceholder",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_csscolortorgb01",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_csssafe",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cursorforinsertaxis",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cursorforplaceholderedge",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_designemptymessage",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_detectinsertaxis",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_detectinsertaxisfromstyle",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_dominantrgb01",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_editbadgeproxytargets",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_ensureinsertline",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_escapehtml",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findbackdropancestor",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findmatchingcssbrace",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findprosedescription",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findshaderproxycaptureroot",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_fontstack",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_globalbarmodetoggles",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_groupbykind",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_groupsiblingrows",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handlemousemove",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hidecapturechromeforshaderproxy",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hidehighlighttagtooltip",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hideinsertline",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_highlightbold",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hitsiblinginsertgap",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_horizontaloverlap",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_humanizekey",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_initeditbadge",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_initeditbadgehitproxies",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_inlinefonturls",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_inlinemd",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_insertlinecoords",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_istransparentcolor",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_isvariantshown",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_jsxstyleobjecttocss",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_jsxstyleproptocss",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_layoutflowchildren",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_loadinteractionprefs",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_loadmodernscreenshot",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_loadpickpref",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_msgdiv",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_normalizecsscolor",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_normalizesourcefallbackblock",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_paintsbackdrop",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_paintsshaderproxysurface",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_parsesourceloc",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_placeholdersizing",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_positioneditbadge",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_prefixcssselectors",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_proxymouseevent",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rationale_5294",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rationale_6754",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rationale_7891",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rationale_8934",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_readvisiblevariantfromdom",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendercolortiles",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendercomponenttiles",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderdesignbody",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderdesignvisual",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderdosdontscollapsible",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendermarkdown",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderoverviewcollapsible",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderparsedmdcta",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderradiitile",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderrawtab",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderrulescollapsible",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendershadowtiles",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_renderstalehint",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendertypetiles",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_resolvecanvasbackground",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_resolveinserthover",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_resolvepaperrgb",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_samplesurroundingrgb",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_savedesignprefs",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_scopecssblock",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_setimportantstyle",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_setpageinteractioncursor",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_shouldscopenestedcssatrule",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_shouldshowhighlighttagtooltip",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_shoulduseancestorcropshaderproxy",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showhighlight",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showinsertline",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showshaderbitmapfallback",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showshaderoverlay",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showshaderoverlay_frame",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_sourcehintforelement",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_splitcssselectorlist",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_splitfontfamily",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_styleeditbadgeproxy",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_synceditbadgehitproxies",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_syncpageinteractioncursor",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_synthesizenarrative",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_synthesizeramp",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_titleforkind",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_unwrapsvelteglobalselector",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_usesshadowchromeroot"
     ],
     "2": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_context",
@@ -525,87 +514,80 @@
       "src_rendering_webgl_webgl_viewport_renderer_viewportrenderparams"
     ],
     "5": [
-      "src_components_layout_asset_panel",
-      "src_components_layout_asset_panel_assetpanelprops",
-      "src_components_layout_asset_search",
-      "src_components_layout_asset_search_assetsearch",
-      "src_components_layout_asset_search_assetsearchprops",
-      "src_components_layout_background_stack_test",
-      "src_components_layout_background_stack_test_getlayers",
-      "src_components_layout_background_stack_test_testhost",
-      "src_components_layout_background_workflow_test",
-      "src_components_layout_background_workflow_test_fullteststudiohost",
-      "src_components_layout_background_workflow_test_getlayers",
-      "src_components_layout_background_workflow_test_sampleasset",
-      "src_components_layout_brand_logo",
-      "src_components_layout_brand_logo_brandlogo",
-      "src_components_layout_brand_logo_brandlogoprops",
-      "src_components_layout_canvas_control_dock",
-      "src_components_layout_canvas_control_dock_canvascontroldock",
-      "src_components_layout_canvas_control_dock_canvascontroldockprops",
-      "src_components_layout_canvas_control_dock_test",
-      "src_components_layout_canvas_control_dock_test_animatemodewrapper",
-      "src_components_layout_canvas_control_dock_test_comparetesthost",
-      "src_components_layout_canvas_control_dock_test_magicwandtesthost",
-      "src_components_layout_floating_background_panel_floatingbackgroundpanel",
-      "src_components_layout_floating_effect_panel",
-      "src_components_layout_floating_effect_panel_floatingeffectpanel",
-      "src_components_layout_floating_effect_panel_test",
-      "src_components_layout_floating_effect_panel_test_sampleasset",
-      "src_components_layout_floating_effect_panel_test_teststudiohost",
-      "src_components_layout_group_compositing_backdrop_test",
-      "src_components_layout_group_compositing_backdrop_test_sampleasset",
-      "src_components_layout_group_compositing_backdrop_test_sampleasset2",
-      "src_components_layout_group_compositing_backdrop_test_testhost",
-      "src_components_layout_group_row",
-      "src_components_layout_group_row_grouprow",
-      "src_components_layout_group_row_grouprowprops",
-      "src_components_layout_index",
-      "src_components_layout_inspector_panel_test",
-      "src_components_layout_inspector_panel_test_bghostwithstore",
-      "src_components_layout_inspector_panel_test_bgtesthost",
-      "src_components_layout_inspector_panel_test_correctiontesthost",
-      "src_components_layout_inspector_panel_test_getlayers",
-      "src_components_layout_inspector_panel_test_lookstesthost",
-      "src_components_layout_inspector_panel_test_modetesthost",
-      "src_components_layout_inspector_panel_test_nolayerhost",
-      "src_components_layout_inspector_panel_test_populatedhost",
-      "src_components_layout_inspector_panel_test_populatedtesthost",
-      "src_components_layout_inspector_panel_test_prochost",
-      "src_components_layout_inspector_panel_test_procmutationhost",
-      "src_components_layout_inspector_panel_test_sampleasset",
-      "src_components_layout_inspector_panel_test_themetesthost",
-      "src_components_layout_inspector_panel_test_transformtesthost",
-      "src_components_layout_layers_panel",
-      "src_components_layout_layers_panel_layerspanel",
-      "src_components_layout_layers_panel_layerspanelprops",
-      "src_components_layout_layers_panel_sortablelayerrowprops",
-      "src_components_layout_layers_panel_test",
-      "src_components_layout_layers_panel_test_fullstudiouihost",
-      "src_components_layout_layers_panel_test_getlayers",
-      "src_components_layout_layers_panel_test_mockasset1",
-      "src_components_layout_layers_panel_test_mockasset2",
-      "src_components_layout_layers_panel_test_testhost",
-      "src_components_layout_layers_panel_test_ucmhost",
-      "src_components_layout_phase3_1_fidelity_test",
-      "src_components_layout_phase3_1_fidelity_test_testhost",
-      "src_components_layout_project_name_input",
-      "src_components_layout_project_name_input_projectnameinput",
-      "src_components_ui_index",
-      "src_context_studio_context_usestudiostore",
-      "src_types_asset_asset",
-      "src_types_frame_default_frame_dimensions",
-      "src_types_frame_frame_size_presets",
-      "src_types_frame_group",
-      "src_types_frame_proceduralsource",
-      "src_utils_image_ingestion",
-      "src_utils_image_ingestion_createassetfromfile",
-      "src_utils_image_ingestion_createthumbnaildataurl",
-      "src_utils_image_ingestion_formatfilesize",
-      "src_utils_image_ingestion_revokeasseturls",
-      "src_utils_image_ingestion_supported_mime_types",
-      "src_utils_image_ingestion_test",
-      "src_utils_image_ingestion_validateimagefile"
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_abandonforeignsession",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_abortsveltecomponentinjection",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildinsertplaceholdersnapshotfromdom",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildpickedanchorsnapshot",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cancelediting",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_canceleditingtopicking",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cancelinsertconfigure",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_captureandemit",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_checkpointpayload",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cleanup",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cleanupacceptedsession",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearannotations",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearhandled",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearinsertpicking",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearmounterrorcard",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearscrolly",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_closetunepopover",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_disableinlineedit",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_discardorphanedsession",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_entereditingmode",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_exitconfiguretopicking",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handleaccept",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handleclick",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handlediscard",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handlego",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handleinsertcreate",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handlekeydown",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handleserverlost",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hastextrows",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hastextrows_check",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hideactionpicker",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hideannotoverlay",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hidebar",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hideconfigurebartooltip",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hidehighlight",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_marksessionhandled",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_maybeprefetchpage",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_maybewarnconditionalancestor",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_mounterrorcardbottomoffset",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_positionannotoverlay",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_recoveremptycycling",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_refreshlivecontrolsformanualapply",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_removeconfigureselection",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_removevariantstatestylesheet",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendereditbadge",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendermounterrorcard",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_resetsessionfilemeta",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_resetsveltecomponentsession",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_restoreinlineeditdrafts",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_retrymounterrorcard",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_saveinteractionprefs",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_savepickpref",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_sendcheckpoint",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_sendevent",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_sendevent_handlefailure",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_setlivestate",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_shouldpassthroughelementnav",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showannotoverlay",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showmanualapplybusytoast",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showmounterrorcard",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showoriginalduringdiscard",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showtoast",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_startscrolllock",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_stopscrolllock",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_stopscrolltracking",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_syncpagechatfocus",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_syncplaceholderresizehandles",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_teardownconfigurechrome",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_teardownsveltecomponentsession",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_toggleinsert",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_togglepick",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_toggletunepopover",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_truncatemiddle",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_writescrolly"
     ],
     "6": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_browser_injected_index",
@@ -682,80 +664,79 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_browser_injected_index_waitforvisualpaint"
     ],
     "7": [
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_abandonforeignsession",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildinsertplaceholdersnapshotfromdom",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildpickedanchorsnapshot",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cancelediting",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_canceleditingtopicking",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cancelinsertconfigure",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_captureandemit",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_checkpointpayload",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cleanup",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cleanupacceptedsession",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearannotations",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearhandled",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearinsertpicking",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearmounterrorcard",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearscrolly",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_closetunepopover",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_disableinlineedit",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_discardorphanedsession",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_entereditingmode",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_exitconfiguretopicking",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handleaccept",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handleclick",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handlediscard",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handlego",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handleinsertcreate",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handlekeydown",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handleserverlost",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hastextrows",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hastextrows_check",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hideactionpicker",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hideannotoverlay",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hidebar",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hideconfigurebartooltip",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hidehighlight",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_marksessionhandled",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_maybeprefetchpage",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_maybewarnconditionalancestor",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_mounterrorcardbottomoffset",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_positionannotoverlay",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_recoveremptycycling",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_refreshlivecontrolsformanualapply",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_removeconfigureselection",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_removevariantstatestylesheet",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendereditbadge",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_rendermounterrorcard",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_resetsessionfilemeta",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_resetsveltecomponentsession",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_restoreinlineeditdrafts",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_retrymounterrorcard",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_saveinteractionprefs",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_savepickpref",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_sendcheckpoint",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_sendevent",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_sendevent_handlefailure",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_setlivestate",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_shouldpassthroughelementnav",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showannotoverlay",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showmanualapplybusytoast",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showoriginalduringdiscard",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showtoast",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_startscrolllock",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_stopscrolllock",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_stopscrolltracking",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_syncpagechatfocus",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_syncplaceholderresizehandles",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_teardownconfigurechrome",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_toggleinsert",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_togglepick",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_toggletunepopover",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_truncatemiddle",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_writescrolly"
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts_assemblelivebrowserscript",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts_assertlivebrowserscriptparts",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts_live_browser_script_parts",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts_readlivebrowserscriptparts",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts_resolvelivebrowserscriptparts",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_poll_lanes",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_poll_lanes_eventpriority",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_poll_lanes_selectavailablependingevent",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_acknowledgependingevent",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_activesessionsummaries",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_agentpollingconnected",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_annotroot",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_args",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_broadcast",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_broadcastagentpollingifchanged",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_cancelqueuedanonymousexitevents",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_chatagentlikelyactive",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_cleanupsveltecomponentsessionsbeforeexit",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_createrequesthandler",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_debug_manual_edit_events",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_detectmissedgenerationcompletion",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_detectscript_livescriptparts",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_dirname",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_enqueueevent",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_existingrecord",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_findavailablependingevent",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_findopenport",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_findpendingeventbyid",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_flushpendingpolls",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_generationisfenced",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_generationphasealreadyrecorded",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_getmanualeditstatus",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_handlepollget",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_handlepollget_resolve",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_handlepollpost",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_hasprojectcontext",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_infersourceeventtype",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_isleased",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_isloopbackorigin",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_leaseevent",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_live_roots",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_loadbrowserscripts",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_manualapply",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_manualeditroutes",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_missedcompletionfromsnapshot",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_parsepolltypes",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_portarg",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_preparegenerateeventforlease",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_recordagentphase",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_recordgeneratedelivery",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_recordgenerationcheckpoint",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_recordmanualeditactivity",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_releasependingevent",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_resolveprojectcontext",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_restorependingeventsfromstore",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_retirependinggeneration",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_scheduleleaseflush",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_session_creating_event_types",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_sessionfilemetadatafrompollreply",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_shutdown",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_state",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_statornull",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_summarizeactivesessionforclient",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_summarizependingeventforstatus",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_sweeporphansveltecomponentsessionsonstartup",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_variant_progress_checkpoint_reasons",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_variantcountlooksbehind",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_component_removeallsveltecomponentsessions",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_component_sweepinactivesveltecomponentsessions"
     ],
     "8": [
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_abortsveltecomponentinjection",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyparamdefaults",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyparamvalue",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applysavedsessionmeta",
@@ -813,7 +794,6 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_serversessionassavedshape",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_setclippath",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_shouldadvancephase",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showmounterrorcard",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showorupdatecyclingbar",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showparamspanel",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showvariantindom",
@@ -898,74 +878,74 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_design_system_yaml_simple_escapes"
     ],
     "10": [
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts_assemblelivebrowserscript",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts_assertlivebrowserscriptparts",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts_live_browser_script_parts",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts_readlivebrowserscriptparts",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_script_parts_resolvelivebrowserscriptparts",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_acknowledgependingevent",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_activesessionsummaries",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_agentpollingconnected",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_annotroot",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_args",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_broadcast",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_broadcastagentpollingifchanged",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_cancelqueuedanonymousexitevents",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_chatagentlikelyactive",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_cleanupsveltecomponentsessionsbeforeexit",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_createrequesthandler",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_debug_manual_edit_events",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_detectmissedgenerationcompletion",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_detectscript_livescriptparts",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_dirname",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_enqueueevent",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_existingrecord",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_findavailablependingevent",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_findopenport",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_findpendingeventbyid",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_flushpendingpolls",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_generationisfenced",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_generationphasealreadyrecorded",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_getmanualeditstatus",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_handlepollget",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_handlepollget_resolve",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_handlepollpost",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_hasprojectcontext",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_infersourceeventtype",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_isleased",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_isloopbackorigin",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_leaseevent",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_live_roots",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_loadbrowserscripts",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_manualapply",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_manualeditroutes",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_missedcompletionfromsnapshot",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_parsepolltypes",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_portarg",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_preparegenerateeventforlease",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_recordagentphase",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_recordgeneratedelivery",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_recordgenerationcheckpoint",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_recordmanualeditactivity",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_releasependingevent",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_resolveprojectcontext",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_restorependingeventsfromstore",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_retirependinggeneration",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_scheduleleaseflush",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_session_creating_event_types",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_sessionfilemetadatafrompollreply",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_shutdown",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_state",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_statornull",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_summarizeactivesessionforclient",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_summarizependingeventforstatus",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_sweeporphansveltecomponentsessionsonstartup",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_variant_progress_checkpoint_reasons",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_variantcountlooksbehind",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_component_removeallsveltecomponentsessions",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_component_sweepinactivesveltecomponentsessions"
+      "src_components_layout_asset_panel",
+      "src_components_layout_asset_panel_assetpanelprops",
+      "src_components_layout_asset_search",
+      "src_components_layout_asset_search_assetsearch",
+      "src_components_layout_asset_search_assetsearchprops",
+      "src_components_layout_brand_logo",
+      "src_components_layout_brand_logo_brandlogo",
+      "src_components_layout_brand_logo_brandlogoprops",
+      "src_components_layout_canvas_control_dock",
+      "src_components_layout_canvas_control_dock_canvascontroldock",
+      "src_components_layout_canvas_control_dock_canvascontroldockprops",
+      "src_components_layout_canvas_control_dock_test",
+      "src_components_layout_canvas_control_dock_test_animatemodewrapper",
+      "src_components_layout_canvas_control_dock_test_comparetesthost",
+      "src_components_layout_canvas_control_dock_test_magicwandtesthost",
+      "src_components_layout_floating_effect_panel",
+      "src_components_layout_floating_effect_panel_floatingeffectpanel",
+      "src_components_layout_floating_effect_panel_test",
+      "src_components_layout_floating_effect_panel_test_sampleasset",
+      "src_components_layout_floating_effect_panel_test_teststudiohost",
+      "src_components_layout_index",
+      "src_components_layout_inspector_panel_test",
+      "src_components_layout_inspector_panel_test_bghostwithstore",
+      "src_components_layout_inspector_panel_test_bgtesthost",
+      "src_components_layout_inspector_panel_test_correctiontesthost",
+      "src_components_layout_inspector_panel_test_getlayers",
+      "src_components_layout_inspector_panel_test_lookstesthost",
+      "src_components_layout_inspector_panel_test_modetesthost",
+      "src_components_layout_inspector_panel_test_nolayerhost",
+      "src_components_layout_inspector_panel_test_populatedhost",
+      "src_components_layout_inspector_panel_test_populatedtesthost",
+      "src_components_layout_inspector_panel_test_prochost",
+      "src_components_layout_inspector_panel_test_procmutationhost",
+      "src_components_layout_inspector_panel_test_sampleasset",
+      "src_components_layout_inspector_panel_test_themetesthost",
+      "src_components_layout_inspector_panel_test_transformtesthost",
+      "src_components_layout_layers_panel_test",
+      "src_components_layout_layers_panel_test_fullstudiouihost",
+      "src_components_layout_layers_panel_test_getlayers",
+      "src_components_layout_layers_panel_test_mockasset1",
+      "src_components_layout_layers_panel_test_mockasset2",
+      "src_components_layout_layers_panel_test_testhost",
+      "src_components_layout_layers_panel_test_ucmhost",
+      "src_components_layout_phase3_1_fidelity_test",
+      "src_components_layout_phase3_1_fidelity_test_testhost",
+      "src_components_layout_project_name_input",
+      "src_components_layout_project_name_input_projectnameinput",
+      "src_components_timeline_timeline_bar",
+      "src_components_timeline_timeline_bar_timelinebar",
+      "src_context_studio_context_usestudiostore",
+      "src_rendering_webgl_animation_engine_test",
+      "src_types_animation",
+      "src_types_animation_animationtimelinestate",
+      "src_types_animation_default_animation_state",
+      "src_types_animation_formattimelinetime",
+      "src_types_animation_normalizetimelinetime",
+      "src_types_animation_playbackstate",
+      "src_types_asset_asset",
+      "src_types_frame_default_frame_dimensions",
+      "src_types_frame_frame_size_presets",
+      "src_utils_image_ingestion",
+      "src_utils_image_ingestion_createassetfromfile",
+      "src_utils_image_ingestion_createthumbnaildataurl",
+      "src_utils_image_ingestion_formatfilesize",
+      "src_utils_image_ingestion_revokeasseturls",
+      "src_utils_image_ingestion_supported_mime_types",
+      "src_utils_image_ingestion_test",
+      "src_utils_image_ingestion_validateimagefile"
     ],
     "11": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_engines_regex_detect_text",
@@ -2251,6 +2231,50 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_wrap_wrapcli"
     ],
     "34": [
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_addmanualcontexttext",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyediting",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildlocatorforleaf",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_canrestoremanualeditelement",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_collecteditabletextrows",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_collecteditabletextrows_visit",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_collectmanualcontextpieces",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_collectmanualcontextpieces_walk",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_contextelementformanualedit",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_copyeditcontainercontext",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_copyeditleafcontext",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_cssident",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_directmixedtextrestorenodes",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_documentrefclasssuffix",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_documentrefforelement",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_documentrefidsuffix",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_documentrefsegment",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_elementmatchesmanualrefsegment",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_enableinlineedit",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_extractcontext",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findmanualeditrestoreelement",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_forbiddenmanualtextchars",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_indexamongsametag",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_ismeaningfulmanualcontextpiece",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_isusefulmanualeditcontext",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_maybeshowfirstsavetoast",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_mixedtextwraprestorehint",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_nearbyeditabletextsformanualedit",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_normalizedocumentreftoken",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_normalizemanualcontexttext",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_oninlineinput",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_onpendingtrashclick",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_parsemanualeditrefsegment",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_querymanualeditref",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_restorediscardedmanualedits",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_restoremixedtextnodemanualedit",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_sanitizedcontextouterhtml",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_selectorforacceptedroot",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_snapshotacceptedvariantdom",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_stripmanualeditruntimestate",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_unwrapmixedcontenttextnodes",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_wrapmixedcontenttextnodes"
+    ],
+    "35": [
       "src_rendering_webgl_shaders_ascii",
       "src_rendering_webgl_shaders_ascii_ascii_fragment_shader",
       "src_rendering_webgl_shaders_ascii_ascii_vertex_shader",
@@ -2294,7 +2318,7 @@
       "src_rendering_webgl_webgl_effect_pipeline_isgpusupportedeffect",
       "src_rendering_webgl_webgl_effects_test"
     ],
-    "35": [
+    "36": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_agenthasworkinflight",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_agentstatustext",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_barpalettefortheme",
@@ -2337,7 +2361,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_updateglobalbarstate",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_updateglobalbarstate_sync"
     ],
-    "36": [
+    "37": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_completion",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_completion_completionackforacceptresult",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_completion_completiontypeforacceptresult",
@@ -2380,7 +2404,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_poll_waitforeventack",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_poll_writecarbonizebanner"
     ],
-    "37": [
+    "38": [
       "gpu_export_renderer_ts",
       "scripts_verify_background_stack_cdp",
       "scripts_verify_background_stack_cdp_cdpconnection",
@@ -2423,7 +2447,7 @@
       "scripts_verify_stage_3b_cdp_startchrome",
       "scripts_verify_stage_3b_cdp_ws_dir"
     ],
-    "38": [
+    "39": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_design_parser",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_design_parser_assesscoverage",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_design_parser_buildcolor",
@@ -2465,7 +2489,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_design_parser_yaml_hex_escape_lengths",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_design_parser_yaml_simple_escapes"
     ],
-    "39": [
+    "40": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_impeccable_paths_safesessionid",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_accept",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_accept_acceptcli",
@@ -2507,7 +2531,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_accept_stripstyleandjoin",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_accept_writeacceptreceipt"
     ],
-    "40": [
+    "41": [
       "src_components_export_export_modal",
       "src_components_export_export_modal_exportmodal",
       "src_components_export_export_modal_exportmodalprops",
@@ -2549,7 +2573,7 @@
       "src_types_export_exporttarget",
       "src_types_look_backgroundstate"
     ],
-    "41": [
+    "42": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_cli_main",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_cli_main_confirm",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_cli_main_detectcli",
@@ -2590,7 +2614,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_registry_antipatterns_rule_scopes",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_impeccable_config_shouldignoredetectionfile"
     ],
-    "42": [
+    "43": [
       "src_components_layout_inspector_panel_inspectorpanel",
       "src_context_studio_context",
       "src_context_studio_context_deriveproceduralsourcefrombackgrounds",
@@ -2631,7 +2655,7 @@
       "src_utils_tree_operations_updategrouptransform",
       "src_utils_tree_operations_updatelayerinitems"
     ],
-    "43": [
+    "44": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_before_edit",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_before_edit_allow",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_before_edit_bumpcursordenial",
@@ -2669,7 +2693,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_truthy",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_writeauditlog"
     ],
-    "44": [
+    "45": [
       "src_components_background_background_controls",
       "src_components_background_background_controls_background_options",
       "src_components_background_background_controls_backgroundcontrols",
@@ -2707,7 +2731,7 @@
       "src_components_ui_controls_segmented_segmented_control_segmentedcontrolprops",
       "src_components_ui_controls_segmented_segmented_control_segmentedcontrolvariant"
     ],
-    "45": [
+    "46": [
       "src_components_layout_inspector_panel",
       "src_components_layout_inspector_panel_fit_options",
       "src_components_layout_inspector_panel_inspectorpanelprops",
@@ -2743,7 +2767,7 @@
       "src_types_look_look",
       "src_types_look_lookcategory"
     ],
-    "46": [
+    "47": [
       "src_components_layout_canvas_viewport",
       "src_components_layout_canvas_viewport_canvasviewport",
       "src_components_layout_canvas_viewport_canvasviewportprops",
@@ -2778,7 +2802,7 @@
       "src_utils_viewport_math_screentoimage",
       "src_utils_viewport_math_test"
     ],
-    "47": [
+    "48": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkcolors",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkelementaipalettedom",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkelementcolors",
@@ -2812,7 +2836,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_resolvebackground",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_resolvegradientstops"
     ],
-    "48": [
+    "49": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_copy_edit_agent",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_copy_edit_agent_applymockwrites",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_copy_edit_agent_buildcopyeditbatchprompt",
@@ -2846,7 +2870,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_copy_edit_agent_truncate",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_copy_edit_agent_tryparsejson"
     ],
-    "49": [
+    "50": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_critique_storage",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_critique_storage_coerceslug",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_critique_storage_ismainmodule",
@@ -2878,7 +2902,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_surface_brief_main",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_surface_brief_summary"
     ],
-    "50": [
+    "51": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_index_describeinjectartifacts",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_index_frameworkignorepatterns",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_index_patch_undoers",
@@ -2910,7 +2934,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_inject_resolveignoretarget",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_inject_validateconfig"
     ],
-    "51": [
+    "52": [
       "jsdom",
       "package_devdependencies",
       "package_devdependencies_jsdom",
@@ -2941,7 +2965,7 @@
       "vite",
       "vitest"
     ],
-    "52": [
+    "53": [
       "src_components_ui_controls_color_palette_control",
       "src_components_ui_controls_color_palette_control_controller",
       "src_components_ui_controls_color_palette_control_controller_clamp",
@@ -2972,7 +2996,7 @@
       "src_components_ui_controls_color_palette_control_view",
       "src_components_ui_controls_color_palette_control_view_palettecontrolview"
     ],
-    "53": [
+    "54": [
       "base_ui_react",
       "class_variance_authority",
       "clsx",
@@ -3002,7 +3026,7 @@
       "react_resizable_panels",
       "tailwind_merge"
     ],
-    "54": [
+    "55": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_event_validation",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_event_validation_agent_phase_set",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_event_validation_forbidden_manual_edit_text_chars",
@@ -3032,7 +3056,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_vocabulary_variant_progress_checkpoint_reasons",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_vocabulary_visual_actions"
     ],
-    "55": [
+    "56": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_roots",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_roots_candidate_scan_ignored",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_roots_consumetargetarg",
@@ -3062,7 +3086,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_roots_walkup",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_roots_writerootsmanifest"
     ],
-    "56": [
+    "57": [
       "ref_dom",
       "ref_dom_iterable",
       "ref_es2022",
@@ -3092,7 +3116,7 @@
       "tsconfig_include",
       "tsconfig_schema"
     ],
-    "57": [
+    "58": [
       "src_components_effects_effect_browser_modal",
       "src_components_effects_effect_browser_modal_effectbrowsermodal",
       "src_components_effects_effect_browser_modal_effectbrowsermodalprops",
@@ -3122,7 +3146,7 @@
       "src_rendering_webgl_parameter_propagation_e2e_test_has",
       "src_rendering_webgl_webgl_effect_pipeline_gpueffectid"
     ],
-    "58": [
+    "59": [
       "src_components_ui_primitives_slider_slider",
       "src_components_ui_primitives_slider_slider_discrete_state",
       "src_components_ui_primitives_slider_slider_discrete_state_slidervaluestateoptions",
@@ -3152,7 +3176,7 @@
       "src_components_ui_primitives_slider_slider_value_snapvaluetoallowedvalues",
       "src_components_ui_primitives_slider_slider_value_valuesmatch"
     ],
-    "59": [
+    "60": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_insert_ui",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_insert_ui_applyinserttoggle",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_insert_ui_applypicktoggle",
@@ -3181,7 +3205,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_insert_ui_resolveinsertsessionanchor",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_insert_ui_setvariantshown"
     ],
-    "60": [
+    "61": [
       "src_components_ui_control_layout_index",
       "src_components_ui_control_layout_index_controlfieldlabel",
       "src_components_ui_control_layout_index_controlfieldlabelactioncontext",
@@ -3210,7 +3234,7 @@
       "src_components_ui_panel_panel_section_panelsectioncollapsiblebody_handletransitionend",
       "src_components_ui_panel_panel_section_panelsectionprops"
     ],
-    "61": [
+    "62": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_browserfindingsfrommap",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkborders",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkedgeflushcardsdom",
@@ -3238,7 +3262,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_istabcontextelement",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_keyframestogglevisibilitydom"
     ],
-    "62": [
+    "63": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_buildhtmlpatterncorpora",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkhtmlpatterns",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_collectcsscustomprops",
@@ -3266,7 +3290,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_selectorhitslandmark",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_stripreducedmotionblocks"
     ],
-    "63": [
+    "64": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_discard_manual_edits",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_discard_manual_edits_args",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_discard_manual_edits_argval",
@@ -3294,7 +3318,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_manual_edits_buffer_truncatebuffer",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_manual_edits_buffer_writebuffer"
     ],
-    "64": [
+    "65": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_manual_edit_evidence",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_manual_edit_evidence_analyzesourcehint",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_manual_edit_evidence_buildcandidatesforop",
@@ -3322,7 +3346,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_manual_edit_evidence_skip_dirs",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_manual_edit_evidence_text_extensions"
     ],
-    "65": [
+    "66": [
       "src_components_ui_controls_control_types_createcontrolhistorygroupid",
       "src_components_ui_controls_slider_slider_control",
       "src_components_ui_controls_slider_slider_control_slidercontrol",
@@ -3350,7 +3374,7 @@
       "src_components_ui_primitives_editable_slider_value_label_haseditablenumericvaluelabel",
       "src_components_ui_primitives_editable_slider_value_label_selecteditabletext"
     ],
-    "66": [
+    "67": [
       "src_components_ui_lib_input_control_style",
       "src_components_ui_lib_input_control_style_shared_input_control_base_class_name",
       "src_components_ui_lib_input_control_style_shared_input_control_size_class_names",
@@ -3378,7 +3402,35 @@
       "src_components_ui_primitives_textarea_textareaprops",
       "src_components_ui_primitives_textarea_textareavariants"
     ],
-    "67": [
+    "68": [
+      "src_export_gpu_export_renderer_rendergpuexport",
+      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline",
+      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_constructor",
+      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_dispose",
+      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_executestack",
+      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_getbackgroundrenderer",
+      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_getprogram",
+      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_rendercompositedstacktocanvas",
+      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_rendersinglepass",
+      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_renderstacktocanvas",
+      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_uploadsourcetexture",
+      "src_rendering_webgl_webgl_texture",
+      "src_rendering_webgl_webgl_texture_disposetexture",
+      "src_rendering_webgl_webgl_texture_gputexturerecord",
+      "src_rendering_webgl_webgl_texture_texturesource",
+      "src_rendering_webgl_webgl_texture_uploadtexture",
+      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer",
+      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_cleanup",
+      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_constructor",
+      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_dispose",
+      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_getcontext",
+      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_handlecontextlost",
+      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_handlecontextrestored",
+      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_initcontext",
+      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_isavailable",
+      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_uploadasset"
+    ],
+    "69": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_buildhtmlpatterncorpora",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_checkhtmlpatterns",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_collectcsscustomprops",
@@ -3405,7 +3457,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_selectorhitslandmark",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_stripreducedmotionblocks"
     ],
-    "68": [
+    "70": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_appenddesignsystemnote",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_bumpeditcount",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_dedupeagainstcache",
@@ -3432,7 +3484,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_touchfile",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_matchconfiguredextension"
     ],
-    "69": [
+    "71": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_clearstoredmanualapplystate",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_fetchpendingcount",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_handlemanualeditactivity",
@@ -3459,7 +3511,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_updatependingcounter",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_writemanualapplystate"
     ],
-    "70": [
+    "72": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_accept_css",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_accept_css_bakeparamvalues",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_accept_css_collectallselectors",
@@ -3485,7 +3537,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_component_removeselectorsfromsveltesource",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_component_styleblocktext"
     ],
-    "71": [
+    "73": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_ast",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_ast_analysis",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_ast_analysis_constructor",
@@ -3511,7 +3563,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_ast_reserved_prop_names",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_svelte_ast_restoresveltemarkup"
     ],
-    "72": [
+    "74": [
       "src_components_ui_controls_control_types_controlvaluechangehandler",
       "src_components_ui_controls_gradient_gradient_control_utils_isbuttontarget",
       "src_components_ui_controls_gradient_gradient_control_utils_removegradientstop",
@@ -3537,7 +3589,7 @@
       "src_components_ui_controls_gradient_gradient_stops_controller_usegradientstopscontroller_handletrackpointermove",
       "src_components_ui_controls_gradient_gradient_stops_controller_usegradientstopselectionsound"
     ],
-    "73": [
+    "75": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_context_resolveprojectroot",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_impeccable_paths",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_impeccable_paths_critique_dir",
@@ -3561,7 +3613,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_impeccable_paths_writeliveserverinfo",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_server_sweepstaleacceptreceiptsonstartup"
     ],
-    "74": [
+    "76": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkcreampalette",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkelementqualitydom",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkquality",
@@ -3585,7 +3637,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_splittoplevelcommas",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_textdescendantsflushsides"
     ],
-    "75": [
+    "77": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_sveltekit",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_sveltekit_adapter",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_sveltekit_adapter_applysveltekitliveadapter",
@@ -3609,7 +3661,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_sveltekit_adapter_svelterootimportline",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_sveltekit_adapter_unpatchsveltelayout"
     ],
-    "76": [
+    "78": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_tanstack_start",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_tanstack_start_tanstackstart",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_tanstack_adapter",
@@ -3633,7 +3685,31 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_tanstack_adapter_tanstack_marker_open",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_tanstack_adapter_unpatchtanstackroot"
     ],
-    "77": [
+    "79": [
+      "src_components_layout_background_stack_test",
+      "src_components_layout_background_stack_test_getlayers",
+      "src_components_layout_background_stack_test_testhost",
+      "src_components_layout_background_workflow_test",
+      "src_components_layout_background_workflow_test_fullteststudiohost",
+      "src_components_layout_background_workflow_test_getlayers",
+      "src_components_layout_background_workflow_test_sampleasset",
+      "src_components_layout_floating_background_panel_floatingbackgroundpanel",
+      "src_components_layout_group_compositing_backdrop_test",
+      "src_components_layout_group_compositing_backdrop_test_sampleasset",
+      "src_components_layout_group_compositing_backdrop_test_sampleasset2",
+      "src_components_layout_group_compositing_backdrop_test_testhost",
+      "src_components_layout_group_row",
+      "src_components_layout_group_row_grouprow",
+      "src_components_layout_group_row_grouprowprops",
+      "src_components_layout_layers_panel",
+      "src_components_layout_layers_panel_layerspanel",
+      "src_components_layout_layers_panel_layerspanelprops",
+      "src_components_layout_layers_panel_sortablelayerrowprops",
+      "src_components_ui_index",
+      "src_types_frame_group",
+      "src_types_frame_proceduralsource"
+    ],
+    "80": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkelementheroeyebrow",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkelementheroeyebrowdom",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkheroeyebrow",
@@ -3656,7 +3732,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_resolveheroheadingsizepx",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_resolvelengthpx"
     ],
-    "78": [
+    "81": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_engines_browser_detect_url",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_engines_browser_detect_url_detecturl",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_engines_browser_detect_url_launchbrowser",
@@ -3679,30 +3755,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_profile_profiler_summarizedetectorprofile",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_checkcontenthiddenatrest"
     ],
-    "79": [
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_accepteddomalreadyclean",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyoriginalattrstosvelteanchor",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_commitacceptedsveltecomponenttodom",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_componentmodulecandidates",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_describemountfailure",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_detectdevserverbase",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_ensureaccepteddomclean",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findacceptedruntimewrappers",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_getmountedsveltecomponentanchor",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_importfirstreachable",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_loadsvelteruntime",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_maybecompleteacceptedsession",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_mountsveltecomponentvariant",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_probepreviewtree",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_reloadaftermissingaccepteddom",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_removesveltecomponentvariantstyle",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_reportvariantmounted",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_reportvariantmountfailed",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_restoreaccepteddomfromsnapshot",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_scheduleacceptcleanup",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_teardownsveltecomponentsession"
-    ],
-    "80": [
+    "82": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyplaceholderdimensions",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_begineditpin",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildannotationsforcapture",
@@ -3725,30 +3778,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_startplaceholderedgeresize",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_updateclearchip"
     ],
-    "81": [
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_averagergb01",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_capturechromenodes",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_captureelementfromrenderedancestor",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_captureelementtoblob",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_compileshader",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_csscolortorgb01",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_dominantrgb01",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findbackdropancestor",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findshaderproxycaptureroot",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_hidecapturechromeforshaderproxy",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_istransparentcolor",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_loadmodernscreenshot",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_paintsbackdrop",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_paintsshaderproxysurface",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_resolvecanvasbackground",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_resolvepaperrgb",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_samplesurroundingrgb",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_shoulduseancestorcropshaderproxy",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showshaderbitmapfallback",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showshaderoverlay",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_showshaderoverlay_frame"
-    ],
-    "82": [
+    "83": [
       "src_components_ui_controls_color_color_value_control",
       "src_components_ui_controls_color_color_value_control_colorvaluecontrol",
       "src_components_ui_controls_color_color_value_control_colorvaluecontrol_commitcolor",
@@ -3771,7 +3801,7 @@
       "src_components_ui_controls_gradient_gradient_control_utils_formatcolorinputvalue",
       "src_components_ui_controls_gradient_gradient_control_utils_normalizecolorinput"
     ],
-    "83": [
+    "84": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_context_resolvetargetselection",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_target_args",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_target_args_parsetargetoptions",
@@ -3793,7 +3823,51 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_target",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_target_resolvelivetarget"
     ],
-    "84": [
+    "85": [
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_applyconfigsource",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_applydetectorconfigsource",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_clonedefaultconfig",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_detectorsection",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_hooksection",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_ignorevaluefileskey",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_mergeignorevalues",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_numberor",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_readconfig",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_safereadjson",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_uniquestrings",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_cleartemplateextensioncache",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_extensioncache",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_live_template_extensions",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_mergeextensions",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_normalizeextensionentries",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_readlivetemplateextensions",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_resolvelivetemplateextensions",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_safereadjson"
+    ],
+    "86": [
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_accepteddomalreadyclean",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_applyoriginalattrstosvelteanchor",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_commitacceptedsveltecomponenttodom",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_componentmodulecandidates",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_describemountfailure",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_detectdevserverbase",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_ensureaccepteddomclean",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_findacceptedruntimewrappers",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_getmountedsveltecomponentanchor",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_importfirstreachable",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_loadsvelteruntime",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_maybecompleteacceptedsession",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_mountsveltecomponentvariant",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_probepreviewtree",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_reloadaftermissingaccepteddom",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_removesveltecomponentvariantstyle",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_reportvariantmounted",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_reportvariantmountfailed",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_restoreaccepteddomfromsnapshot",
+      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_scheduleacceptcleanup"
+    ],
+    "87": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_clampgroupedtobudget",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_clamptobudget",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_cleanignorevaluedisplay",
@@ -3814,7 +3888,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_rendertemplate",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_splitfindingsbytier"
     ],
-    "85": [
+    "88": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_open_system_browser",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_open_system_browser_browseropencommand",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_open_system_browser_opensystembrowser",
@@ -3835,7 +3909,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_serve_question_statefile",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_serve_question_timeoutsec"
     ],
-    "86": [
+    "89": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildsvelteexpressiontextmap",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildsveltepropvaluesfromliveelement",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_buildsveltepropvaluesv2",
@@ -3856,7 +3930,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_stripsvelteblockregions",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_stripsveltekeydelimiters"
     ],
-    "87": [
+    "90": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_session_store",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_session_store_applyevent",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_session_store_basesnapshot",
@@ -3877,7 +3951,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_session_store_upsertartifact",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_session_store_writesnapshot"
     ],
-    "88": [
+    "91": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_context_extractplatform",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_context_hasvisualimplementation",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_context_loadcontext",
@@ -3897,7 +3971,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_context_signals_source_dirs",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_resolveprojectplatform"
     ],
-    "89": [
+    "92": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_addbrowserfindings",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_addvisualcontrastfindings",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_addvisualcontrastresult",
@@ -3917,7 +3991,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_visualcontrastoptions",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_waitforvisualpaint"
     ],
-    "90": [
+    "93": [
       "src_components_ui_controls_select_index",
       "src_components_ui_controls_select_select_control",
       "src_components_ui_controls_select_select_control_selectcontrol",
@@ -3937,7 +4011,7 @@
       "src_components_ui_primitives_select_selecttriggervariants",
       "src_components_ui_primitives_select_selectvalue"
     ],
-    "91": [
+    "94": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_session",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_session_createlivebrowsersessionstate",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_session_createlivebrowsersessionstate_clearhandled",
@@ -3956,7 +4030,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_session_createlivebrowsersessionstate_seedcheckpointrevision",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_session_createlivebrowsersessionstate_writescrolly"
     ],
-    "92": [
+    "95": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_astro",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_astro_astro",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_astro_detectastroproject",
@@ -3975,7 +4049,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_vite_generic",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_vite_generic_detectviteproject"
     ],
-    "93": [
+    "96": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_tag_strategy",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_tag_strategy_appendorigintodirective",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_tag_strategy_buildtagblock",
@@ -3994,7 +4068,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_tag_strategy_tag_patch_markers",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_tag_strategy_unpatchtagfile"
     ],
-    "94": [
+    "97": [
       "package_scripts",
       "package_scripts_agent_ab_test",
       "package_scripts_agent_proxy",
@@ -4013,7 +4087,7 @@
       "package_scripts_verify_approvals",
       "package_scripts_verify_stage_3b_cdp"
     ],
-    "95": [
+    "98": [
       "src_components_ui_composites_tabs",
       "src_components_ui_composites_tabs_tabs",
       "src_components_ui_composites_tabs_tabscontent",
@@ -4032,7 +4106,7 @@
       "src_components_ui_primitives_selection_state_selecteditemsurfaceclassname",
       "src_components_ui_primitives_selection_state_selecteditemtextclassname"
     ],
-    "96": [
+    "99": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkheadingrhythmdom",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkheadingrhythmdom_clustertop",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkheadingrhythmdom_edgeabove",
@@ -4050,7 +4124,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_parseradiustopx",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_resolveborderradiuspx"
     ],
-    "97": [
+    "100": [
       "src_components_ui_panel_index",
       "src_components_ui_panel_panel",
       "src_components_ui_panel_panel_header",
@@ -4068,7 +4142,7 @@
       "src_components_ui_panel_panel_surface_paneldividerclassname",
       "src_components_ui_panel_panel_surface_panelsurface"
     ],
-    "98": [
+    "101": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_engines_static_html_css_cascade_collectstaticcsstext",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_engines_static_html_css_cascade_staticelement",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_engines_static_html_css_cascade_staticelement_childnodes",
@@ -4085,7 +4159,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_engines_static_html_css_cascade_staticelement_queryselectorall",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_engines_static_html_css_cascade_staticelement_textcontent"
     ],
-    "99": [
+    "102": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_generate_image",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_generate_image_arg",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_generate_image_crc32",
@@ -4102,7 +4176,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_generate_image_svgfake",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_generate_image_tohex"
     ],
-    "100": [
+    "103": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_dom",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_dom_createlivebrowserdomhelpers",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_dom_createlivebrowserdomhelpers_activeelementdeep",
@@ -4119,7 +4193,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_dom_createlivebrowserdomhelpers_uiappendstyle",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_dom_createlivebrowserdomhelpers_uigetbyid"
     ],
-    "101": [
+    "104": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_resume",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_resume_collectmanualapplyfiles",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_resume_manualapplyreplycommand",
@@ -4136,7 +4210,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_status_recoveryhint",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_status_statuscli"
     ],
-    "102": [
+    "105": [
       "src_rendering_webgl_webgl_background_gpubackgroundrenderer",
       "src_rendering_webgl_webgl_background_gpubackgroundrenderer_composite",
       "src_rendering_webgl_webgl_background_gpubackgroundrenderer_constructor",
@@ -4153,24 +4227,7 @@
       "src_rendering_webgl_webgl_background_gpubackgroundrenderer_rendersublayertotexture",
       "src_rendering_webgl_webgl_background_hextonormalizedrgb"
     ],
-    "103": [
-      "src_rendering_webgl_webgl_texture",
-      "src_rendering_webgl_webgl_texture_disposetexture",
-      "src_rendering_webgl_webgl_texture_gputexturerecord",
-      "src_rendering_webgl_webgl_texture_texturesource",
-      "src_rendering_webgl_webgl_texture_uploadtexture",
-      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer",
-      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_cleanup",
-      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_constructor",
-      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_dispose",
-      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_getcontext",
-      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_handlecontextlost",
-      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_handlecontextrestored",
-      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_initcontext",
-      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_isavailable",
-      "src_rendering_webgl_webgl_viewport_renderer_webgl2viewportrenderer_uploadasset"
-    ],
-    "104": [
+    "106": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_firstcssurl",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_getlayervalue",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_loadvisualcontrastimage",
@@ -4186,7 +4243,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_sampleimageelement",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_samplevisualbackgroundatpoint"
     ],
-    "105": [
+    "107": [
       "scripts_verify_phase_4_correction_cdp",
       "scripts_verify_phase_4_correction_cdp_cdpconnection",
       "scripts_verify_phase_4_correction_cdp_cdpconnection_capturescreenshot",
@@ -4202,7 +4259,7 @@
       "scripts_verify_phase_4_correction_cdp_startchrome",
       "scripts_verify_phase_4_correction_cdp_ws_dir"
     ],
-    "106": [
+    "108": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_pin",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_pin_codex_harnesses",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_pin_commandprefixforskillsdir",
@@ -4217,7 +4274,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_pin_unpin",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_pin_valid_commands"
     ],
-    "107": [
+    "109": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_index",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_index_comment_syntaxes",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_index_frameworks",
@@ -4231,7 +4288,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_sveltekit_sveltekit",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_vite_generic_vitegeneric"
     ],
-    "108": [
+    "110": [
       "scripts_verify_correction_02_4_cdp",
       "scripts_verify_correction_02_4_cdp_cdpconnection",
       "scripts_verify_correction_02_4_cdp_cdpconnection_capturescreenshot",
@@ -4245,7 +4302,7 @@
       "scripts_verify_correction_02_4_cdp_startchrome",
       "scripts_verify_correction_02_4_cdp_ws_dir"
     ],
-    "109": [
+    "111": [
       "scripts_verify_stage_2_transform_cdp",
       "scripts_verify_stage_2_transform_cdp_cdpconnection",
       "scripts_verify_stage_2_transform_cdp_cdpconnection_capturescreenshot",
@@ -4259,7 +4316,7 @@
       "scripts_verify_stage_2_transform_cdp_startchrome",
       "scripts_verify_stage_2_transform_cdp_ws_dir"
     ],
-    "110": [
+    "112": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detect_csp",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detect_csp_detectcsp",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detect_csp_inline_header_signals",
@@ -4272,7 +4329,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detect_csp_sveltekit_csp_signals",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detect_csp_walk"
     ],
-    "111": [
+    "113": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checktextocclusiondom",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_clippedbyinset",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_clippedbyrect",
@@ -4285,7 +4342,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_isscreenreaderonlytextstyle",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_metriclengthpx"
     ],
-    "112": [
+    "114": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_embed_prompt",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_embed_prompt_argof",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_embed_prompt_args",
@@ -4298,20 +4355,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_embed_prompt_readmode",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_embed_prompt_readpngtext"
     ],
-    "113": [
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_applyconfigsource",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_applydetectorconfigsource",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_clonedefaultconfig",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_detectorsection",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_hooksection",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_ignorevaluefileskey",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_mergeignorevalues",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_numberor",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_readconfig",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_safereadjson",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_lib_uniquestrings"
-    ],
-    "114": [
+    "115": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_generation_preflight",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_generation_preflight_buildgenerationpreflight",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_generation_preflight_clearsourceresolutioncache",
@@ -4324,7 +4368,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_generation_preflight_sourceresolutioncache",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_generation_preflight_targetsignature"
     ],
-    "115": [
+    "116": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_palette",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_palette_args",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_palette_buildweights",
@@ -4336,19 +4380,6 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_palette_seed",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_palette_seeds",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_palette_weightedpick"
-    ],
-    "116": [
-      "src_export_gpu_export_renderer_rendergpuexport",
-      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline",
-      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_constructor",
-      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_dispose",
-      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_executestack",
-      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_getbackgroundrenderer",
-      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_getprogram",
-      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_rendercompositedstacktocanvas",
-      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_rendersinglepass",
-      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_renderstacktocanvas",
-      "src_rendering_webgl_webgl_effect_pipeline_gpueffectpipeline_uploadsourcetexture"
     ],
     "117": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_context_appendstalenessdirective",
@@ -4375,18 +4406,6 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_shared_inline_ignores_setmatches"
     ],
     "119": [
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_bindeditbadgeproxy",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_editbadgeproxytargets",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_initeditbadge",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_initeditbadgehitproxies",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_positioneditbadge",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_proxymouseevent",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_setimportantstyle",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_styleeditbadgeproxy",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_synceditbadgehitproxies",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_browser_usesshadowchromeroot"
-    ],
-    "120": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_impeccable_paths_readliveserverinfo",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_accept_verify",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_accept_verify_forbidden",
@@ -4397,18 +4416,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_complete_parseargs",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_complete_readserverinfo"
     ],
-    "121": [
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_cleartemplateextensioncache",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_extensioncache",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_live_template_extensions",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_mergeextensions",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_normalizeextensionentries",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_readlivetemplateextensions",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_resolvelivetemplateextensions",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_safereadjson"
-    ],
-    "122": [
+    "120": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_nuxt",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_nuxt_applynuxtliveadapter",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_nuxt_buildnuxtplugin",
@@ -4419,18 +4427,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_script_src",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_frameworks_script_src_buildlivescriptsrc"
     ],
-    "123": [
-      "src_components_timeline_timeline_bar",
-      "src_components_timeline_timeline_bar_timelinebar",
-      "src_rendering_webgl_animation_engine_test",
-      "src_types_animation",
-      "src_types_animation_animationtimelinestate",
-      "src_types_animation_default_animation_state",
-      "src_types_animation_formattimelinetime",
-      "src_types_animation_normalizetimelinetime",
-      "src_types_animation_playbackstate"
-    ],
-    "124": [
+    "121": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_impeccable_paths_impeccable_dir",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_template_extensions_matchestemplateextension",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_accept_findsessionfile",
@@ -4440,7 +4437,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_source_search_source_search_dirs",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_source_search_walk"
     ],
-    "125": [
+    "122": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_lib_impeccable_paths_isliveserverpidreachable",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_source_lock",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_source_lock_clearstalelock",
@@ -4450,7 +4447,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_source_lock_sourcelockpath",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_source_lock_withsourcelocksync"
     ],
-    "126": [
+    "123": [
       "export_engine_ts",
       "image_ingestion_ts",
       "scripts_test_gpu_export_cdp",
@@ -4460,7 +4457,7 @@
       "scripts_test_gpu_export_cdp_waitforchrome",
       "scripts_test_gpu_export_cdp_ws_dir"
     ],
-    "127": [
+    "124": [
       "scripts_check_approval_gates",
       "scripts_check_approval_gates_approvals_dir",
       "scripts_check_approval_gates_buildkit_dir",
@@ -4470,7 +4467,7 @@
       "scripts_check_approval_gates_isreviewpacket",
       "scripts_check_approval_gates_root_dir"
     ],
-    "128": [
+    "125": [
       "scripts_headroom_ab_test",
       "scripts_headroom_ab_test_agentsguidepath",
       "scripts_headroom_ab_test_effectparameterstestpath",
@@ -4480,7 +4477,7 @@
       "scripts_headroom_ab_test_runbenchmark",
       "scripts_headroom_ab_test_tooloutputpayload"
     ],
-    "129": [
+    "126": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_bordercolorsfromstyle",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_borderwidthsfromstyle",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkelementgptbordershadow",
@@ -4489,7 +4486,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_shadowlayeralpha",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_shadowmaxblurpx"
     ],
-    "130": [
+    "127": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_checkheadingrhythmdom",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_checkheadingrhythmdom_clustertop",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_checkheadingrhythmdom_edgeabove",
@@ -4498,7 +4495,7 @@
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_checkheadingrhythmdom_isvisibleflow",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_rules_checks_checkheadingrhythmdom_overlapsx"
     ],
-    "131": [
+    "128": [
       "scripts_browser_verify_empty_frame_qa",
       "scripts_browser_verify_empty_frame_qa_chromeprocess",
       "scripts_browser_verify_empty_frame_qa_run",
@@ -4506,7 +4503,7 @@
       "scripts_browser_verify_empty_frame_qa_waitforchrome",
       "scripts_browser_verify_empty_frame_qa_ws_dir"
     ],
-    "132": [
+    "129": [
       "scripts_browser_verify_phase7_6",
       "scripts_browser_verify_phase7_6_chromeprocess",
       "scripts_browser_verify_phase7_6_run",
@@ -4514,7 +4511,7 @@
       "scripts_browser_verify_phase7_6_waitforchrome",
       "scripts_browser_verify_phase7_6_ws_dir"
     ],
-    "133": [
+    "130": [
       "scripts_check_public_provenance",
       "scripts_check_public_provenance_banned_patterns",
       "scripts_check_public_provenance_binary_extensions",
@@ -4522,7 +4519,7 @@
       "scripts_check_public_provenance_gettrackedfiles",
       "scripts_check_public_provenance_main"
     ],
-    "134": [
+    "131": [
       "scripts_test_ui_issues_cdp",
       "scripts_test_ui_issues_cdp_run",
       "scripts_test_ui_issues_cdp_sleep",
@@ -4530,7 +4527,7 @@
       "scripts_test_ui_issues_cdp_startviteserver",
       "scripts_test_ui_issues_cdp_ws_dir"
     ],
-    "135": [
+    "132": [
       "scripts_test_ui_polish_cdp",
       "scripts_test_ui_polish_cdp_chromeprocess",
       "scripts_test_ui_polish_cdp_run",
@@ -4538,122 +4535,117 @@
       "scripts_test_ui_polish_cdp_waitforchrome",
       "scripts_test_ui_polish_cdp_ws_dir"
     ],
-    "136": [
+    "133": [
       "package",
       "package_license",
       "package_name",
       "package_private",
       "package_type"
     ],
-    "137": [
+    "134": [
       "scripts_browser_verify_phase7_5",
       "scripts_browser_verify_phase7_5_chromeprocess",
       "scripts_browser_verify_phase7_5_run",
       "scripts_browser_verify_phase7_5_sleep",
       "scripts_browser_verify_phase7_5_ws_dir"
     ],
-    "138": [
+    "135": [
       "scripts_check_no_competitor_refs",
       "scripts_check_no_competitor_refs_binary_extensions",
       "scripts_check_no_competitor_refs_deny_list",
       "scripts_check_no_competitor_refs_exempt_files",
       "scripts_check_no_competitor_refs_runcheck"
     ],
-    "139": [
+    "136": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detect",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detect_candidates",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detect_detectorpath",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detect_dirname"
     ],
-    "140": [
+    "137": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkelementradialspotlight",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_checkelementradialspotlightdom",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_elementgradientvalue",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_detector_detect_antipatterns_browser_spotlightlabel"
     ],
-    "141": [
+    "138": [
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_isstopevent",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_main",
       "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_hook_readstdin"
     ],
-    "142": [
+    "139": [
       "scripts_headroom_proxy",
       "scripts_headroom_proxy_args",
       "scripts_headroom_proxy_proxyprocess",
       "scripts_headroom_proxy_pythonexecutables"
     ],
-    "143": [
+    "140": [
       "scripts_test_phase_7_8_cdp",
       "scripts_test_phase_7_8_cdp_run",
       "scripts_test_phase_7_8_cdp_sleep",
       "scripts_test_phase_7_8_cdp_ws_dir"
     ],
-    "144": [
+    "141": [
       "scripts_test_phosphor_icons_cdp",
       "scripts_test_phosphor_icons_cdp_run",
       "scripts_test_phosphor_icons_cdp_sleep",
       "scripts_test_phosphor_icons_cdp_ws_dir"
     ],
-    "145": [
+    "142": [
       "scripts_verify_phase3_1_fidelity_cdp",
       "scripts_verify_phase3_1_fidelity_cdp_evidence_dir",
       "scripts_verify_phase3_1_fidelity_cdp_run",
       "scripts_verify_phase3_1_fidelity_cdp_sleep"
     ],
-    "146": [
+    "143": [
       "scripts_verify_phase3_layout_cdp",
       "scripts_verify_phase3_layout_cdp_evidence_dir",
       "scripts_verify_phase3_layout_cdp_run",
       "scripts_verify_phase3_layout_cdp_sleep"
     ],
-    "147": [
+    "144": [
       "src_components_ui_controls_gradient_gradient_stop_list_gradientstoprow",
       "src_components_ui_controls_gradient_gradient_stop_list_gradientstoprow_selectandchangecolor",
       "src_components_ui_controls_gradient_gradient_stop_list_gradientstoprow_selectandchangeopacity",
       "src_components_ui_controls_gradient_gradient_stop_list_gradientstoprow_selectandchangeposition"
     ],
-    "148": [
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_poll_lanes",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_poll_lanes_eventpriority",
-      "buildkit_skills_library_02_design_external_community_impeccable_skill_scripts_live_poll_lanes_selectavailablependingevent"
-    ],
-    "149": [
+    "145": [
       "fflate",
       "package_dependencies_fflate"
     ],
-    "150": [
+    "146": [
       "package_dependencies_sonner",
       "sonner"
     ],
-    "151": [
+    "147": [
       "package_dependencies_three",
       "three"
     ],
-    "152": [
+    "148": [
       "package_devdependencies_vitejs_plugin_react",
       "vitejs_plugin_react"
     ],
-    "153": [
+    "149": [
       "scripts_headroom_stats",
       "scripts_headroom_stats_fetchstats"
     ],
-    "154": [
+    "150": [
       "vite_config"
     ]
   },
   "cohesion": {
-    "0": 0.032849409448818895,
-    "1": 0.03218914684517875,
+    "0": 0.03218914684517875,
+    "1": 0.03536693191865606,
     "2": 0.04501679731243001,
     "3": 0.07740324594257178,
     "4": 0.059018367961457395,
-    "5": 0.05432098765432099,
+    "5": 0.07885968159940762,
     "6": 0.06142410015649452,
-    "7": 0.08249496981891348,
-    "8": 0.07042253521126761,
+    "7": 0.06317907444668008,
+    "8": 0.07246376811594203,
     "9": 0.06760316066725197,
-    "10": 0.06628621597892889,
+    "10": 0.061457418788410885,
     "11": 0.055288461538461536,
     "12": 0.07826546800634585,
     "13": 0.05737704918032787,
@@ -4677,127 +4669,123 @@
     "31": 0.11416490486257928,
     "32": 0.07087486157253599,
     "33": 0.1254355400696864,
-    "34": 0.1289198606271777,
-    "35": 0.09024390243902439,
-    "36": 0.10365853658536585,
-    "37": 0.08658536585365853,
-    "38": 0.1282051282051282,
-    "39": 0.11666666666666667,
-    "40": 0.13205128205128205,
-    "41": 0.11875843454790823,
-    "42": 0.18353576248313092,
-    "43": 0.12380952380952381,
-    "44": 0.09365079365079365,
-    "45": 0.12834224598930483,
-    "46": 0.19128787878787878,
-    "47": 0.1310483870967742,
-    "48": 0.1350806451612903,
-    "49": 0.15632183908045977,
-    "50": 0.13333333333333333,
-    "51": 0.06896551724137931,
-    "52": 0.17980295566502463,
-    "53": 0.07142857142857142,
-    "54": 0.11904761904761904,
-    "55": 0.14814814814814814,
-    "56": 0.07142857142857142,
-    "57": 0.1349206349206349,
-    "58": 0.1746031746031746,
-    "59": 0.09401709401709402,
-    "60": 0.09971509971509972,
-    "61": 0.11384615384615385,
-    "62": 0.13846153846153847,
-    "63": 0.1753846153846154,
-    "64": 0.1476923076923077,
+    "34": 0.06387921022067364,
+    "35": 0.1289198606271777,
+    "36": 0.09024390243902439,
+    "37": 0.10365853658536585,
+    "38": 0.08658536585365853,
+    "39": 0.1282051282051282,
+    "40": 0.11666666666666667,
+    "41": 0.13205128205128205,
+    "42": 0.11875843454790823,
+    "43": 0.18353576248313092,
+    "44": 0.12380952380952381,
+    "45": 0.09365079365079365,
+    "46": 0.12834224598930483,
+    "47": 0.19128787878787878,
+    "48": 0.1310483870967742,
+    "49": 0.1350806451612903,
+    "50": 0.15632183908045977,
+    "51": 0.13333333333333333,
+    "52": 0.06896551724137931,
+    "53": 0.17980295566502463,
+    "54": 0.07142857142857142,
+    "55": 0.11904761904761904,
+    "56": 0.14814814814814814,
+    "57": 0.07142857142857142,
+    "58": 0.1349206349206349,
+    "59": 0.1746031746031746,
+    "60": 0.09401709401709402,
+    "61": 0.09971509971509972,
+    "62": 0.11384615384615385,
+    "63": 0.13846153846153847,
+    "64": 0.1753846153846154,
     "65": 0.1476923076923077,
-    "66": 0.11076923076923077,
-    "67": 0.14666666666666667,
-    "68": 0.16,
-    "69": 0.18333333333333332,
-    "70": 0.1956521739130435,
-    "71": 0.21014492753623187,
-    "72": 0.14130434782608695,
-    "73": 0.16883116883116883,
-    "74": 0.12554112554112554,
-    "75": 0.18181818181818182,
-    "76": 0.15584415584415584,
-    "77": 0.12857142857142856,
-    "78": 0.22857142857142856,
+    "66": 0.1476923076923077,
+    "67": 0.11076923076923077,
+    "68": 0.13846153846153847,
+    "69": 0.14666666666666667,
+    "70": 0.16,
+    "71": 0.18333333333333332,
+    "72": 0.1956521739130435,
+    "73": 0.21014492753623187,
+    "74": 0.14130434782608695,
+    "75": 0.16883116883116883,
+    "76": 0.12554112554112554,
+    "77": 0.18181818181818182,
+    "78": 0.15584415584415584,
     "79": 0.14285714285714285,
-    "80": 0.1523809523809524,
-    "81": 0.12380952380952381,
-    "82": 0.20952380952380953,
-    "83": 0.18421052631578946,
-    "84": 0.1695906432748538,
-    "85": 0.15789473684210525,
-    "86": 0.15789473684210525,
-    "87": 0.19883040935672514,
-    "88": 0.19607843137254902,
-    "89": 0.13725490196078433,
-    "90": 0.1568627450980392,
-    "91": 0.19852941176470587,
-    "92": 0.27205882352941174,
-    "93": 0.20588235294117646,
-    "94": 0.11764705882352941,
-    "95": 0.1323529411764706,
-    "96": 0.18333333333333332,
-    "97": 0.175,
-    "98": 0.1523809523809524,
-    "99": 0.2,
-    "100": 0.19047619047619047,
-    "101": 0.29523809523809524,
-    "102": 0.21904761904761905,
-    "103": 0.20952380952380953,
-    "104": 0.21978021978021978,
-    "105": 0.27472527472527475,
-    "106": 0.21794871794871795,
-    "107": 0.18181818181818182,
-    "108": 0.3181818181818182,
-    "109": 0.30303030303030304,
-    "110": 0.2,
-    "111": 0.21818181818181817,
+    "80": 0.12857142857142856,
+    "81": 0.22857142857142856,
+    "82": 0.1523809523809524,
+    "83": 0.20952380952380953,
+    "84": 0.18421052631578946,
+    "85": 0.12631578947368421,
+    "86": 0.15263157894736842,
+    "87": 0.1695906432748538,
+    "88": 0.15789473684210525,
+    "89": 0.15789473684210525,
+    "90": 0.19883040935672514,
+    "91": 0.19607843137254902,
+    "92": 0.13725490196078433,
+    "93": 0.1568627450980392,
+    "94": 0.19852941176470587,
+    "95": 0.27205882352941174,
+    "96": 0.20588235294117646,
+    "97": 0.11764705882352941,
+    "98": 0.1323529411764706,
+    "99": 0.18333333333333332,
+    "100": 0.175,
+    "101": 0.1523809523809524,
+    "102": 0.2,
+    "103": 0.19047619047619047,
+    "104": 0.29523809523809524,
+    "105": 0.21904761904761905,
+    "106": 0.21978021978021978,
+    "107": 0.27472527472527475,
+    "108": 0.21794871794871795,
+    "109": 0.18181818181818182,
+    "110": 0.3181818181818182,
+    "111": 0.30303030303030304,
     "112": 0.2,
-    "113": 0.2,
-    "114": 0.34545454545454546,
-    "115": 0.23636363636363636,
-    "116": 0.38181818181818183,
+    "113": 0.21818181818181817,
+    "114": 0.2,
+    "115": 0.34545454545454546,
+    "116": 0.23636363636363636,
     "117": 0.37777777777777777,
     "118": 0.4,
-    "119": 0.26666666666666666,
-    "120": 0.3888888888888889,
-    "121": 0.3333333333333333,
-    "122": 0.3055555555555556,
-    "123": 0.3611111111111111,
-    "124": 0.32142857142857145,
-    "125": 0.5,
-    "126": 0.35714285714285715,
-    "127": 0.39285714285714285,
-    "128": 0.25,
-    "129": 0.38095238095238093,
-    "130": 0.6190476190476191,
-    "131": 0.5333333333333333,
+    "119": 0.3888888888888889,
+    "120": 0.3055555555555556,
+    "121": 0.32142857142857145,
+    "122": 0.5,
+    "123": 0.35714285714285715,
+    "124": 0.39285714285714285,
+    "125": 0.25,
+    "126": 0.38095238095238093,
+    "127": 0.6190476190476191,
+    "128": 0.5333333333333333,
+    "129": 0.5333333333333333,
+    "130": 0.4666666666666667,
+    "131": 0.6666666666666666,
     "132": 0.5333333333333333,
-    "133": 0.4666666666666667,
-    "134": 0.6666666666666666,
-    "135": 0.5333333333333333,
-    "136": 0.4,
-    "137": 0.5,
-    "138": 0.4,
+    "133": 0.4,
+    "134": 0.5,
+    "135": 0.4,
+    "136": 0.5,
+    "137": 0.6666666666666666,
+    "138": 0.8333333333333334,
     "139": 0.5,
     "140": 0.6666666666666666,
-    "141": 0.8333333333333334,
-    "142": 0.5,
+    "141": 0.6666666666666666,
+    "142": 0.6666666666666666,
     "143": 0.6666666666666666,
-    "144": 0.6666666666666666,
-    "145": 0.6666666666666666,
-    "146": 0.6666666666666666,
-    "147": 0.5,
+    "144": 0.5,
+    "145": 1.0,
+    "146": 1.0,
+    "147": 1.0,
     "148": 1.0,
     "149": 1.0,
-    "150": 1.0,
-    "151": 1.0,
-    "152": 1.0,
-    "153": 1.0,
-    "154": 1.0
+    "150": 1.0
   },
   "gods": [
     {
@@ -4853,6 +4841,28 @@
   ],
   "surprises": [
     {
+      "source": "SortableLayerRowProps",
+      "target": "Layer",
+      "source_files": [
+        "src/components/layout/layers-panel.tsx",
+        "src/types/frame.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities; peripheral node `SortableLayerRowProps` unexpectedly reaches hub `Layer`"
+    },
+    {
+      "source": "enableInlineEdit()",
+      "target": "own()",
+      "source_files": [
+        ".buildkit/skills-library/02-design/external-community/impeccable-skill/scripts/live-browser.js",
+        ".buildkit/skills-library/02-design/external-community/impeccable-skill/scripts/live-browser-dom.js"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
       "source": "layoutFlowChildren()",
       "target": "pickable()",
       "source_files": [
@@ -4864,48 +4874,26 @@
       "why": "inferred connection - not explicitly stated in source; bridges separate communities"
     },
     {
-      "source": "DialogDescription()",
-      "target": "cn()",
+      "source": "collect()",
+      "target": "extractPlatform()",
       "source_files": [
-        "src/components/ui/composites/dialog.tsx",
-        "src/components/ui/lib/utils.ts"
+        ".buildkit/skills-library/02-design/external-community/impeccable-skill/scripts/doctor.mjs",
+        ".buildkit/skills-library/02-design/external-community/impeccable-skill/scripts/context.mjs"
       ],
-      "confidence": "EXTRACTED",
-      "relation": "calls",
-      "why": "bridges separate communities; peripheral node `DialogDescription()` unexpectedly reaches hub `cn()`"
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
     },
     {
-      "source": "DialogOverlay()",
-      "target": "cn()",
+      "source": "collect()",
+      "target": "parseDesignMd()",
       "source_files": [
-        "src/components/ui/composites/dialog.tsx",
-        "src/components/ui/lib/utils.ts"
+        ".buildkit/skills-library/02-design/external-community/impeccable-skill/scripts/doctor.mjs",
+        ".buildkit/skills-library/02-design/external-community/impeccable-skill/scripts/lib/design-parser.mjs"
       ],
-      "confidence": "EXTRACTED",
-      "relation": "calls",
-      "why": "bridges separate communities; peripheral node `DialogOverlay()` unexpectedly reaches hub `cn()`"
-    },
-    {
-      "source": "Tabs()",
-      "target": "cn()",
-      "source_files": [
-        "src/components/ui/composites/tabs.tsx",
-        "src/components/ui/lib/utils.ts"
-      ],
-      "confidence": "EXTRACTED",
-      "relation": "calls",
-      "why": "bridges separate communities; peripheral node `Tabs()` unexpectedly reaches hub `cn()`"
-    },
-    {
-      "source": "TabsContent()",
-      "target": "cn()",
-      "source_files": [
-        "src/components/ui/composites/tabs.tsx",
-        "src/components/ui/lib/utils.ts"
-      ],
-      "confidence": "EXTRACTED",
-      "relation": "calls",
-      "why": "bridges separate communities; peripheral node `TabsContent()` unexpectedly reaches hub `cn()`"
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
     }
   ],
   "tokens": {

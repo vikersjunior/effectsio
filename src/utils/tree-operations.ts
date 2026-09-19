@@ -5,7 +5,7 @@
  *
  * Invariants:
  * 1. Single-tier nesting: Frame.items contains Layer or Group; Group.children contains Layer only.
- * 2. Backdrop protection: items[0] is always the locked procedural backdrop.
+ * 2. Locking enforcement: locked layers or groups cannot be moved or mutated; unlocked layers (including backdrop) can be reordered or deleted.
  * 3. Locked group enforcement:
  *    - Child editing, reordering, ejection, moving to another group, or deletion is rejected if parent group is locked.
  *    - Reordering, ungrouping, or deleting a locked group is rejected.

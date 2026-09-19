@@ -256,7 +256,7 @@ export interface Frame {
   id: string;
   name: string;
   dimensions: FrameDimensions;
-  items: (Layer | Group)[]; // Ordered bottom-to-top (index 0 = protected backdrop, N-1 = foreground)
+  items: (Layer | Group)[]; // Ordered bottom-to-top (index 0 = base layer, N-1 = foreground)
   activeLayerId: string | null;
   createdAt: number;
   updatedAt: number;
