@@ -16,6 +16,8 @@ import {
   DotsNineIcon,
   GridFourIcon,
   GradientIcon,
+  LockSimpleIcon,
+  LockSimpleOpenIcon,
 } from "@phosphor-icons/react";
 import {
   DndContext,
@@ -750,9 +752,34 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
 
             {/* TIER 2: Layer Properties (Universal across all layer types) */}
             <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
-              <span className="text-sm font-medium text-[color:var(--foreground)]">
-                Layer Properties
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[color:var(--foreground)]">
+                  Layer Properties
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  disabled={Boolean(parentGroup?.locked)}
+                  onClick={() => updateLayer(layerId, { locked: !currentLayer.locked })}
+                  aria-label={currentLayer.locked ? "Unlock layer" : "Lock layer"}
+                  data-testid="layer-lock-toggle-btn"
+                  className="text-xs h-6 px-2 gap-1 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] cursor-pointer disabled:opacity-50"
+                  title={parentGroup?.locked ? "Layer is locked because parent group is locked" : currentLayer.locked ? "Layer is locked. Click to unlock" : "Click to lock layer"}
+                >
+                  {currentLayer.locked || parentGroup?.locked ? (
+                    <>
+                      <LockSimpleIcon size={ICON_SIZES.sm} />
+                      <span>Locked</span>
+                    </>
+                  ) : (
+                    <>
+                      <LockSimpleOpenIcon size={ICON_SIZES.sm} />
+                      <span>Unlocked</span>
+                    </>
+                  )}
+                </Button>
+              </div>
 
               {/* Opacity */}
               <SliderControl

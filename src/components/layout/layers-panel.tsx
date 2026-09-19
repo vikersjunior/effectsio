@@ -50,6 +50,7 @@ interface SortableLayerRowProps {
   onSelect: (e?: React.MouseEvent) => void;
   onToggleVisibility: (e: React.MouseEvent) => void;
   onRemove?: (e: React.MouseEvent) => void;
+  onToggleLock?: () => void;
   isLocked?: boolean;
 }
 
@@ -60,6 +61,7 @@ function SortableLayerRow({
   onSelect,
   onToggleVisibility,
   onRemove,
+  onToggleLock,
   isLocked: isLockedProp,
 }: SortableLayerRowProps): React.JSX.Element {
   const isLocked = isLockedProp ?? Boolean(layer.locked);
@@ -114,12 +116,20 @@ function SortableLayerRow({
     >
       {/* 1. Drag Handle vs Locked Indicator */}
       {isLocked ? (
-        <div
-          className="p-0.5 text-[color:var(--muted-foreground)] shrink-0 opacity-60 flex items-center justify-center"
-          title="Layer is locked at base"
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleLock?.();
+          }}
+          disabled={!onToggleLock}
+          aria-label={`Unlock ${layer.name}`}
+          data-testid="unlock-layer-button"
+          className="p-0.5 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] shrink-0 opacity-60 hover:opacity-100 flex items-center justify-center cursor-pointer disabled:pointer-events-none"
+          title="Layer is locked. Click to unlock"
         >
           <LockSimpleIcon size={ICON_SIZES.sm} />
-        </div>
+        </button>
       ) : (
         <button
           type="button"
@@ -554,6 +564,14 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
                                   e.stopPropagation();
                                   removeLayer(child.id);
                                 }}
+                                onToggleLock={
+                                  item.locked
+                                    ? undefined
+                                    : () =>
+                                        updateLayer(child.id, {
+                                          locked: !child.locked,
+                                        })
+                                }
                               />
                             );
                           })}
@@ -598,6 +616,11 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
                             e.stopPropagation();
                             removeLayer(item.id);
                           }
+                    }
+                    onToggleLock={() =>
+                      updateLayer(item.id, {
+                        locked: !item.locked,
+                      })
                     }
                   />
                 );

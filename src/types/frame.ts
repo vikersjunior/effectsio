@@ -344,6 +344,10 @@ export function isLayer(item: unknown): item is Layer {
  * Legacy background/generative fields (type: "generative", backgrounds, sublayers, backgroundMode,
  * backgroundConfig) are populated strictly as temporary compatibility data for un-migrated Phase 2-4 consumers.
  * They are not the canonical representation of the backdrop and are scheduled for removal during downstream migration.
+ *
+ * NOTE: The default `locked: true` is merely a UI convenience default for newly synthesized default frames,
+ * NOT a structural protection. The procedural backdrop is an ordinary Layer that can be unlocked, edited,
+ * reordered, and deleted.
  */
 export function createDefaultBackdropLayer(backgroundConfig?: BackgroundState): Layer {
   const now = Date.now();
@@ -868,13 +872,9 @@ export function flattenItemsToLayers(items: (Layer | Group)[]): Layer[] {
 }
 
 /**
- * Preserves root composition items without forcing a permanent backdrop at index 0.
- * If items is completely empty, initializes with a default backdrop.
+ * @deprecated Legacy migration adapter. Canonical runtime preserves empty item lists without manufacturing content.
  */
 export function normalizeBackdrop(items: (Layer | Group)[]): (Layer | Group)[] {
-  if (items.length === 0) {
-    return [createDefaultBackdropLayer()];
-  }
   return items;
 }
 
@@ -883,7 +883,7 @@ export function normalizeBackdrop(items: (Layer | Group)[]): (Layer | Group)[] {
  *
  * Guaranteed Invariants:
  * 1. Frame.items is the sole composition stack (Layer | Group)[].
- * 2. Frame.items[0] is permanently a locked procedural backdrop Layer.
+ * 2. Frame.items represents the entire composition stack in bottom-to-top order. An intentionally empty composition (items = []) is fully valid and preserved.
  * 3. Group membership is strictly physical containment (Group.children: Layer[]).
  * 4. Nested groups are dissolved inline and their visibility/lock state materialized onto children.
  * 5. Empty groups are auto-pruned.
@@ -1036,11 +1036,6 @@ export function normalizeFrameToUniversalModel(rawFrame: unknown): Frame {
         placedGroupIds.add(gid);
       }
     }
-  }
-
-  // If items list is empty, initialize with default backdrop
-  if (items.length === 0) {
-    items = [createDefaultBackdropLayer()];
   }
 
   // Recover or preserve activeLayerId (supporting both Layer and Group IDs)

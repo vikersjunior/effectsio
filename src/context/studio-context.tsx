@@ -1875,9 +1875,7 @@ export function StudioProvider({
 
           if (isOnlyEmptyDefault) {
             const firstAsset = newlyCreated[0];
-            const baseBackdrop =
-              (updatedFrames[0].items[0] as Layer) ||
-              createDefaultBackdropLayer();
+            const existingItems = updatedFrames[0].items;
             const firstLayer = createImageLayer(
               firstAsset.id,
               firstAsset.filename,
@@ -1892,7 +1890,7 @@ export function StudioProvider({
                 height: firstAsset.height || 1080,
                 presetId: null,
               },
-              items: [baseBackdrop, firstLayer],
+              items: [...existingItems, firstLayer],
               activeLayerId: firstLayer.id,
               updatedAt: Date.now(),
             };

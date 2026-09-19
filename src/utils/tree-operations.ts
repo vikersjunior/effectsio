@@ -19,7 +19,6 @@ import {
   isGroup,
   isLayer,
   createGroup,
-  normalizeBackdrop,
   type BlendMode,
   type LayerTransform,
   DEFAULT_LAYER_TRANSFORM,

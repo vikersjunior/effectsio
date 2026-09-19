@@ -6,7 +6,7 @@ import { StudioProvider, useStudioStore } from "../../context/studio-context";
 import { LayersPanel } from "./layers-panel";
 import { InspectorPanel } from "./inspector-panel";
 import type { Asset } from "../../types/asset";
-import { isGroup, type Group, type Layer } from "../../types/frame";
+import { isGroup, normalizeFrameToUniversalModel, type Group, type Layer } from "../../types/frame";
 
 const sampleAsset: Asset = {
   id: "sample-asset-1",
@@ -304,6 +304,20 @@ describe("EffectsIO — Group Compositing & Backdrop Semantics Correction Suite"
         remaining.forEach((item) => storeRef.removeLayer(item.id));
       });
       expect(storeRef.activeFrame?.items.length).toBe(0);
+
+      // 8. Normalization preserves empty items array without creating a backdrop
+      const normalized = normalizeFrameToUniversalModel(storeRef.activeFrame);
+      expect(normalized.items).toEqual([]);
+      expect(normalized.items.length).toBe(0);
+      expect(normalized.activeLayerId).toBeNull();
+
+      // 9. Adding a new layer to the empty frame adds the new layer without synthesizing a backdrop
+      let newLayer!: Layer;
+      act(() => {
+        newLayer = storeRef.addLayerFromAsset(sampleAsset.id)!;
+      });
+      expect(storeRef.activeFrame?.items.length).toBe(1);
+      expect(storeRef.activeFrame?.items[0].id).toBe(newLayer.id);
     });
   });
 });

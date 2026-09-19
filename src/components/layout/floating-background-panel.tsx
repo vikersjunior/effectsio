@@ -416,8 +416,7 @@ function FloatingBackgroundPanelContent({ activeFrame, activeLayer }: PanelConte
 
   const handleSelectPrimitive = (newType: BackgroundItemType | "transparent") => {
     if (newType === "transparent") {
-      // Backdrop layer at index 0 is locked and cannot be removed
-      if (activeFrame.items[0]?.id !== activeLayer.id) {
+      if (!activeLayer.locked) {
         removeLayer(activeLayer.id);
         setIsProceduralEditorOpen(false);
       }

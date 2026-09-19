@@ -456,4 +456,55 @@ describe("Stage 1A Frame Storage & Migration Suite", () => {
       delete (globalThis.window as any).indexedDB;
     }
   });
+
+  it("persists and reloads an intentionally empty Frame (items = []) without synthesizing a backdrop Layer", async () => {
+    const originalIDB = (globalThis as any).window?.indexedDB;
+    if (!globalThis.window) (globalThis as any).window = {};
+    const { mockIDBFactory } = createMockIndexedDB();
+    globalThis.window.indexedDB = mockIDBFactory as any;
+
+    const { dbSaveFrames, dbSaveSessionState, loadHydratedProject } = await import("./db");
+    const { createDefaultFrame, normalizeFrameToUniversalModel } = await import("../types/frame");
+
+    // 1. Create a frame that originally has content
+    const frame = createDefaultFrame("frame-empty-persistence-test", "Empty Project");
+    expect(frame.items.length).toBe(1);
+
+    // 2. User deletes every layer in the frame -> items = []
+    const emptyFrame = {
+      ...frame,
+      items: [],
+      activeLayerId: null,
+      updatedAt: Date.now(),
+    };
+    expect(emptyFrame.items.length).toBe(0);
+
+    // 3. Normalization of empty frame preserves items = []
+    const normalizedDirectly = normalizeFrameToUniversalModel(emptyFrame);
+    expect(normalizedDirectly.items).toEqual([]);
+    expect(normalizedDirectly.items.length).toBe(0);
+    expect(normalizedDirectly.activeLayerId).toBeNull();
+
+    // 4. Persist empty frame and session state to IndexedDB
+    await dbSaveFrames([emptyFrame]);
+    await dbSaveSessionState(emptyFrame.id, null, null, "Empty Project");
+
+    // 5. Reload / hydrate from IndexedDB
+    const project = await loadHydratedProject();
+    expect(project.frames).toBeDefined();
+    expect(project.frames.length).toBe(1);
+
+    const loadedFrame = project.frames[0];
+    expect(loadedFrame.id).toBe("frame-empty-persistence-test");
+    expect(loadedFrame.items).toEqual([]);
+    expect(loadedFrame.items.length).toBe(0);
+    expect(loadedFrame.activeLayerId).toBeNull();
+
+    // Clean up mock
+    if (originalIDB) {
+      globalThis.window.indexedDB = originalIDB;
+    } else {
+      delete (globalThis.window as any).indexedDB;
+    }
+  });
 });

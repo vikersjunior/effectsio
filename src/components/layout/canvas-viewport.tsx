@@ -340,9 +340,9 @@ export function CanvasViewport({
 
       // 5. Render Transformed Frame / Active Image & Processed Layer Stack
       const isSourceLoaded = Boolean(activeAsset && loadedSourceImage && loadedSourceImage.id === activeAsset.id);
-      const hasFrameLayers = Boolean(activeFrame && activeFrame.items && activeFrame.items.length > 0);
+      const hasFrame = Boolean(activeFrame && activeFrame.items);
 
-      if (isSourceLoaded || hasFrameLayers) {
+      if (isSourceLoaded || hasFrame) {
         const scale = currentZoom / 100;
         const renderSource = loadedSourceImage?.img ?? null;
         let w = activeFrame ? activeFrame.dimensions.width : (activeAsset ? activeAsset.width : 800);

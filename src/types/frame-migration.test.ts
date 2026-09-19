@@ -728,5 +728,28 @@ describe("Unified Composition Model — Phase 1 Data Model Foundation & Migratio
         ((initialFrame.items[1] as Group).children[0] as Layer).transform
       );
     });
+
+    it("preserves an empty Frame (items = []) without synthesizing a procedural backdrop Layer", () => {
+      const emptyFrame: Frame = {
+        id: "frame-empty-test",
+        name: "Empty Frame",
+        dimensions: { width: 1080, height: 1080, presetId: null },
+        items: [],
+        activeLayerId: null,
+        createdAt: 100,
+        updatedAt: 100,
+      };
+
+      const normalized = normalizeFrameToUniversalModel(emptyFrame);
+      expect(normalized.items).toEqual([]);
+      expect(normalized.items).toHaveLength(0);
+      expect(normalized.activeLayerId).toBeNull();
+
+      // Idempotency: repeated normalization of empty frame preserves empty items
+      const pass2 = normalizeFrameToUniversalModel(normalized);
+      expect(pass2.items).toEqual([]);
+      expect(pass2.items).toHaveLength(0);
+      expect(pass2.activeLayerId).toBeNull();
+    });
   });
 });
