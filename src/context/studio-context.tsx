@@ -176,7 +176,7 @@ export interface StudioContextType {
   toggleLayerSelection: (layerId: string) => void;
   selectLayers: (layerIds: string[]) => void;
   clearLayerSelection: () => void;
-  createGroup: (name?: string) => void;
+  createGroup: (name?: string, layerIds?: string[]) => void;
   ungroup: (groupId: string) => void;
   deleteGroup: (groupId: string) => void;
   renameGroup: (groupId: string, newName: string) => void;
@@ -1346,8 +1346,8 @@ export function StudioProvider({
   // ---------------------------------------------------------------------------
 
   const createGroup = React.useCallback(
-    (name?: string) => {
-      const selected = Array.from(selectedLayerIds);
+    (name?: string, layerIds?: string[]) => {
+      const selected = layerIds ?? Array.from(selectedLayerIds);
       if (selected.length < 2) return;
 
       recordDiscreteSnapshot();
