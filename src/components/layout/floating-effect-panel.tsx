@@ -17,11 +17,14 @@ import {
 import { useStudioStore } from '../../context/studio-context';
 import { getEffectDefinition } from '../../effects/registry';
 import { parseStopPosition } from '../ui/controls/gradient/gradient-control-utils';
+import { findParentGroupOfLayer } from '../../utils/tree-operations';
 
 export function FloatingEffectPanel(): React.JSX.Element | null {
   const {
     activeLayer,
+    activeGroup,
     activeLayerId,
+    activeFrame,
     selectedInstance,
     updateInstanceParameters,
     resetInstanceParameters,
@@ -123,7 +126,11 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
     );
   }, [definition, gradientConfig]);
 
-  if (!activeLayer || !activeLayerId || !selectedInstance || !definition) {
+  const parentGroup = activeFrame && activeLayer ? findParentGroupOfLayer(activeFrame.items, activeLayer.id) : null;
+  const isLocked = Boolean(activeGroup ? activeGroup.locked : (activeLayer?.locked || parentGroup?.locked));
+
+  const activeItem = activeGroup || activeLayer;
+  if (!activeItem || !activeLayerId || !selectedInstance || !definition) {
     return null;
   }
 
@@ -134,7 +141,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
   };
 
   const handleReset = () => {
-    if (activeLayerId && selectedInstance) {
+    if (activeLayerId && selectedInstance && !isLocked) {
       resetInstanceParameters(activeLayerId, selectedInstance.instanceId);
     }
   };
@@ -221,6 +228,7 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
           <Button
             variant="ghost"
             size="icon-xs"
+            disabled={isLocked}
             onClick={handleReset}
             title="Reset parameters to defaults"
             aria-label="Reset parameters"
@@ -248,57 +256,59 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
       >
         <div className="flex flex-col gap-3.5">
           {gradientConfig && (
-            <GradientControl
-              name={gradientConfig.label ?? "Gradient"}
-              mode="tonal-ramp"
-              stops={gradientStops}
-              stopLabels={[
-                gradientConfig.startLabel ?? "Shadow",
-                gradientConfig.endLabel ?? "Highlight",
-              ]}
-              onReverse={() => {
-                if (activeLayerId && selectedInstance) {
-                  updateInstanceParameters(
-                    activeLayerId,
-                    selectedInstance.instanceId,
-                    {
-                      [gradientConfig.startColorParam]: endColor,
-                      [gradientConfig.endColorParam]: startColor,
+            <div className={isLocked ? "pointer-events-none opacity-50" : ""}>
+              <GradientControl
+                name={gradientConfig.label ?? "Gradient"}
+                mode="tonal-ramp"
+                stops={gradientStops}
+                stopLabels={[
+                  gradientConfig.startLabel ?? "Shadow",
+                  gradientConfig.endLabel ?? "Highlight",
+                ]}
+                onReverse={() => {
+                  if (activeLayerId && selectedInstance && !isLocked) {
+                    updateInstanceParameters(
+                      activeLayerId,
+                      selectedInstance.instanceId,
+                      {
+                        [gradientConfig.startColorParam]: endColor,
+                        [gradientConfig.endColorParam]: startColor,
+                      }
+                    );
+                  }
+                }}
+                onValueChange={({ stops: nextStops }) => {
+                  if (activeLayerId && selectedInstance && !isLocked) {
+                    const nextStart = nextStops[0]?.color;
+                    const nextEnd = nextStops[nextStops.length - 1]?.color;
+                    const nextStartPos =
+                      nextStops[0]?.position !== undefined
+                        ? Math.round(parseStopPosition(nextStops[0].position) * 100)
+                        : undefined;
+                    const nextEndPos =
+                      nextStops[nextStops.length - 1]?.position !== undefined
+                        ? Math.round(parseStopPosition(nextStops[nextStops.length - 1].position) * 100)
+                        : undefined;
+
+                    const updates: Record<string, unknown> = {};
+                    if (nextStart) updates[gradientConfig.startColorParam] = nextStart;
+                    if (nextEnd) updates[gradientConfig.endColorParam] = nextEnd;
+                    if (gradientConfig.startPositionParam && nextStartPos !== undefined) {
+                      updates[gradientConfig.startPositionParam] = nextStartPos;
                     }
-                  );
-                }
-              }}
-              onValueChange={({ stops: nextStops }) => {
-                if (activeLayerId && selectedInstance) {
-                  const nextStart = nextStops[0]?.color;
-                  const nextEnd = nextStops[nextStops.length - 1]?.color;
-                  const nextStartPos =
-                    nextStops[0]?.position !== undefined
-                      ? Math.round(parseStopPosition(nextStops[0].position) * 100)
-                      : undefined;
-                  const nextEndPos =
-                    nextStops[nextStops.length - 1]?.position !== undefined
-                      ? Math.round(parseStopPosition(nextStops[nextStops.length - 1].position) * 100)
-                      : undefined;
+                    if (gradientConfig.endPositionParam && nextEndPos !== undefined) {
+                      updates[gradientConfig.endPositionParam] = nextEndPos;
+                    }
 
-                  const updates: Record<string, unknown> = {};
-                  if (nextStart) updates[gradientConfig.startColorParam] = nextStart;
-                  if (nextEnd) updates[gradientConfig.endColorParam] = nextEnd;
-                  if (gradientConfig.startPositionParam && nextStartPos !== undefined) {
-                    updates[gradientConfig.startPositionParam] = nextStartPos;
+                    updateInstanceParameters(
+                      activeLayerId,
+                      selectedInstance.instanceId,
+                      updates
+                    );
                   }
-                  if (gradientConfig.endPositionParam && nextEndPos !== undefined) {
-                    updates[gradientConfig.endPositionParam] = nextEndPos;
-                  }
-
-                  updateInstanceParameters(
-                    activeLayerId,
-                    selectedInstance.instanceId,
-                    updates
-                  );
-                }
-              }}
-            />
+                }}
+              />
+            </div>
           )}
 
           {parametersToRender.map((schema) => {
@@ -314,12 +324,13 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                   <SliderControl
                     key={paramName}
                     name={paramName}
+                    disabled={isLocked}
                     value={Number(currentValue)}
                     min={schema.min ?? 0}
                     max={schema.max ?? 100}
                     step={schema.step ?? 1}
                     onValueChange={(val: number) => {
-                      if (activeLayerId && selectedInstance) {
+                      if (activeLayerId && selectedInstance && !isLocked) {
                         updateInstanceParameters(
                           activeLayerId,
                           selectedInstance.instanceId,
@@ -337,13 +348,14 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                   <SelectControl
                     key={paramName}
                     name={paramName}
+                    disabled={isLocked}
                     value={String(currentValue)}
                     options={(schema.options ?? []).map((opt) => ({
                       label: opt.label,
                       value: String(opt.value),
                     }))}
                     onValueChange={(val: string) => {
-                      if (activeLayerId && selectedInstance) {
+                      if (activeLayerId && selectedInstance && !isLocked) {
                         updateInstanceParameters(
                           activeLayerId,
                           selectedInstance.instanceId,
@@ -361,9 +373,10 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                   <ColorControl
                     key={paramName}
                     name={paramName}
+                    disabled={isLocked}
                     value={String(currentValue)}
                     onValueChange={(val: string) => {
-                      if (activeLayerId && selectedInstance) {
+                      if (activeLayerId && selectedInstance && !isLocked) {
                         updateInstanceParameters(
                           activeLayerId,
                           selectedInstance.instanceId,
@@ -381,9 +394,10 @@ export function FloatingEffectPanel(): React.JSX.Element | null {
                   <BooleanControl
                     key={paramName}
                     name={paramName}
+                    disabled={isLocked}
                     value={Boolean(currentValue)}
                     onValueChange={(val: boolean) => {
-                      if (activeLayerId && selectedInstance) {
+                      if (activeLayerId && selectedInstance && !isLocked) {
                         updateInstanceParameters(
                           activeLayerId,
                           selectedInstance.instanceId,

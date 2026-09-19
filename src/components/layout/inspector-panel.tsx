@@ -61,6 +61,7 @@ import {
   type ImageLayer,
   type GenerativeLayer,
 } from "../../types/frame";
+import { findParentGroupOfLayer } from "../../utils/tree-operations";
 
 const FIT_OPTIONS = [
   { value: "contain", label: "Contain" },
@@ -71,6 +72,7 @@ interface SortableEffectRowProps {
   instance: EffectInstance;
   index: number;
   isSelected: boolean;
+  disabled?: boolean;
   onSelect: () => void;
   onToggleEnabled: () => void;
   onRemove: () => void;
@@ -79,6 +81,7 @@ interface SortableEffectRowProps {
 function SortableEffectRow({
   instance,
   isSelected,
+  disabled = false,
   onSelect,
   onToggleEnabled,
   onRemove,
@@ -90,7 +93,7 @@ function SortableEffectRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: instance.instanceId });
+  } = useSortable({ id: instance.instanceId, disabled });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -117,8 +120,11 @@ function SortableEffectRow({
           type="button"
           {...attributes}
           {...listeners}
+          disabled={disabled}
           aria-label="Reorder effect"
-          className="cursor-grab active:cursor-grabbing text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] p-0.5 shrink-0"
+          className={`p-0.5 shrink-0 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] ${
+            disabled ? "cursor-not-allowed opacity-50" : "cursor-grab active:cursor-grabbing"
+          }`}
           onClick={(e) => e.stopPropagation()}
         >
           <DotsSixVerticalIcon size={ICON_SIZES.md} />
@@ -134,6 +140,7 @@ function SortableEffectRow({
         <Button
           variant="ghost"
           size="icon-xs"
+          disabled={disabled}
           title="Blending mode"
           aria-label="Blending mode"
           className="size-6 flex items-center justify-center rounded-md text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150 [&_svg]:!size-4 cursor-pointer"
@@ -144,6 +151,7 @@ function SortableEffectRow({
         <Button
           variant="ghost"
           size="icon-xs"
+          disabled={disabled}
           onClick={onToggleEnabled}
           title={instance.enabled ? "Disable effect" : "Enable effect"}
           aria-label={instance.enabled ? "Disable effect" : "Enable effect"}
@@ -155,6 +163,7 @@ function SortableEffectRow({
         <Button
           variant="ghost"
           size="icon-xs"
+          disabled={disabled}
           onClick={onRemove}
           title="Remove effect"
           aria-label="Remove effect"
@@ -206,7 +215,13 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
     activeFrame,
     activeLayerId,
     activeLayer,
+    activeGroup,
     updateLayer,
+    renameGroup,
+    setGroupOpacity,
+    setGroupBlendMode,
+    updateGroupTransform,
+    resetGroupTransform,
   } = useStudioStore();
 
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
@@ -217,6 +232,9 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
   React.useEffect(() => {
     setIsLookVisible(true);
   }, [appliedLook?.id]);
+
+  const parentGroup = activeFrame && activeLayer ? findParentGroupOfLayer(activeFrame.items, activeLayer.id) : null;
+  const isLocked = Boolean(activeGroup ? activeGroup.locked : (activeLayer?.locked || parentGroup?.locked));
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -231,17 +249,18 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!activeLayer || !over || active.id === over.id) return;
+    const targetId = activeGroup?.id ?? activeLayer?.id;
+    if (!targetId || !over || active.id === over.id || isLocked) return;
 
     const oldIndex = activeEffectStack.findIndex((i) => i.instanceId === active.id);
     const newIndex = activeEffectStack.findIndex((i) => i.instanceId === over.id);
 
     if (oldIndex !== -1 && newIndex !== -1) {
-      reorderEffectStack(activeLayer.id, oldIndex, newIndex);
+      reorderEffectStack(targetId, oldIndex, newIndex);
     }
   };
 
-  const isPopulated = Boolean(activeLayer);
+  const isPopulated = Boolean(activeLayer || activeGroup);
   const isImageLayer = activeLayer?.source?.type === "image";
   const isProceduralLayer = activeLayer?.source?.type === "procedural";
 
@@ -420,6 +439,244 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
             </div>
           </div>
         </ScrollFade>
+      ) : activeGroup ? (
+        /* Populated Group Inspector */
+        (() => {
+          const group = activeGroup;
+          const groupId = group.id;
+          const transform = group.transform ?? DEFAULT_LAYER_TRANSFORM;
+
+          return (
+            <ScrollFade className="flex-1 overflow-y-auto" containerClassName="flex-1 min-h-0">
+              <div className="flex flex-col">
+                {/* TIER 1: Group Identity */}
+                <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-[color:var(--foreground)]">
+                      Group
+                    </span>
+                    {group.locked && (
+                      <span className="text-2xs font-medium px-1.5 py-0.5 rounded bg-[color:var(--secondary)] text-[color:var(--muted-foreground)]">
+                        Locked
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-2xs text-[color:var(--muted-foreground)]">Name</span>
+                    <Input
+                      type="text"
+                      size="sm"
+                      value={group.name}
+                      disabled={isLocked}
+                      onChange={(e) => renameGroup(groupId, e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* TIER 2: Group Compositing Properties (Opacity & Blend Mode) */}
+                <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
+                  <span className="text-sm font-medium text-[color:var(--foreground)]">
+                    Compositing
+                  </span>
+
+                  {/* Opacity */}
+                  <SliderControl
+                    name="Opacity"
+                    min={0}
+                    max={100}
+                    step={1}
+                    unit="%"
+                    disabled={isLocked}
+                    value={Math.round((group.opacity ?? 1) * 100)}
+                    onValueChange={(val) => {
+                      setGroupOpacity(groupId, val / 100);
+                    }}
+                  />
+
+                  {/* Blend Mode */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-2xs text-[color:var(--muted-foreground)]">Blend Mode</span>
+                    <StaticSelect
+                      size="sm"
+                      disabled={isLocked}
+                      value={group.blendMode || "normal"}
+                      options={BLEND_MODE_OPTIONS}
+                      onValueChange={(val) => {
+                        setGroupBlendMode(groupId, val as BlendMode);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* TIER 3: Group Transform */}
+                {(() => {
+                  return (
+                    <div className="flex flex-col border-b border-[color:var(--border)] p-4 gap-3">
+                      <span className="text-sm font-medium text-[color:var(--foreground)]">
+                        Transform
+                      </span>
+
+                      {/* Position */}
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-2xs text-[color:var(--muted-foreground)]">Position</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-[color:var(--muted-foreground)] w-3 shrink-0">X</span>
+                            <div className="relative flex-1 min-w-0">
+                              <Input
+                                type="number"
+                                size="sm"
+                                disabled={isLocked}
+                                value={Math.round(transform.x)}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  updateGroupTransform(groupId, {
+                                    x: isNaN(val) ? 0 : val,
+                                  });
+                                }}
+                                className="pr-6 text-right font-mono"
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2xs text-[color:var(--muted-foreground)] pointer-events-none">
+                                px
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-[color:var(--muted-foreground)] w-3 shrink-0">Y</span>
+                            <div className="relative flex-1 min-w-0">
+                              <Input
+                                type="number"
+                                size="sm"
+                                disabled={isLocked}
+                                value={Math.round(transform.y)}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  updateGroupTransform(groupId, {
+                                    y: isNaN(val) ? 0 : val,
+                                  });
+                                }}
+                                className="pr-6 text-right font-mono"
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2xs text-[color:var(--muted-foreground)] pointer-events-none">
+                                px
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Scale */}
+                      <SliderControl
+                        name="Scale"
+                        min={5}
+                        max={500}
+                        inputMax={2000}
+                        step={1}
+                        unit="%"
+                        disabled={isLocked}
+                        value={Math.round(transform.scaleX * 100)}
+                        onValueChange={(val) => {
+                          const nextScale = val / 100;
+                          updateGroupTransform(groupId, {
+                            scaleX: nextScale,
+                            scaleY: nextScale,
+                          });
+                        }}
+                      />
+
+                      {/* Rotation */}
+                      <SliderControl
+                        name="Rotation"
+                        min={-180}
+                        max={180}
+                        step={1}
+                        unit="°"
+                        disabled={isLocked}
+                        value={Math.round(transform.rotation)}
+                        onValueChange={(val) => {
+                          updateGroupTransform(groupId, {
+                            rotation: val,
+                          });
+                        }}
+                      />
+
+                      {/* Reset Transform */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isLocked}
+                        className="w-full mt-1 text-xs"
+                        onClick={() => {
+                          resetGroupTransform(groupId);
+                        }}
+                      >
+                        Reset Transform
+                      </Button>
+                    </div>
+                  );
+                })()}
+
+                {/* TIER 4: Group Effects */}
+                <div className="flex flex-col border-b border-[color:var(--border)]">
+                  <div className="flex items-center justify-between px-4 h-11 min-h-11 shrink-0">
+                    <span className="text-sm font-medium text-[color:var(--foreground)]">Effects</span>
+                    <button
+                      type="button"
+                      disabled={isLocked}
+                      onClick={() => setIsEffectBrowserOpen(true)}
+                      aria-label="Add effect"
+                      title="Add effect"
+                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer disabled:pointer-events-none disabled:opacity-50 [&_svg]:!size-4"
+                    >
+                      <PlusIcon size={ICON_SIZES.md} />
+                    </button>
+                  </div>
+
+                  {activeEffectStack.length > 0 && (
+                    <div className="flex flex-col gap-1 px-2 pb-2.5">
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={activeEffectStack.map((i) => i.instanceId)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {activeEffectStack.map((instance, index) => {
+                            const isSelected = selectedInstanceId === instance.instanceId;
+                            return (
+                              <SortableEffectRow
+                                key={instance.instanceId}
+                                instance={instance}
+                                index={index}
+                                isSelected={isSelected}
+                                disabled={isLocked}
+                                onSelect={() =>
+                                  selectInstance(
+                                    groupId,
+                                    isSelected ? null : instance.instanceId
+                                  )
+                                }
+                                onToggleEnabled={() =>
+                                  toggleInstanceEnabled(groupId, instance.instanceId)
+                                }
+                                onRemove={() =>
+                                  removeInstanceFromStack(groupId, instance.instanceId)
+                                }
+                              />
+                            );
+                          })}
+                        </SortableContext>
+                      </DndContext>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </ScrollFade>
+          );
+        })()
       ) : activeLayer ? (
         /* Populated Design Mode Inspector (Figma node 61:1306): Stacked Sections */
         (() => {
@@ -449,6 +706,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                       <SegmentedControl
                         name="Fit"
                         showLabel={false}
+                        disabled={isLocked}
                         value={(currentLayer as ImageLayer).fit || (currentLayer as any).fit || "contain"}
                         options={FIT_OPTIONS}
                         onValueChange={(val) => {
@@ -503,6 +761,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                 max={100}
                 step={1}
                 unit="%"
+                disabled={isLocked}
                 value={Math.round((currentLayer.opacity ?? 1) * 100)}
                 onValueChange={(val) => {
                   updateLayer(layerId, { opacity: val / 100 });
@@ -514,6 +773,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                 <span className="text-2xs text-[color:var(--muted-foreground)]">Blend Mode</span>
                 <StaticSelect
                   size="sm"
+                  disabled={isLocked}
                   value={currentLayer.blendMode || "normal"}
                   options={BLEND_MODE_OPTIONS}
                   onValueChange={(val) => {
@@ -542,6 +802,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                           <Input
                             type="number"
                             size="sm"
+                            disabled={isLocked}
                             value={Math.round(transform.x)}
                             onChange={(e) => {
                               const val = parseFloat(e.target.value);
@@ -566,6 +827,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                           <Input
                             type="number"
                             size="sm"
+                            disabled={isLocked}
                             value={Math.round(transform.y)}
                             onChange={(e) => {
                               const val = parseFloat(e.target.value);
@@ -594,6 +856,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                     inputMax={2000}
                     step={1}
                     unit="%"
+                    disabled={isLocked}
                     value={Math.round(transform.scaleX * 100)}
                     onValueChange={(val) => {
                       const nextScale = val / 100;
@@ -614,6 +877,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                     max={180}
                     step={1}
                     unit="°"
+                    disabled={isLocked}
                     value={Math.round(transform.rotation)}
                     onValueChange={(val) => {
                       updateLayer(layerId, {
@@ -629,6 +893,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={isLocked}
                     className="w-full mt-1 text-xs"
                     onClick={() => {
                       updateLayer(layerId, {
@@ -648,10 +913,11 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                 <span className="text-sm font-medium text-[color:var(--foreground)]">Effects</span>
                 <button
                   type="button"
+                  disabled={isLocked}
                   onClick={() => setIsEffectBrowserOpen(true)}
                   aria-label="Add effect"
                   title="Add effect"
-                  className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
+                  className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer disabled:pointer-events-none disabled:opacity-50 [&_svg]:!size-4"
                 >
                   <PlusIcon size={ICON_SIZES.md} />
                 </button>
@@ -676,6 +942,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                             instance={instance}
                             index={index}
                             isSelected={isSelected}
+                            disabled={isLocked}
                             onSelect={() =>
                               selectInstance(
                                 layerId,
@@ -705,6 +972,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                   <Button
                     variant="ghost"
                     size="icon-xs"
+                    disabled={isLocked}
                     onClick={clearAppliedLook}
                     aria-label="Remove applied look"
                     title="Remove applied look"
@@ -716,9 +984,10 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                   <Popover open={isLooksPopoverOpen} onOpenChange={setIsLooksPopoverOpen}>
                     <PopoverTrigger
                       type="button"
+                      disabled={isLocked}
                       aria-label="Open looks browser"
                       title="Open looks browser"
-                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer [&_svg]:!size-4"
+                      className="size-6 flex items-center justify-center rounded-md hover:bg-[color:color-mix(in_oklab,var(--foreground)_8%,transparent)] text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] cursor-pointer disabled:pointer-events-none disabled:opacity-50 [&_svg]:!size-4"
                     >
                       <PlusIcon size={ICON_SIZES.md} />
                     </PopoverTrigger>
@@ -763,6 +1032,7 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
                   <Button
                     variant="ghost"
                     size="icon-xs"
+                    disabled={isLocked}
                     onClick={() => {
                       setIsLookVisible((prev) => {
                         const next = !prev;
@@ -798,8 +1068,9 @@ export function InspectorPanel({ onClose }: InspectorPanelProps): React.JSX.Elem
         isOpen={isEffectBrowserOpen}
         onClose={() => setIsEffectBrowserOpen(false)}
         onSelectEffect={(effectId) => {
-          if (activeLayer) {
-            addEffectToStack(activeLayer.id, effectId);
+          const targetId = activeGroup?.id ?? activeLayer?.id;
+          if (targetId && !isLocked) {
+            addEffectToStack(targetId, effectId);
           }
         }}
       />

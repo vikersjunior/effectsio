@@ -27,6 +27,10 @@ import {
   setGroupVisibility,
   setGroupLocked,
   setGroupCollapsed,
+  setGroupOpacity,
+  setGroupBlendMode,
+  updateGroupTransform,
+  setGroupEffectStack,
 } from "./tree-operations";
 
 describe("tree-operations", () => {
@@ -133,20 +137,43 @@ describe("tree-operations", () => {
     expect(deleteGroup(lockedItems, lockedGroup.id)).toBe(lockedItems);
   });
 
-  it("moves root items but protects backdrop invariant", () => {
+  it("moves root items respecting lock state", () => {
     const items = [backdrop, layer1, layer2, layer3];
 
-    // Attempt moving backdrop (index 0) -> rejected
+    // Attempt moving locked backdrop (index 0) -> rejected because it is locked
     expect(moveRootItem(items, 0, 2)).toBe(items);
-    // Attempt moving to index 0 -> rejected
+
+    // Attempt moving to index 0 when backdrop is locked -> rejected
     expect(moveRootItem(items, 2, 0)).toBe(items);
 
-    // Valid move
+    // Valid move between unlocked items
     const moved = moveRootItem(items, 1, 3);
     expect(moved[0].id).toBe(backdrop.id);
     expect(moved[1].id).toBe(layer2.id);
     expect(moved[2].id).toBe(layer3.id);
     expect(moved[3].id).toBe(layer1.id);
+
+    // When unlocked, backdrop can move to another position and layers can move to index 0
+    const unlockedBackdrop = { ...backdrop, locked: false };
+    const itemsWithUnlocked = [unlockedBackdrop, layer1, layer2, layer3];
+    const movedBackdrop = moveRootItem(itemsWithUnlocked, 0, 2);
+    expect(movedBackdrop[0].id).toBe(layer1.id);
+    expect(movedBackdrop[1].id).toBe(layer2.id);
+    expect(movedBackdrop[2].id).toBe(unlockedBackdrop.id);
+
+    const movedToZero = moveRootItem(itemsWithUnlocked, 2, 0);
+    expect(movedToZero[0].id).toBe(layer2.id);
+    expect(movedToZero[1].id).toBe(unlockedBackdrop.id);
+  });
+
+  it("allows deleting unlocked backdrop without auto-recreating it", () => {
+    const unlockedBackdrop = { ...backdrop, locked: false };
+    const items = [unlockedBackdrop, layer1, layer2];
+
+    const result = removeLayerFromItems(items, unlockedBackdrop.id);
+    expect(result.length).toBe(2);
+    expect(result[0].id).toBe(layer1.id);
+    expect(result[1].id).toBe(layer2.id);
   });
 
   it("reorders group children and rejects if group locked", () => {
@@ -203,5 +230,34 @@ describe("tree-operations", () => {
 
     const result = renameGroup(items, lockedGroup.id, "New Name");
     expect((result[1] as any).name).toBe("New Name");
+  });
+
+  it("updates group opacity, blendMode, transform, and effectStack", () => {
+    const group = createGroup("Folder", [layer1]);
+    const items = [group];
+
+    const opResult = setGroupOpacity(items, group.id, 0.75);
+    expect((opResult[0] as any).opacity).toBe(0.75);
+
+    const bmResult = setGroupBlendMode(items, group.id, "multiply");
+    expect((bmResult[0] as any).blendMode).toBe("multiply");
+
+    const tfResult = updateGroupTransform(items, group.id, { x: 50, y: -20, rotation: 45 });
+    expect((tfResult[0] as any).transform.x).toBe(50);
+    expect((tfResult[0] as any).transform.y).toBe(-20);
+    expect((tfResult[0] as any).transform.rotation).toBe(45);
+
+    const effStack = [
+      { instanceId: "eff-1", effectId: "blur" as any, enabled: true, parameters: { radius: 10 } },
+    ];
+    const effResult = setGroupEffectStack(items, group.id, effStack);
+    expect((effResult[0] as any).effectStack).toEqual(effStack);
+
+    // Locked group rejects visual property updates
+    const lockedGroup = createGroup("Locked Group", [layer1], { locked: true });
+    const lockedItems = [lockedGroup];
+    expect(setGroupOpacity(lockedItems, lockedGroup.id, 0.5)).toEqual(lockedItems);
+    expect(setGroupBlendMode(lockedItems, lockedGroup.id, "screen")).toEqual(lockedItems);
+    expect(updateGroupTransform(lockedItems, lockedGroup.id, { x: 10 })).toEqual(lockedItems);
   });
 });

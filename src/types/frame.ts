@@ -127,6 +127,10 @@ export interface Group {
   visible: boolean;
   locked: boolean;
   collapsed?: boolean;
+  opacity: number; // 0.0 to 1.0 (default 1.0)
+  blendMode: BlendMode; // Layer-level blend mode interacting with accumulated backdrop
+  effectStack: EffectStack;
+  transform?: LayerTransform;
   createdAt: number;
   updatedAt: number;
 }
@@ -579,9 +583,27 @@ export function createProceduralLayer(
 export function createGroup(
   name: string,
   children: Layer[] = [],
-  options?: { id?: string; visible?: boolean; locked?: boolean; collapsed?: boolean }
+  options?: {
+    id?: string;
+    visible?: boolean;
+    locked?: boolean;
+    collapsed?: boolean;
+    opacity?: number;
+    blendMode?: BlendMode;
+    effectStack?: EffectStack;
+    transform?: Partial<LayerTransform>;
+  }
 ): Group {
   const now = Date.now();
+  const rawTransform = options?.transform;
+  const transform: LayerTransform = {
+    x: rawTransform && Number.isFinite(rawTransform.x) ? rawTransform.x! : DEFAULT_LAYER_TRANSFORM.x,
+    y: rawTransform && Number.isFinite(rawTransform.y) ? rawTransform.y! : DEFAULT_LAYER_TRANSFORM.y,
+    scaleX: rawTransform && Number.isFinite(rawTransform.scaleX) ? Math.max(0.05, Math.min(20, rawTransform.scaleX!)) : DEFAULT_LAYER_TRANSFORM.scaleX,
+    scaleY: rawTransform && Number.isFinite(rawTransform.scaleY) ? Math.max(0.05, Math.min(20, rawTransform.scaleY!)) : DEFAULT_LAYER_TRANSFORM.scaleY,
+    rotation: rawTransform && Number.isFinite(rawTransform.rotation) ? rawTransform.rotation! : DEFAULT_LAYER_TRANSFORM.rotation,
+  };
+
   return {
     id: options?.id || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
       ? `group-${crypto.randomUUID()}`
@@ -591,6 +613,10 @@ export function createGroup(
     visible: options?.visible ?? true,
     locked: options?.locked ?? false,
     collapsed: options?.collapsed ?? false,
+    opacity: options?.opacity !== undefined ? Math.max(0, Math.min(1, options.opacity)) : 1.0,
+    blendMode: options?.blendMode ?? "normal",
+    effectStack: options?.effectStack ? [...options.effectStack] : [],
+    transform,
     createdAt: now,
     updatedAt: now,
   };
@@ -842,39 +868,14 @@ export function flattenItemsToLayers(items: (Layer | Group)[]): Layer[] {
 }
 
 /**
- * Deterministically normalizes root composition items to guarantee
- * Frame.items[0] is permanently a locked procedural backdrop Layer,
- * preserving all user content and z-order.
+ * Preserves root composition items without forcing a permanent backdrop at index 0.
+ * If items is completely empty, initializes with a default backdrop.
  */
 export function normalizeBackdrop(items: (Layer | Group)[]): (Layer | Group)[] {
-  // 1. Check if index 0 is already a valid procedural backdrop
-  if (
-    items.length > 0 &&
-    isLayer(items[0]) &&
-    items[0].source?.type === "procedural"
-  ) {
-    const backdrop: Layer = { ...(items[0] as Layer), locked: true };
-    return [backdrop, ...items.slice(1)];
+  if (items.length === 0) {
+    return [createDefaultBackdropLayer()];
   }
-
-  // 2. Find first valid procedural layer in bottom-to-top order
-  const firstCandidateIndex = items.findIndex(
-    (item) => isLayer(item) && item.source?.type === "procedural"
-  );
-
-  if (firstCandidateIndex !== -1) {
-    const candidate = items[firstCandidateIndex] as Layer;
-    const backdrop: Layer = { ...candidate, locked: true };
-    const remaining = [
-      ...items.slice(0, firstCandidateIndex),
-      ...items.slice(firstCandidateIndex + 1),
-    ];
-    return [backdrop, ...remaining];
-  }
-
-  // 3. No valid candidate exists: synthesize default
-  const defaultBackdrop = createDefaultBackdropLayer();
-  return [defaultBackdrop, ...items];
+  return items;
 }
 
 /**
@@ -934,6 +935,15 @@ export function normalizeFrameToUniversalModel(rawFrame: unknown): Frame {
 
         // Only keep group if it has at least 1 child (auto-prune empty groups)
         if (normalizedChildren.length > 0) {
+          const rawGroupTransform = rawGroup.transform as Partial<LayerTransform> | undefined;
+          const groupTransform: LayerTransform = {
+            x: rawGroupTransform && Number.isFinite(rawGroupTransform.x) ? rawGroupTransform.x! : DEFAULT_LAYER_TRANSFORM.x,
+            y: rawGroupTransform && Number.isFinite(rawGroupTransform.y) ? rawGroupTransform.y! : DEFAULT_LAYER_TRANSFORM.y,
+            scaleX: rawGroupTransform && Number.isFinite(rawGroupTransform.scaleX) ? Math.max(0.05, Math.min(20, rawGroupTransform.scaleX!)) : DEFAULT_LAYER_TRANSFORM.scaleX,
+            scaleY: rawGroupTransform && Number.isFinite(rawGroupTransform.scaleY) ? Math.max(0.05, Math.min(20, rawGroupTransform.scaleY!)) : DEFAULT_LAYER_TRANSFORM.scaleY,
+            rotation: rawGroupTransform && Number.isFinite(rawGroupTransform.rotation) ? rawGroupTransform.rotation! : DEFAULT_LAYER_TRANSFORM.rotation,
+          };
+
           items.push({
             id: String(rawGroup.id || (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? `group-${crypto.randomUUID()}` : `group-${now}`)),
             name: String(rawGroup.name || "Group"),
@@ -941,6 +951,10 @@ export function normalizeFrameToUniversalModel(rawFrame: unknown): Frame {
             visible: rawGroup.visible !== false,
             locked: Boolean(rawGroup.locked),
             collapsed: Boolean(rawGroup.collapsed),
+            opacity: typeof rawGroup.opacity === "number" && !isNaN(rawGroup.opacity) ? Math.max(0, Math.min(1, rawGroup.opacity)) : 1.0,
+            blendMode: (rawGroup.blendMode as BlendMode) || "normal",
+            effectStack: Array.isArray(rawGroup.effectStack) ? (rawGroup.effectStack as EffectStack) : [],
+            transform: groupTransform,
             createdAt: Number(rawGroup.createdAt) || now,
             updatedAt: Number(rawGroup.updatedAt) || now,
           });
@@ -987,6 +1001,10 @@ export function normalizeFrameToUniversalModel(rawFrame: unknown): Frame {
             visible: gData.group.visible !== false,
             locked: Boolean(gData.group.locked),
             collapsed: Boolean(gData.group.collapsed),
+            opacity: typeof gData.group.opacity === "number" ? Math.max(0, Math.min(1, gData.group.opacity)) : 1.0,
+            blendMode: (gData.group.blendMode as BlendMode) || "normal",
+            effectStack: Array.isArray(gData.group.effectStack) ? (gData.group.effectStack as EffectStack) : [],
+            transform: gData.group.transform ? { ...DEFAULT_LAYER_TRANSFORM, ...gData.group.transform } : { ...DEFAULT_LAYER_TRANSFORM },
             createdAt: Number(gData.group.createdAt) || now,
             updatedAt: Number(gData.group.updatedAt) || now,
           });
@@ -1008,6 +1026,10 @@ export function normalizeFrameToUniversalModel(rawFrame: unknown): Frame {
           visible: gData.group.visible !== false,
           locked: Boolean(gData.group.locked),
           collapsed: Boolean(gData.group.collapsed),
+          opacity: typeof gData.group.opacity === "number" ? Math.max(0, Math.min(1, gData.group.opacity)) : 1.0,
+          blendMode: (gData.group.blendMode as BlendMode) || "normal",
+          effectStack: Array.isArray(gData.group.effectStack) ? (gData.group.effectStack as EffectStack) : [],
+          transform: gData.group.transform ? { ...DEFAULT_LAYER_TRANSFORM, ...gData.group.transform } : { ...DEFAULT_LAYER_TRANSFORM },
           createdAt: Number(gData.group.createdAt) || now,
           updatedAt: Number(gData.group.updatedAt) || now,
         });
@@ -1016,15 +1038,30 @@ export function normalizeFrameToUniversalModel(rawFrame: unknown): Frame {
     }
   }
 
-  // Universal Backdrop Normalization
-  items = normalizeBackdrop(items);
+  // If items list is empty, initialize with default backdrop
+  if (items.length === 0) {
+    items = [createDefaultBackdropLayer()];
+  }
 
-  // Recover or preserve activeLayerId
+  // Recover or preserve activeLayerId (supporting both Layer and Group IDs)
   let activeLayerId = typeof raw.activeLayerId === "string" ? raw.activeLayerId : null;
-  const allFlattenedLayers = flattenItemsToLayers(items);
-  const activeExists = allFlattenedLayers.some((l) => l.id === activeLayerId);
-  if (!activeExists && allFlattenedLayers.length > 0) {
-    activeLayerId = allFlattenedLayers[allFlattenedLayers.length - 1].id;
+  const itemExists = items.some((item) => {
+    if (item.id === activeLayerId) return true;
+    if (isGroup(item)) {
+      return item.children.some((c) => c.id === activeLayerId);
+    }
+    return false;
+  });
+
+  if (!itemExists) {
+    const allFlattenedLayers = flattenItemsToLayers(items);
+    if (allFlattenedLayers.length > 0) {
+      activeLayerId = allFlattenedLayers[allFlattenedLayers.length - 1].id;
+    } else if (items.length > 0) {
+      activeLayerId = items[items.length - 1].id;
+    } else {
+      activeLayerId = null;
+    }
   }
 
   const frameDimensions = (raw.dimensions as any) || DEFAULT_FRAME_DIMENSIONS;

@@ -16,6 +16,7 @@ import type {
   FrameSizePreset,
   LayerSource,
   ProceduralSource,
+  LayerTransform,
 } from "../types/frame";
 import {
   createDefaultBackdropLayer,
@@ -25,10 +26,13 @@ import {
   flattenItemsToLayers,
   isGroup,
   isLayer,
+  DEFAULT_LAYER_TRANSFORM,
 } from "../types/frame";
 import {
+  findItemInItems,
   findLayerInItems,
   findLayerLocation,
+  findParentGroupOfLayer,
   findGroupContainingLayer,
   findGroupById,
   getEffectiveLayerVisibility,
@@ -44,6 +48,11 @@ import {
   setGroupVisibility as setGroupVisibilityInItems,
   setGroupLocked as setGroupLockedInItems,
   setGroupCollapsed as setGroupCollapsedInItems,
+  updateGroupInItems,
+  setGroupOpacity as setGroupOpacityInItems,
+  setGroupBlendMode as setGroupBlendModeInItems,
+  updateGroupTransform as updateGroupTransformInItems,
+  setGroupEffectStack as setGroupEffectStackInItems,
   updateLayerInItems,
   removeLayerFromItems,
 } from "../utils/tree-operations";
@@ -138,6 +147,8 @@ export interface StudioContextType {
   activeFrame: Frame | null;
   activeLayerId: string | null;
   activeLayer: Layer | null;
+  activeGroup: Group | null;
+  activeItem: Layer | Group | null;
   setActiveFrameId: (id: string | null) => void;
   setActiveLayerId: (id: string | null) => void;
   selectedEffectInstanceId: string | null;
@@ -176,6 +187,10 @@ export interface StudioContextType {
   reorderGroupChild: (groupId: string, fromIndex: number, toIndex: number) => void;
   moveLayerToGroup: (layerId: string, targetGroupId: string, targetIndex?: number) => void;
   ejectLayerFromGroup: (layerId: string, targetRootIndex?: number) => void;
+  setGroupOpacity: (groupId: string, opacity: number, options?: { skipHistory?: boolean }) => void;
+  setGroupBlendMode: (groupId: string, blendMode: BlendMode, options?: { skipHistory?: boolean }) => void;
+  updateGroupTransform: (groupId: string, transform: Partial<LayerTransform>, options?: { skipHistory?: boolean }) => void;
+  resetGroupTransform: (groupId: string) => void;
 
   // Transitional Compatibility Adapters (Stage 1A)
   assets: Asset[];
@@ -441,6 +456,19 @@ export function StudioProvider({
     return findLayerInItems(activeFrame.items, activeLayerId);
   }, [activeFrame, activeLayerId]);
 
+  // Derived active group (strict lookup within activeFrame, zero fallback)
+  const activeGroup = React.useMemo((): Group | null => {
+    if (!activeFrame || !activeLayerId) return null;
+    const item = findItemInItems(activeFrame.items, activeLayerId);
+    return item && isGroup(item) ? item : null;
+  }, [activeFrame, activeLayerId]);
+
+  // Derived active item (Layer or Group)
+  const activeItem = React.useMemo((): Layer | Group | null => {
+    if (!activeFrame || !activeLayerId) return null;
+    return findItemInItems(activeFrame.items, activeLayerId);
+  }, [activeFrame, activeLayerId]);
+
   // Transitional Compatibility Getters (strictly derived from activeLayer.source, null for procedural/backdrop/empty)
   const activeImageId = React.useMemo((): string | null => {
     if (!activeLayer) return null;
@@ -458,10 +486,11 @@ export function StudioProvider({
     return assets.find((a) => a.id === activeImageId) || null;
   }, [assets, activeImageId]);
 
-  // Universal Effect Stack (every Layer owns effectStack regardless of source type)
+  // Universal Effect Stack (Layer or Group owns effectStack)
   const activeEffectStack = React.useMemo((): EffectStack => {
+    if (activeGroup) return activeGroup.effectStack ?? [];
     return activeLayer?.effectStack ?? [];
-  }, [activeLayer]);
+  }, [activeLayer, activeGroup]);
 
   const activeBackground = React.useMemo((): BackgroundState => {
     if (!activeFrame) return DEFAULT_BACKGROUND_STATE;
@@ -1170,11 +1199,8 @@ export function StudioProvider({
             } as LayerSource;
           }
 
-          // Hard invariant: backdrop at index 0 cannot be unlocked
+          // Backdrop is a normal layer — lock state is user-controlled
           let nextLocked = updates.locked !== undefined ? updates.locked : loc.layer.locked;
-          if (loc.type === "root" && loc.index === 0 && loc.layer.locked && updates.locked === false) {
-            nextLocked = true;
-          }
 
           const newItems = updateLayerInItems(frame.items, layerId, (current) => ({
             ...current,
@@ -1246,14 +1272,13 @@ export function StudioProvider({
         return prev.map((frame) => {
           if (frame.id !== activeFId) return frame;
 
-          // Hard invariant: backdrop at index 0 cannot be removed
-          if (frame.items.length > 0 && isLayer(frame.items[0]) && frame.items[0].id === layerId) {
-            console.warn("Cannot remove locked backdrop layer at index 0");
-            return frame;
-          }
-
+          // Backdrop is a normal layer — only block removal of locked layers
           const existingLoc = findLayerLocation(frame.items, layerId);
           if (!existingLoc) return frame;
+          if (existingLoc.layer.locked) {
+            console.warn("Cannot remove locked layer");
+            return frame;
+          }
           if (existingLoc.type === "group" && existingLoc.group.locked) {
             console.warn("Cannot remove layer from locked group");
             return frame;
@@ -1615,6 +1640,85 @@ export function StudioProvider({
       });
     },
     [recordDiscreteSnapshot]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Phase 5 Group Compositing Property Actions
+  // ---------------------------------------------------------------------------
+
+  const groupFrameMutator = React.useCallback(
+    (mutator: (items: (Layer | Group)[]) => (Layer | Group)[], skipHistory = false) => {
+      if (!skipHistory) {
+        recordDiscreteSnapshot();
+      } else {
+        startOrContinueParamInteraction();
+      }
+
+      setFrames((prev) => {
+        const activeFId = activeFrameIdRef.current;
+        return prev.map((frame) => {
+          if (frame.id !== activeFId) return frame;
+
+          const newItems = mutator(frame.items);
+          if (newItems === frame.items) return frame;
+
+          const updatedFrame: Frame = {
+            ...frame,
+            items: newItems,
+            updatedAt: Date.now(),
+          };
+
+          if (typeof dbSaveFrame === "function") {
+            dbSaveFrame(updatedFrame).catch(console.error);
+          }
+          return updatedFrame;
+        });
+      });
+    },
+    [recordDiscreteSnapshot, startOrContinueParamInteraction]
+  );
+
+  const setGroupOpacity = React.useCallback(
+    (groupId: string, opacity: number, options?: { skipHistory?: boolean }) => {
+      groupFrameMutator(
+        (items) => setGroupOpacityInItems(items, groupId, opacity),
+        options?.skipHistory
+      );
+    },
+    [groupFrameMutator]
+  );
+
+  const setGroupBlendMode = React.useCallback(
+    (groupId: string, blendMode: BlendMode, options?: { skipHistory?: boolean }) => {
+      groupFrameMutator(
+        (items) => setGroupBlendModeInItems(items, groupId, blendMode),
+        options?.skipHistory
+      );
+    },
+    [groupFrameMutator]
+  );
+
+  const updateGroupTransformAction = React.useCallback(
+    (groupId: string, transform: Partial<LayerTransform>, options?: { skipHistory?: boolean }) => {
+      groupFrameMutator(
+        (items) => updateGroupTransformInItems(items, groupId, transform),
+        options?.skipHistory
+      );
+    },
+    [groupFrameMutator]
+  );
+
+  const resetGroupTransform = React.useCallback(
+    (groupId: string) => {
+      groupFrameMutator(
+        (items) => updateGroupInItems(items, groupId, (g) => ({
+          ...g,
+          transform: { ...DEFAULT_LAYER_TRANSFORM },
+          updatedAt: Date.now(),
+        }))
+      );
+    },
+    [groupFrameMutator]
   );
 
   const setFrameDimensions = React.useCallback(
@@ -1993,6 +2097,35 @@ export function StudioProvider({
       }
 
       setFrames((prevFrames) => {
+        // First check if targetId matches a Group in the active frame
+        const activeFId = activeFrameIdRef.current;
+        const activeFrameIdx = prevFrames.findIndex((f) => f.id === activeFId);
+        if (activeFrameIdx !== -1) {
+          const frame = prevFrames[activeFrameIdx];
+          const groupMatch = findGroupById(frame.items, targetId);
+          if (groupMatch) {
+            const currentStack = groupMatch.group.effectStack ?? [];
+            const nextStack = mutator(currentStack);
+            const newItems = updateGroupInItems(frame.items, targetId, (g) => ({
+              ...g,
+              effectStack: nextStack,
+              updatedAt: Date.now(),
+            }));
+            const updatedFrame: Frame = {
+              ...frame,
+              items: newItems,
+              updatedAt: Date.now(),
+            };
+            const nextFrames = [...prevFrames];
+            nextFrames[activeFrameIdx] = updatedFrame;
+            if (typeof dbSaveFrame === "function") {
+              dbSaveFrame(updatedFrame).catch(console.error);
+            }
+            return nextFrames;
+          }
+        }
+
+        // Fall back to layer lookup
         let frameIndex = -1;
         let matchedLayerId: string | null = null;
 
@@ -2975,6 +3108,8 @@ export function StudioProvider({
     activeFrame,
     activeLayerId,
     activeLayer,
+    activeGroup,
+    activeItem,
     setActiveFrameId,
     setActiveLayerId,
     selectedEffectInstanceId,
@@ -3005,6 +3140,10 @@ export function StudioProvider({
     reorderGroupChild,
     moveLayerToGroup,
     ejectLayerFromGroup,
+    setGroupOpacity,
+    setGroupBlendMode,
+    updateGroupTransform: updateGroupTransformAction,
+    resetGroupTransform,
 
     // Transitional Compatibility Adapters (Stage 1A)
     assets,

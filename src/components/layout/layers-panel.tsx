@@ -302,12 +302,8 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
     const toRootIndex = activeFrame.items.findIndex((i) => i.id === overId);
 
     if (fromRootIndex !== -1 && toRootIndex !== -1) {
-      // Backdrop at index 0 is locked at base
-      const minIndex = 1;
-      if (fromRootIndex >= minIndex) {
-        const clampedToIndex = Math.max(minIndex, toRootIndex);
-        moveRootItem(fromRootIndex, clampedToIndex);
-      }
+      // Allow reordering to any index — backdrop is a normal layer
+      moveRootItem(fromRootIndex, toRootIndex);
       return;
     }
 
@@ -332,8 +328,7 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
 
     // 4. Eject layer from group if dragged to root
     if (toRootIndex !== -1) {
-      const clampedIndex = Math.max(1, toRootIndex);
-      ejectLayerFromGroup(activeId, clampedIndex);
+      ejectLayerFromGroup(activeId, toRootIndex);
       return;
     }
   };
@@ -507,21 +502,14 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
             >
               {visualItems.map((item) => {
                 if (isGroup(item)) {
-                  const isAllChildrenSelected =
-                    item.children.length > 0 &&
-                    item.children.every((c) => selectedLayerIds.has(c.id));
-
                   return (
                     <div key={item.id} className="flex flex-col gap-1.5">
                       <GroupRow
                         group={item}
-                        isSelected={isAllChildrenSelected}
+                        isSelected={activeLayerId === item.id}
                         onSelect={() => {
-                          const childIds = item.children.map((c) => c.id);
-                          selectLayers(childIds);
-                          if (childIds.length > 0) {
-                            setActiveLayerId(childIds[0]);
-                          }
+                          selectLayers([]);
+                          setActiveLayerId(item.id);
                         }}
                         onToggleCollapse={() => toggleGroupCollapse(item.id)}
                         onToggleVisibility={() => toggleGroupVisibility(item.id)}
@@ -580,7 +568,6 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
                   item.source?.type === "image" ? item.source.assetId : item.assetId;
                 const isSelected =
                   activeLayerId === item.id || selectedLayerIds.has(item.id);
-                const isBackdrop = activeFrame?.items[0]?.id === item.id;
 
                 return (
                   <SortableLayerRow
@@ -588,7 +575,7 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
                     layer={item}
                     asset={assetId ? assetMap.get(assetId) : undefined}
                     isSelected={isSelected}
-                    isLocked={isBackdrop || Boolean(item.locked)}
+                    isLocked={Boolean(item.locked)}
                     onSelect={(e) => {
                       if (e?.shiftKey || e?.metaKey || e?.ctrlKey) {
                         toggleLayerSelection(item.id);
@@ -605,7 +592,7 @@ export function LayersPanel({ className }: LayersPanelProps): React.JSX.Element 
                       });
                     }}
                     onRemove={
-                      isBackdrop
+                      item.locked
                         ? undefined
                         : (e) => {
                             e.stopPropagation();

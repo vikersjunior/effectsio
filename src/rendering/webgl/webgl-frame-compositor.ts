@@ -97,9 +97,10 @@ export class WebGL2FrameCompositor {
   private resourceManager: WebGLResourceManager;
   private quad: FullscreenQuad;
 
-  // Reusable 4-FBO Working Set
+  // Reusable Offscreen Working Set
   private accumulatorPair: PingPongManager | null = null;
   private layerPingPong: PingPongManager | null = null;
+  private groupAccumulatorPair: PingPongManager | null = null;
   private workingWidth = 0;
   private workingHeight = 0;
 
@@ -179,7 +180,13 @@ export class WebGL2FrameCompositor {
     const clampedW = Math.max(1, Math.round(width));
     const clampedH = Math.max(1, Math.round(height));
 
-    if (this.workingWidth === clampedW && this.workingHeight === clampedH && this.accumulatorPair && this.layerPingPong) {
+    if (
+      this.workingWidth === clampedW &&
+      this.workingHeight === clampedH &&
+      this.accumulatorPair &&
+      this.layerPingPong &&
+      this.groupAccumulatorPair
+    ) {
       return;
     }
 
@@ -196,6 +203,12 @@ export class WebGL2FrameCompositor {
       this.layerPingPong = new PingPongManager(this.gl, clampedW, clampedH);
     } else {
       this.layerPingPong.resize(clampedW, clampedH);
+    }
+
+    if (!this.groupAccumulatorPair) {
+      this.groupAccumulatorPair = new PingPongManager(this.gl, clampedW, clampedH);
+    } else {
+      this.groupAccumulatorPair.resize(clampedW, clampedH);
     }
 
     // Dimension changes invalidate any cached composition
@@ -311,6 +324,69 @@ export class WebGL2FrameCompositor {
   }
 
   /**
+   * Blends a source texture over the accumulator's current read texture into write texture, then swaps.
+   */
+  private blendTextureOverAccumulator(
+    accum: PingPongManager,
+    texture: WebGLTexture,
+    blendMode: BlendMode,
+    opacity: number,
+    width: number,
+    height: number,
+  ): void {
+    const gl = this.gl;
+    gl.viewport(0, 0, width, height);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, accum.write.framebuffer);
+
+    gl.useProgram(this.blendProgram.program);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, accum.read.texture);
+    setUniform(gl, this.blendProgram, "u_backdrop", { type: "1i", value: 0 });
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    setUniform(gl, this.blendProgram, "u_source", { type: "1i", value: 1 });
+
+    const blendModeInt = BLEND_MODE_MAP[blendMode] ?? 0;
+    setUniform(gl, this.blendProgram, "u_blendMode", { type: "1i", value: blendModeInt });
+    setUniform(gl, this.blendProgram, "u_opacity", {
+      type: "1f",
+      value: Math.max(0.0, Math.min(1.0, opacity)),
+    });
+
+    this.quad.draw();
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.useProgram(null);
+
+    accum.swap();
+  }
+
+  /**
+   * Renders an individual Layer's pixels to an offscreen texture based on its canonical source.
+   */
+  private renderLayerToTexture(
+    layer: Layer,
+    width: number,
+    height: number,
+    assetSources?: Map<string, TextureSource>,
+    time = 0,
+  ): WebGLTexture | null {
+    const source = this.resolveLayerSource(layer);
+    if (source?.type === "image") {
+      return this.renderImageSourceLayer(layer, source, width, height, assetSources, time);
+    } else if (source?.type === "procedural") {
+      return this.renderProceduralSourceLayer(layer, source, width, height, time);
+    } else {
+      return this.renderLegacyCompatibilityLayer(layer, width, height, time);
+    }
+  }
+
+  /**
    * Returns a cache key representing all composition-affecting state in a Frame.
    */
   private generateCompositionKey(
@@ -330,8 +406,20 @@ export class WebGL2FrameCompositor {
       const item = items[i]!;
       if (isGroup(item)) {
         const isGrpVisible = item.visible !== false;
-        parts.push(`g[${i}]:${item.id}:${isGrpVisible}`);
-        if (isGrpVisible) {
+        const opacity = item.opacity !== undefined ? item.opacity : 1.0;
+        const blendMode = item.blendMode || "normal";
+        const t = item.transform || DEFAULT_LAYER_TRANSFORM;
+        parts.push(
+          `g[${i}]:${item.id}:${isGrpVisible}:${opacity}:${blendMode}:${t.x},${t.y},${t.scaleX},${t.scaleY},${t.rotation}`,
+        );
+        const effects = item.effectStack || [];
+        for (let e = 0; e < effects.length; e++) {
+          const eff = effects[e]!;
+          parts.push(
+            `geff[${e}]:${eff.effectId}:${eff.enabled !== false}:${JSON.stringify(eff.parameters || {})}`,
+          );
+        }
+        if (isGrpVisible && opacity > 0) {
           for (let j = 0; j < item.children.length; j++) {
             this.appendLayerKey(parts, item.children[j]!, `g[${i}]c[${j}]`);
           }
@@ -346,7 +434,8 @@ export class WebGL2FrameCompositor {
 
   /**
    * Executes the full multi-layer compositing pipeline for a Frame.
-   * Consumes `frame.items` strictly bottom-to-top (dissolving visible groups without intermediate FBOs).
+   * Groups are true compositing containers with dedicated offscreen FBO, group effects,
+   * group transform, opacity, and blend mode.
    * Returns the final `FBOTextureAttachment` containing the complete composited artwork.
    */
   public composeFrame(
@@ -374,89 +463,102 @@ export class WebGL2FrameCompositor {
     gl.clearColor(0.0, 0.0, 0.0, 0.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // 2. Iterate items strictly in bottom-to-top order (index 0..N-1)
-    // Groups are structural containers: if hidden, skip entirely; if visible, iterate children directly.
+    // 2. Iterate root items strictly in bottom-to-top order (index 0..N-1)
     const items = (frame.items || (frame as any).layers || []) as (Layer | Group)[];
-    const layers: Layer[] = [];
 
-    for (const item of items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]!;
+      if (item.visible === false) continue;
+
       if (isGroup(item)) {
-        if (item.visible === false) continue;
-        for (const child of item.children) {
-          const isVisible = (child as any).visibility !== false && child.visible !== false;
-          if (isVisible && child.opacity > 0) {
-            layers.push(child);
-          }
+        if (item.children.length === 0) continue;
+        const groupOpacity = item.opacity !== undefined ? item.opacity : 1.0;
+        if (groupOpacity <= 0) continue;
+
+        const groupAccum = this.groupAccumulatorPair!;
+
+        // 1. Clear group accumulator to transparent black
+        gl.viewport(0, 0, width, height);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, groupAccum.read.framebuffer);
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // 2. Sequentially composite children into group accumulator
+        for (let c = 0; c < item.children.length; c++) {
+          const child = item.children[c]!;
+          const isChildVisible = (child as any).visibility !== false && child.visible !== false;
+          if (!isChildVisible || child.opacity <= 0) continue;
+
+          const childTex = this.renderLayerToTexture(child, width, height, assetSources, time);
+          if (!childTex) continue;
+
+          this.blendTextureOverAccumulator(groupAccum, childTex, child.blendMode, child.opacity, width, height);
         }
-      } else {
-        const isVisible = (item as any).visibility !== false && item.visible !== false;
-        if (isVisible && item.opacity > 0) {
-          layers.push(item);
+
+        let groupOutputTexture: WebGLTexture = groupAccum.read.texture;
+
+        // 3. Group Effect Stack
+        const rawEffects = (item as any).effects ?? item.effectStack ?? [];
+        const activeEffects = rawEffects.filter((eff: any) => eff.enabled !== false);
+        if (activeEffects.length > 0) {
+          const layerPP = this.layerPingPong!;
+          gl.viewport(0, 0, width, height);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, layerPP.read.framebuffer);
+          gl.useProgram(this.passThroughProgram.program);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, groupAccum.read.texture);
+          setUniform(gl, this.passThroughProgram, "u_texture", { type: "1i", value: 0 });
+          setUniform(gl, this.passThroughProgram, "u_resolution", { type: "2f", value: [width, height] });
+          setUniform(gl, this.passThroughProgram, "u_time", { type: "1f", value: time });
+          this.quad.draw();
+          gl.bindTexture(gl.TEXTURE_2D, null);
+          gl.useProgram(null);
+
+          groupOutputTexture = this.executeLayerEffectStack(layerPP, item as any, width, height, time);
         }
-      }
-    }
 
-    for (let i = 0; i < layers.length; i++) {
-      const layer = layers[i]!;
+        // 4. Group Transform
+        const t = item.transform || DEFAULT_LAYER_TRANSFORM;
+        const hasTransform = t.x !== 0 || t.y !== 0 || t.scaleX !== 1 || t.scaleY !== 1 || t.rotation !== 0;
+        if (hasTransform) {
+          const layerPP = this.layerPingPong!;
+          gl.viewport(0, 0, width, height);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, layerPP.write.framebuffer);
+          gl.clearColor(0.0, 0.0, 0.0, 0.0);
+          gl.clear(gl.COLOR_BUFFER_BIT);
 
-      // Skip invisible or zero-opacity layers
-      const isVisible = (layer as any).visibility !== false && layer.visible !== false;
-      if (!isVisible || layer.opacity <= 0) {
-        continue;
-      }
+          gl.useProgram(this.imageProgram.program);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, groupOutputTexture);
+          setUniform(gl, this.imageProgram, "u_assetTexture", { type: "1i", value: 0 });
+          setUniform(gl, this.imageProgram, "u_frameSize", { type: "2f", value: [width, height] });
+          setUniform(gl, this.imageProgram, "u_assetSize", { type: "2f", value: [width, height] });
+          setUniform(gl, this.imageProgram, "u_fitMode", { type: "1i", value: 0 });
+          setUniform(gl, this.imageProgram, "u_layerOffset", { type: "2f", value: [t.x, t.y] });
+          setUniform(gl, this.imageProgram, "u_layerScale", { type: "2f", value: [t.scaleX, t.scaleY] });
+          setUniform(gl, this.imageProgram, "u_layerRotation", {
+            type: "1f",
+            value: (t.rotation * Math.PI) / 180.0,
+          });
+          this.quad.draw();
+          gl.bindTexture(gl.TEXTURE_2D, null);
+          gl.useProgram(null);
 
-      let layerOutputTexture: WebGLTexture | null = null;
+          layerPP.swap();
+          groupOutputTexture = layerPP.read.texture;
+        }
 
-      // Universal Composition Model: Canonical source dispatch is authoritative
-      const source = this.resolveLayerSource(layer);
-      if (source?.type === "image") {
-        layerOutputTexture = this.renderImageSourceLayer(layer, source, width, height, assetSources, time);
-      } else if (source?.type === "procedural") {
-        layerOutputTexture = this.renderProceduralSourceLayer(layer, source, width, height, time);
+        // 5. Composite Group into Frame Accumulator
+        this.blendTextureOverAccumulator(accum, groupOutputTexture, item.blendMode || "normal", groupOpacity, width, height);
       } else {
-        // Fallback to legacy compatibility renderer only when no valid canonical source exists
-        layerOutputTexture = this.renderLegacyCompatibilityLayer(layer, width, height, time);
+        // Root Layer (visibility already checked above)
+        if (item.opacity <= 0) continue;
+
+        const layerOutputTexture = this.renderLayerToTexture(item, width, height, assetSources, time);
+        if (!layerOutputTexture) continue;
+
+        this.blendTextureOverAccumulator(accum, layerOutputTexture, item.blendMode, item.opacity, width, height);
       }
-
-      if (!layerOutputTexture) {
-        continue;
-      }
-
-      // 3. Cross-layer compositing pass:
-      // Composite layerOutputTexture over accumulatorPair.read into accumulatorPair.write
-      gl.viewport(0, 0, width, height);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, accum.write.framebuffer);
-
-      gl.useProgram(this.blendProgram.program);
-
-      // Texture Unit 0: Backdrop (Accumulator Read)
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, accum.read.texture);
-      setUniform(gl, this.blendProgram, "u_backdrop", { type: "1i", value: 0 });
-
-      // Texture Unit 1: Source (Layer Output)
-      gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, layerOutputTexture);
-      setUniform(gl, this.blendProgram, "u_source", { type: "1i", value: 1 });
-
-      // Layer blending parameters
-      const blendModeInt = BLEND_MODE_MAP[layer.blendMode] ?? 0;
-      setUniform(gl, this.blendProgram, "u_blendMode", { type: "1i", value: blendModeInt });
-      setUniform(gl, this.blendProgram, "u_opacity", {
-        type: "1f",
-        value: Math.max(0.0, Math.min(1.0, layer.opacity)),
-      });
-
-      this.quad.draw();
-
-      gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, null);
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, null);
-      gl.useProgram(null);
-
-      // Swap accumulator targets: what was just written becomes the new backdrop
-      accum.swap();
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -943,11 +1045,12 @@ export class WebGL2FrameCompositor {
 
   /**
    * Returns empirical telemetry about compositor FBO allocations.
-   * Total FBO count is guaranteed to remain strictly bounded to at most 5:
-   * accumulatorPair (2), layerPingPong (2), backgroundFbo (1).
+   * Total FBO count includes: accumulatorPair (2), groupAccumulatorPair (2),
+   * layerPingPong (2), backgroundFbo (1) = up to 7.
    */
   public getWorkingSetStats(): {
     accumulatorFbos: number;
+    groupAccumulatorFbos: number;
     layerPingPongFbos: number;
     backgroundScratchFbos: number;
     totalFbos: number;
@@ -956,13 +1059,15 @@ export class WebGL2FrameCompositor {
     lastCompositionKey: string;
   } {
     const accumCount = this.accumulatorPair ? 2 : 0;
+    const groupCount = this.groupAccumulatorPair ? 2 : 0;
     const ppCount = this.layerPingPong ? 2 : 0;
     const bgCount = this.backgroundRenderer.getScratchFbo() ? 1 : 0;
     return {
       accumulatorFbos: accumCount,
+      groupAccumulatorFbos: groupCount,
       layerPingPongFbos: ppCount,
       backgroundScratchFbos: bgCount,
-      totalFbos: accumCount + ppCount + bgCount,
+      totalFbos: accumCount + groupCount + ppCount + bgCount,
       workingDimensions: { width: this.workingWidth, height: this.workingHeight },
       isComposited: this.isComposited,
       lastCompositionKey: this.lastCompositionKey,
@@ -976,6 +1081,11 @@ export class WebGL2FrameCompositor {
     if (this.accumulatorPair) {
       this.accumulatorPair.dispose();
       this.accumulatorPair = null;
+    }
+
+    if (this.groupAccumulatorPair) {
+      this.groupAccumulatorPair.dispose();
+      this.groupAccumulatorPair = null;
     }
 
     if (this.layerPingPong) {

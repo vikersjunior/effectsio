@@ -1683,7 +1683,7 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
   });
 
   describe("Phase 5: Canonical Model B Group Compositing Suite", () => {
-    it("composites children of a visible group directly without intermediate FBOs", () => {
+    it("composites children of a visible group using dedicated group accumulator FBO and allocates 2 group FBOs", () => {
       const mockGL = createMockGL();
       const compositor = new WebGL2FrameCompositor(mockGL);
 
@@ -1709,6 +1709,10 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
 
       // Backdrop + 2 children = 3 procedural render calls
       expect(renderProceduralSpy).toHaveBeenCalledTimes(3);
+
+      const stats = compositor.getWorkingSetStats();
+      expect(stats.groupAccumulatorFbos).toBe(2);
+      expect(stats.totalFbos).toBe(7); // 2 accum + 2 group + 2 layerPingPong + 1 scratch
 
       compositor.dispose();
     });
@@ -1776,6 +1780,57 @@ describe("Stage 1B Multi-Layer WebGL2 Compositor Suite", () => {
       compositor.composeFrame(frameCollapsed);
       // Key must match: no new render calls!
       expect(renderProceduralSpy).toHaveBeenCalledTimes(2);
+
+      compositor.dispose();
+    });
+
+    it("invalidates composition and composites group with custom opacity, blendMode, and transform", () => {
+      const mockGL = createMockGL();
+      const compositor = new WebGL2FrameCompositor(mockGL);
+
+      const blendSpy = vi.spyOn(compositor as any, "blendTextureOverAccumulator");
+
+      const child = createProceduralLayer("solid", "Child", { parameters: { color: "#ff0000" } });
+      const groupA = createGroup("Group A", [child], {
+        opacity: 0.75,
+        blendMode: "multiply",
+        transform: { x: 50, y: 50, scaleX: 1.5, scaleY: 1.5, rotation: 45 },
+      });
+
+      const frameA: Frame = {
+        id: "frame-group-props",
+        name: "Group Props Frame",
+        dimensions: { width: 500, height: 500, presetId: null },
+        items: [groupA],
+        activeLayerId: child.id,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      compositor.composeFrame(frameA);
+      const keyA = compositor.getWorkingSetStats().lastCompositionKey;
+      expect(blendSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        "multiply",
+        0.75,
+        500,
+        500
+      );
+
+      // Mutate group opacity
+      const groupB = { ...groupA, opacity: 0.5 };
+      const frameB: Frame = { ...frameA, items: [groupB] };
+      compositor.composeFrame(frameB);
+      const keyB = compositor.getWorkingSetStats().lastCompositionKey;
+      expect(keyB).not.toBe(keyA);
+
+      // Mutate group transform
+      const groupC = { ...groupB, transform: { ...groupB.transform!, rotation: 90 } };
+      const frameC: Frame = { ...frameA, items: [groupC] };
+      compositor.composeFrame(frameC);
+      const keyC = compositor.getWorkingSetStats().lastCompositionKey;
+      expect(keyC).not.toBe(keyB);
 
       compositor.dispose();
     });

@@ -20,7 +20,11 @@ import {
   isLayer,
   createGroup,
   normalizeBackdrop,
+  type BlendMode,
+  type LayerTransform,
+  DEFAULT_LAYER_TRANSFORM,
 } from "../types/frame";
+import type { EffectStack } from "../types/asset";
 
 export type LayerLocation =
   | { type: "root"; index: number; layer: Layer }
@@ -29,6 +33,42 @@ export type LayerLocation =
 // ---------------------------------------------------------------------------
 // Query Operations
 // ---------------------------------------------------------------------------
+
+/**
+ * Searches items (root items and group children) for a Layer or Group by ID.
+ */
+export function findItemInItems(
+  items: (Layer | Group)[],
+  id: string | null | undefined
+): Layer | Group | null {
+  if (!id) return null;
+  for (const item of items) {
+    if (item.id === id) return item;
+    if (isGroup(item)) {
+      for (const child of item.children) {
+        if (child.id === id) return child;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Finds the parent Group containing a given layer ID, if any.
+ */
+export function findParentGroupOfLayer(
+  items: (Layer | Group)[],
+  layerId: string
+): Group | null {
+  for (const item of items) {
+    if (isGroup(item)) {
+      if (item.children.some((c) => c.id === layerId)) {
+        return item;
+      }
+    }
+  }
+  return null;
+}
 
 /**
  * Searches items (root items and group children) for a layer by ID.
@@ -201,24 +241,21 @@ export function updateLayerInItems(
 /**
  * Removes a layer by ID from the composition tree.
  * Invariants:
- * - Backdrop (items[0]) cannot be deleted.
- * - Layer inside a locked group cannot be deleted.
+ * - Locked layer or layer inside a locked group cannot be deleted.
  * - Empty groups are auto-pruned.
  */
 export function removeLayerFromItems(
   items: (Layer | Group)[],
   layerId: string
 ): (Layer | Group)[] {
-  // Backdrop protection
-  if (items.length > 0 && isLayer(items[0]) && items[0].id === layerId) {
-    return items;
-  }
-
   const loc = findLayerLocation(items, layerId);
   if (!loc) return items;
 
   if (loc.type === "group" && loc.group.locked) {
     return items; // Locked group constraint
+  }
+  if (loc.layer.locked) {
+    return items; // Locked layer constraint
   }
 
   let updated: (Layer | Group)[];
@@ -238,8 +275,7 @@ export function removeLayerFromItems(
     });
   }
 
-  const pruned = pruneEmptyGroups(updated);
-  return normalizeBackdrop(pruned);
+  return pruneEmptyGroups(updated);
 }
 
 /**
@@ -247,13 +283,11 @@ export function removeLayerFromItems(
  *
  * Rules:
  * - If selectedLayerIds is empty or only 1 layer, returns items unchanged.
- * - Excludes the locked procedural backdrop at items[0].
- * - Rejects any layer whose parent group is locked.
+ * - Rejects any layer whose parent group is locked or if the layer itself is locked.
  * - Extracts valid selected layers from their current locations.
- * - Calculates insertion position as the lowest original index among extracted items (min index >= 1).
+ * - Calculates insertion position as the lowest original index among extracted items.
  * - Creates new group at that insertion position.
  * - Auto-prunes any groups left empty.
- * - Ensures backdrop invariant.
  */
 export function createGroupFromSelection(
   items: (Layer | Group)[],
@@ -263,13 +297,7 @@ export function createGroupFromSelection(
   const selectedSet = new Set(selectedLayerIds);
   if (selectedSet.size === 0) return items;
 
-  // Never group the backdrop
-  if (items.length > 0 && isLayer(items[0])) {
-    selectedSet.delete(items[0].id);
-  }
-  if (selectedSet.size === 0) return items;
-
-  // Verify none of the selected layers are in locked groups
+  // Verify none of the selected layers are locked or in locked groups
   const layersToExtract: Layer[] = [];
   let minRootIndex = items.length;
 
@@ -277,6 +305,9 @@ export function createGroupFromSelection(
     const item = items[i];
     if (isLayer(item)) {
       if (selectedSet.has(item.id)) {
+        if (item.locked) {
+          continue;
+        }
         layersToExtract.push(item);
         if (i < minRootIndex) minRootIndex = i;
       }
@@ -284,8 +315,8 @@ export function createGroupFromSelection(
       let groupContainsSelected = false;
       for (const child of item.children) {
         if (selectedSet.has(child.id)) {
-          if (item.locked) {
-            // Cannot extract child from a locked group!
+          if (item.locked || child.locked) {
+            // Cannot extract child from a locked group or locked child!
             return items;
           }
           layersToExtract.push(child);
@@ -324,15 +355,13 @@ export function createGroupFromSelection(
   // Create new group
   const newGroup = createGroup(name || "Group", layersToExtract);
 
-  // Insertion index cannot be 0 (backdrop protected)
-  const insertIndex = Math.max(1, Math.min(minRootIndex, remainingItems.length));
-  const result = [
+  // Insertion index based on lowest original index among extracted items
+  const insertIndex = Math.max(0, Math.min(minRootIndex, remainingItems.length));
+  return [
     ...remainingItems.slice(0, insertIndex),
     newGroup,
     ...remainingItems.slice(insertIndex),
   ];
-
-  return normalizeBackdrop(result);
 }
 
 /**
@@ -349,13 +378,11 @@ export function ungroup(
 
   const { group, index } = target;
 
-  const result = [
+  return [
     ...items.slice(0, index),
     ...group.children,
     ...items.slice(index + 1),
   ];
-
-  return normalizeBackdrop(result);
 }
 
 /**
@@ -370,14 +397,12 @@ export function deleteGroup(
   if (!target) return items;
   if (target.group.locked) return items; // Locked group cannot be deleted
 
-  const result = items.filter((item) => !isGroup(item) || item.id !== groupId);
-  return normalizeBackdrop(result);
+  return items.filter((item) => !isGroup(item) || item.id !== groupId);
 }
 
 /**
  * Moves a root item from one index to another.
  * Invariants:
- * - fromIndex and toIndex cannot be 0 (backdrop protected).
  * - Locked root item or locked group cannot be moved.
  */
 export function moveRootItem(
@@ -386,17 +411,20 @@ export function moveRootItem(
   toIndex: number
 ): (Layer | Group)[] {
   if (fromIndex === toIndex) return items;
-  if (fromIndex <= 0 || toIndex <= 0) return items;
+  if (fromIndex < 0 || toIndex < 0) return items;
   if (fromIndex >= items.length || toIndex >= items.length) return items;
 
   const itemToMove = items[fromIndex];
   if (itemToMove.locked) return items;
 
+  // Cannot displace a locked item at base index 0
+  if (toIndex === 0 && items[0]?.locked) return items;
+
   const nextItems = [...items];
   const [removed] = nextItems.splice(fromIndex, 1);
   nextItems.splice(toIndex, 0, removed);
 
-  return normalizeBackdrop(nextItems);
+  return nextItems;
 }
 
 /**
@@ -439,7 +467,7 @@ export function reorderGroupChild(
 /**
  * Moves a layer into a target Group at an optional child index.
  * Invariants:
- * - Backdrop cannot be moved into a group.
+ * - Locked layer cannot be moved.
  * - Source group (if any) cannot be locked.
  * - Target group cannot be locked.
  * - Auto-prunes empty source group.
@@ -450,14 +478,10 @@ export function moveLayerToGroup(
   targetGroupId: string,
   targetIndex?: number
 ): (Layer | Group)[] {
-  // Backdrop protection
-  if (items.length > 0 && isLayer(items[0]) && items[0].id === layerId) {
-    return items;
-  }
-
   const loc = findLayerLocation(items, layerId);
   if (!loc) return items;
   if (loc.type === "group" && loc.group.locked) return items;
+  if (loc.layer.locked) return items;
 
   const target = findGroupById(items, targetGroupId);
   if (!target || target.group.locked) return items;
@@ -504,15 +528,13 @@ export function moveLayerToGroup(
     return item;
   });
 
-  const pruned = pruneEmptyGroups(result);
-  return normalizeBackdrop(pruned);
+  return pruneEmptyGroups(result);
 }
 
 /**
  * Ejects a layer from its parent Group out to the root items list.
  * Invariants:
  * - Source group cannot be locked.
- * - Target root index cannot be 0 (backdrop protected).
  * - Auto-prunes empty source group.
  */
 export function ejectLayerFromGroup(
@@ -540,10 +562,10 @@ export function ejectLayerFromGroup(
   });
 
   // Calculate root insertion point (default right above the group)
-  const defaultInsert = Math.max(1, groupIndex + 1);
+  const defaultInsert = Math.max(0, groupIndex + 1);
   const insertIndex =
     typeof targetRootIndex === "number"
-      ? Math.max(1, Math.min(targetRootIndex, intermediate.length))
+      ? Math.max(0, Math.min(targetRootIndex, intermediate.length))
       : defaultInsert;
 
   const nextItems = [
@@ -552,8 +574,7 @@ export function ejectLayerFromGroup(
     ...intermediate.slice(insertIndex),
   ];
 
-  const pruned = pruneEmptyGroups(nextItems);
-  return normalizeBackdrop(pruned);
+  return pruneEmptyGroups(nextItems);
 }
 
 // ---------------------------------------------------------------------------
@@ -641,4 +662,94 @@ export function setGroupCollapsed(
     }
     return item;
   });
+}
+
+/**
+ * Updates a Group by ID using an updater function.
+ * If the group is locked, the update is rejected unless allowIfLocked is true.
+ */
+export function updateGroupInItems(
+  items: (Layer | Group)[],
+  groupId: string,
+  updater: (group: Group) => Group,
+  allowIfLocked = false
+): (Layer | Group)[] {
+  return items.map((item) => {
+    if (isGroup(item) && item.id === groupId) {
+      if (item.locked && !allowIfLocked) return item;
+      return updater(item);
+    }
+    return item;
+  });
+}
+
+/**
+ * Sets a Group's opacity (clamped between 0.0 and 1.0).
+ */
+export function setGroupOpacity(
+  items: (Layer | Group)[],
+  groupId: string,
+  opacity: number
+): (Layer | Group)[] {
+  const clamped = Math.max(0, Math.min(1, opacity));
+  return updateGroupInItems(items, groupId, (g) => ({
+    ...g,
+    opacity: clamped,
+    updatedAt: Date.now(),
+  }));
+}
+
+/**
+ * Sets a Group's blend mode.
+ */
+export function setGroupBlendMode(
+  items: (Layer | Group)[],
+  groupId: string,
+  blendMode: BlendMode
+): (Layer | Group)[] {
+  return updateGroupInItems(items, groupId, (g) => ({
+    ...g,
+    blendMode,
+    updatedAt: Date.now(),
+  }));
+}
+
+/**
+ * Updates a Group's transform properties.
+ */
+export function updateGroupTransform(
+  items: (Layer | Group)[],
+  groupId: string,
+  transformUpdates: Partial<LayerTransform>
+): (Layer | Group)[] {
+  return updateGroupInItems(items, groupId, (g) => {
+    const current = g.transform ?? DEFAULT_LAYER_TRANSFORM;
+    const nextTransform: LayerTransform = {
+      x: transformUpdates.x !== undefined && Number.isFinite(transformUpdates.x) ? transformUpdates.x : current.x,
+      y: transformUpdates.y !== undefined && Number.isFinite(transformUpdates.y) ? transformUpdates.y : current.y,
+      scaleX: transformUpdates.scaleX !== undefined && Number.isFinite(transformUpdates.scaleX) ? Math.max(0.05, Math.min(20, transformUpdates.scaleX)) : current.scaleX,
+      scaleY: transformUpdates.scaleY !== undefined && Number.isFinite(transformUpdates.scaleY) ? Math.max(0.05, Math.min(20, transformUpdates.scaleY)) : current.scaleY,
+      rotation: transformUpdates.rotation !== undefined && Number.isFinite(transformUpdates.rotation) ? transformUpdates.rotation : current.rotation,
+    };
+    return {
+      ...g,
+      transform: nextTransform,
+      updatedAt: Date.now(),
+    };
+  });
+}
+
+/**
+ * Sets a Group's entire effect stack.
+ */
+export function setGroupEffectStack(
+  items: (Layer | Group)[],
+  groupId: string,
+  effectStack: EffectStack
+): (Layer | Group)[] {
+  return updateGroupInItems(items, groupId, (g) => ({
+    ...g,
+    effectStack: [...effectStack],
+    updatedAt: Date.now(),
+  }));
 }
